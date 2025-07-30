@@ -1,0 +1,22 @@
+-Check loading animation for dexterity analysis
+-fix occluded numbers on plots
+-fix legends on plots (moving more left and auto name changing)
+
+-add bounding bounds
+-fix resize (add addlisteners?)
+
+! -fix dexterity analysis update when select joint changed!!!!!!
+! -use variables for fonts,color,size etc...
+-add mouse window description
+-add clickable joints
+-check ag-grid safari/opera compability
+-check mobile problems
+
+- fix joint color when moving mouse (we dont want only when the mouse is moving)
+-add dragging symbols for the windows
+-add info button
+-add tooltip
+
+
+
+key words: Claymorphism, Neumorphism,Neubrutalism, Glassmorphism
