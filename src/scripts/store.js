@@ -87,6 +87,12 @@ const [kfgomFilters, setKfgomFilters] = createSignal({ // added by youssef herga
 
 const [rawSkeletenBones, setRawSkeletenBones] = createSignal([])
 
+// KF-GOM Train/Test file selection state
+const [trainFile, setTrainFile] = createSignal(null)
+const [testFile, setTestFile] = createSignal(null)
+const [trainFileBones, setTrainFileBones] = createSignal([])
+const [testFileBones, setTestFileBones] = createSignal([])
+
 // SARIMAX specific state // added by youssef hergal
 const [sarimaxAnalyzer, setSarimaxAnalyzer] = createSignal(null) // added by youssef hergal
 const [sarimaxResults, setSarimaxResults] = createSignal(null) // added by youssef hergal
@@ -227,6 +233,14 @@ export {
 	setSplitterSizeSkelDown,
 	rawSkeletenBones,
 	setRawSkeletenBones,
+	trainFile,
+	setTrainFile,
+	testFile,
+	setTestFile,
+	trainFileBones,
+	setTrainFileBones,
+	testFileBones,
+	setTestFileBones,
 	kfgomData,
 	setKfgomData,
 	kfgomFilters,

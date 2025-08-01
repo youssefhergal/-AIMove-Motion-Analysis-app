@@ -64,11 +64,7 @@ export class StandardScaler {
         }
 
         this.fitted = true
-        console.log('✅ StandardScaler fitted:', {
-            mean: this.mean,
-            std: this.std,
-            numFeatures
-        })
+
     }
 
     transform(data) {

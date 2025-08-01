@@ -1,6 +1,6 @@
 import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
-import { sarimaxResults, sarimaxConfig } from '../../store.js'
+import { sarimaxResults, sarimaxConfig, kfgomFilters, setKfgomFilters } from '../../store.js'
 import { myScene } from '../../myScene.js'
 
 export default function KFGOMTable() {
@@ -9,35 +9,36 @@ export default function KFGOMTable() {
     const [gridApi, setGridApi] = createSignal(null)
     const [selectedJoints, setSelectedJoints] = createSignal(new Set())
 
-    // Convert SARIMAX results to table data format
-    const convertSARIMAXToTableData = (results) => { // added by youssef hergal
-        console.log('🔍 Converting SARIMAX results to table data:', { // added by youssef hergal
-            hasResults: !!results,
-            hasModelSummary: !!results?.modelSummary,
-            hasVariables: !!results?.modelSummary?.variables,
-            variablesLength: results?.modelSummary?.variables?.length || 0,
-            sampleVariable: results?.modelSummary?.variables?.[0]
+    // Filter data based on significance
+    const filterDataBySignificance = (data, significanceFilter) => {
+        if (significanceFilter === 'all') {
+            return data
+        }
+        
+        const filtered = data.filter(item => {
+            const isSignificant = item.significance === '***' || item.significance === '**' || item.significance === '*'
+            const shouldInclude = significanceFilter === 'significant' ? isSignificant : !isSignificant
+            return shouldInclude
         })
         
+        return filtered
+    }
+
+    // Convert SARIMAX results to table data format
+    const convertSARIMAXToTableData = (results) => {
         if (!results || !results.modelSummary || !results.modelSummary.variables) {
-            console.warn('⚠️ Missing data for table conversion') // added by youssef hergal
             return []
         }
 
-        const tableData = results.modelSummary.variables.map((variable, index) => ({ // added by youssef hergal
+        const tableData = results.modelSummary.variables.map((variable, index) => ({
             id: index + 1,
             jointId: variable.variable,
             jointName: variable.variable,
             coefficient: variable.coefficient.toFixed(6),
             pValue: variable.pValue.toFixed(6),
             significance: variable.significance,
-            selected: false // added by youssef hergal
+            selected: false
         }))
-        
-        console.log('✅ Table data converted:', { // added by youssef hergal
-            tableDataLength: tableData.length,
-            sampleRow: tableData[0]
-        })
         
         return tableData
     }
@@ -70,24 +71,18 @@ export default function KFGOMTable() {
                 newSet.delete(jointId)
             }
             setSelectedJoints(newSet)
-            console.log('🔍 Selected joints:', Array.from(newSet))
+
         }
     }
 
-    onMount(() => { // added by youssef hergal
-        console.log('🔧 KFGOMTable component mounted') // added by youssef hergal
-        
+    onMount(() => {
         // Initialize with SARIMAX results if available, otherwise empty array
         const results = sarimaxResults()
-        console.log('📊 Initial SARIMAX results on mount:', { // added by youssef hergal
-            hasResults: !!results,
-            resultsKeys: results ? Object.keys(results) : []
-        })
         
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
             setKfgomData(tableData)
-            setFilteredData(tableData)
+            // Don't set filtered data here - let the filter effect handle it
         } else {
             setKfgomData([])
             setFilteredData([])
@@ -139,39 +134,45 @@ export default function KFGOMTable() {
     })
 
     // Update grid when data changes
-    createEffect(() => { // added by youssef hergal
+    createEffect(() => {
         const data = filteredData()
         const api = gridApi()
-        console.log('🔄 Grid data update:', { // added by youssef hergal
-            hasData: !!data,
-            dataLength: data?.length || 0,
-            hasApi: !!api
-        })
         
         if (api && data) {
             api.setRowData(data)
-            console.log('✅ Grid updated with data') // added by youssef hergal
         }
     })
 
     // Update data when SARIMAX results change
-    createEffect(() => { // added by youssef hergal
+    createEffect(() => {
         const results = sarimaxResults()
-        console.log('🔄 SARIMAX results changed:', { // added by youssef hergal
-            hasResults: !!results,
-            resultsKeys: results ? Object.keys(results) : []
-        })
         
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
-            console.log('📊 Setting table data:', { // added by youssef hergal
-                tableDataLength: tableData.length,
-                kfgomDataLength: kfgomData().length
-            })
             setKfgomData(tableData)
-            setFilteredData(tableData)
+            // Don't set filtered data here - let the filter effect handle it
         }
     })
+
+    // Apply significance filter when data or filter changes
+    createEffect(() => {
+        const data = kfgomData()
+        const filters = kfgomFilters()
+        
+        if (data && data.length > 0) {
+            const filtered = filterDataBySignificance(data, filters.significance)
+            setFilteredData(filtered)
+        }
+    })
+
+    // Extract metrics from SARIMAX results
+    const getMetrics = () => {
+        const results = sarimaxResults()
+        if (!results || !results.metrics) {
+            return null
+        }
+        return results.metrics
+    }
 
     return (
         <div class="plotTableContainer">
@@ -180,11 +181,149 @@ export default function KFGOMTable() {
             {kfgomData().length === 0 && (
                 <div class="no-data">
                     <p>
-                        {myScene.globalResult && myScene.globalResult.bvhBones ? 
-                            "Loading KF-GOM analysis results..." : 
-                            "No BVH file loaded. Please upload a BVH file first to run KF-GOM analysis."
-                        }
+                        No training file selected. Please select a training file first to run KF-GOM analysis.
                     </p>
+                </div>
+            )}
+
+            {/* Metrics Display */}
+            {getMetrics() && (
+                <div style={{
+                    "margin-top": "20px",
+                    padding: "15px",
+                    "background-color": "#f8f9fa",
+                    "border-radius": "8px",
+                    border: "1px solid #e9ecef"
+                }}>
+                    <h4 style={{
+                        margin: "0 0 15px 0",
+                        color: "#495057",
+                        "font-size": "16px",
+                        "font-weight": "600"
+                    }}>
+                        Model Performance Metrics
+                    </h4>
+                    
+                    <div style={{
+                        display: "grid",
+                        "grid-template-columns": "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: "15px"
+                    }}>
+                        <div style={{
+                            padding: "12px",
+                            backgroundColor: "#fff",
+                            borderRadius: "6px",
+                            border: "1px solid #dee2e6",
+                            textAlign: "center"
+                        }}>
+                            <div style={{
+                                fontSize: "14px",
+                                color: "#6c757d",
+                                marginBottom: "5px"
+                            }}>
+                                Mean Squared Error (MSE)
+                            </div>
+                            <div style={{
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                color: "#495057"
+                            }}>
+                                {getMetrics().mse?.toFixed(6) || "N/A"}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            padding: "12px",
+                            backgroundColor: "#fff",
+                            borderRadius: "6px",
+                            border: "1px solid #dee2e6",
+                            textAlign: "center"
+                        }}>
+                            <div style={{
+                                fontSize: "14px",
+                                color: "#6c757d",
+                                marginBottom: "5px"
+                            }}>
+                                Mean Absolute Error (MAE)
+                            </div>
+                            <div style={{
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                color: "#495057"
+                            }}>
+                                {getMetrics().mae?.toFixed(6) || "N/A"}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            padding: "12px",
+                            backgroundColor: "#fff",
+                            borderRadius: "6px",
+                            border: "1px solid #dee2e6",
+                            textAlign: "center"
+                        }}>
+                            <div style={{
+                                fontSize: "14px",
+                                color: "#6c757d",
+                                marginBottom: "5px"
+                            }}>
+                                Correlation Coefficient
+                            </div>
+                            <div style={{
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                color: "#495057"
+                            }}>
+                                {getMetrics().correlation?.toFixed(6) || "N/A"}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            padding: "12px",
+                            backgroundColor: "#fff",
+                            borderRadius: "6px",
+                            border: "1px solid #dee2e6",
+                            textAlign: "center"
+                        }}>
+                            <div style={{
+                                fontSize: "14px",
+                                color: "#6c757d",
+                                marginBottom: "5px"
+                            }}>
+                                R-squared (R²)
+                            </div>
+                            <div style={{
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                color: "#495057"
+                            }}>
+                                {getMetrics().r2?.toFixed(6) || "N/A"}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            padding: "12px",
+                            backgroundColor: "#fff",
+                            borderRadius: "6px",
+                            border: "1px solid #dee2e6",
+                            textAlign: "center"
+                        }}>
+                            <div style={{
+                                fontSize: "14px",
+                                color: "#6c757d",
+                                marginBottom: "5px"
+                            }}>
+                                Theil's U Statistic
+                            </div>
+                            <div style={{
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                color: "#495057"
+                            }}>
+                                {getMetrics().utheil?.toFixed(6) || "N/A"}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

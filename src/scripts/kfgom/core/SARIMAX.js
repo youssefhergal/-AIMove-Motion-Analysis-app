@@ -18,6 +18,7 @@ export class SARIMAX {
     this.aic = null
     this.bic = null
     this.lambda = 0.1 // Ridge regularization parameter
+    this._debugLogged = false
   }
 
   laggedMatrix(data, lags) {
@@ -110,16 +111,24 @@ export class SARIMAX {
 
   fit() {
     console.log(`\n🚀 SARIMAX Training with method: ${this.method.toUpperCase()}`)
+    this._debugLogged = false // Reset debug flag
     
     const X = []
     const y = []
 
-    const laggedEndog = this.laggedMatrix(this.endog, this.order)
-    const laggedExog = this.exog.slice(this.order)
+        const laggedEndog = this.laggedMatrix(this.endog, this.order)
+    
+    // Transpose exog to [numTimesteps][numExogVars] so we can slice by time
+    const exogByTime = this.exog[0].map((_, t) => this.exog.map(row => row[t]))
+    const laggedExog = exogByTime.slice(this.order)
+
+    
 
     for (let i = 0; i < laggedEndog.length; i++) {
       X.push([...laggedExog[i], ...laggedEndog[i]])
       y.push(this.endog[i + this.order])
+      
+
     }
 
     // Choose estimation method
@@ -266,6 +275,8 @@ export class SARIMAX {
     // Combine exogenous and endogenous data in the correct order
     // The coefficients are ordered as: [exog1, exog2, ..., endog_lag1, endog_lag2, ...]
     const input = [...exogContext, ...endoContext]
+    
+
     
     if (input.length !== this.coefficients.length) {
       throw new Error(`Input length ${input.length} doesn't match coefficient length ${this.coefficients.length}`)

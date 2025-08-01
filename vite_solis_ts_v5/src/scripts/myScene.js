@@ -288,7 +288,7 @@ let myScene = {
 		this.globalResult = result // Store the result for use within other methods
 		const bvhBones = this.globalResult.bvhBones
 		console.log("BVHbones: ", bvhBones)
-		setRawSkeletenBones(bvhBones)
+		setRawSkeletenBones(bvhBones) // needd youssef hergal
 		// this.clonedSkeleton = result.skeleton.clone()
 		// console.log(this.clonedSkeleton.bones)
 		this.animationClip = result.clip // Storing the clip in the global scope for later use
@@ -439,35 +439,22 @@ let myScene = {
 		// Clean up the auxiliary property once indexing is complete
 		delete this.boneIndex["lastIndex"]
 
-		// Safely set the selected joint color
-		const currentSelectedJoint = selectedJoint()
-		if (currentSelectedJoint && this.jointIndex[currentSelectedJoint] !== undefined) {
-			this.sphereMeshes[this.jointIndex[currentSelectedJoint]].material.color.set(0x00ff00)
-		} else {
-			console.warn(`Selected joint "${currentSelectedJoint}" not found in bone hierarchy`)
-		}
+		this.sphereMeshes[this.jointIndex[selectedJoint()]].material.color.set(
+			0x00ff00
+		) // Set specific joint color to green
 
 		// console.log(this.globalResult.skeleton.bones)
 	},
 
 	updateSpherePositions: function () {
-		// Check if globalResult and skeleton exist before accessing them
-		if (this.globalResult && this.globalResult.skeleton && this.globalResult.skeleton.bones) {
-			this.globalResult.skeleton.bones.forEach((bone, index) => {
-				if (this.sphereMeshes && this.sphereMeshes[index]) {
-					bone.getWorldPosition(this.sphereMeshes[index].position)
-				}
-			})
-		}
+		this.globalResult.skeleton.bones.forEach((bone, index) => {
+			if (this.sphereMeshes[index]) {
+				bone.getWorldPosition(this.sphereMeshes[index].position)
+			}
+		})
 	},
 
 	createBoneMeshes: function () {
-		// Check if globalResult and skeleton exist before accessing them
-		if (!this.globalResult || !this.globalResult.skeleton || !this.globalResult.skeleton.bones) {
-			console.warn("Cannot create bone meshes: skeleton not available")
-			return
-		}
-		
 		this.globalResult.skeleton.bones.forEach((bone) => {
 			const lineGeometry = new LineGeometry()
 			// Assuming positions is a property of myScene, like this.positions
@@ -499,47 +486,42 @@ let myScene = {
 
 				lineMesh.geometry.setPositions(this.positions)
 				this.lineMeshes.push(lineMesh)
-				if (this.scene) {
-					this.scene.add(lineMesh)
-				}
+				this.scene.add(lineMesh)
 			}
 		})
 	},
 
 	updateLinePositions: function () {
-		// Check if globalResult and skeleton exist before accessing them
-		if (this.globalResult && this.globalResult.skeleton && this.globalResult.skeleton.bones) {
-			this.globalResult.skeleton.bones.forEach((bone, index) => {
-				//console.log(bone, index);
-				if (bone.parent && this.lineMeshes && this.lineMeshes[index]) {
-					bone.getWorldPosition(this.startPosition)
-					bone.parent.getWorldPosition(this.endPosition)
+		this.globalResult.skeleton.bones.forEach((bone, index) => {
+			//console.log(bone, index);
+			if (bone.parent && this.lineMeshes[index]) {
+				bone.getWorldPosition(this.startPosition)
+				bone.parent.getWorldPosition(this.endPosition)
 
-					const line = this.lineMeshes[index]
-					if (line && line.geometry instanceof LineGeometry) {
-						line.geometry.attributes.instanceStart.setXYZ(
-							0,
-							this.startPosition.x,
-							this.startPosition.y,
-							this.startPosition.z
-						)
-						line.geometry.attributes.instanceEnd.setXYZ(
-							0,
-							this.endPosition.x,
-							this.endPosition.y,
-							this.endPosition.z
-						)
-						line.geometry.attributes.instanceStart.needsUpdate = true
-						line.geometry.attributes.instanceEnd.needsUpdate = true
-					} else {
-						console.error(
-							"LineGeometry or lineMesh not found or invalid for index:",
-							index
-						)
-					}
+				const line = this.lineMeshes[index]
+				if (line && line.geometry instanceof LineGeometry) {
+					line.geometry.attributes.instanceStart.setXYZ(
+						0,
+						this.startPosition.x,
+						this.startPosition.y,
+						this.startPosition.z
+					)
+					line.geometry.attributes.instanceEnd.setXYZ(
+						0,
+						this.endPosition.x,
+						this.endPosition.y,
+						this.endPosition.z
+					)
+					line.geometry.attributes.instanceStart.needsUpdate = true
+					line.geometry.attributes.instanceEnd.needsUpdate = true
+				} else {
+					console.error(
+						"LineGeometry or lineMesh not found or invalid for index:",
+						index
+					)
 				}
-			})
-		}
+			}
+		})
 	},
 
 	onWindowResize: function () {
@@ -547,25 +529,15 @@ let myScene = {
 		// this.renderedScene=document.getElementById('threelogs');
 		this.width = this.container.clientWidth
 		this.height = this.container.clientHeight
-		
-		// Check if camera and renderer exist before accessing their properties
-		if (this.camera && this.renderer) {
-			this.camera.aspect = this.width / this.height
-			this.camera.updateProjectionMatrix()
-			this.renderer.setSize(this.width, this.height)
-			console.log(this.width, this.height)
-		} else {
-			console.warn("Camera or renderer not available during window resize")
-		}
+		this.camera.aspect = this.width / this.height
+
+		this.camera.updateProjectionMatrix()
+		this.renderer.setSize(this.width, this.height)
+
+		console.log(this.width, this.height)
 	},
 
 	reCenter: function () {
-		// Check if globalResult and skeleton exist before accessing them
-		if (!this.globalResult || !this.globalResult.skeleton || !this.globalResult.skeleton.bones) {
-			console.warn("Cannot reCenter: skeleton not available")
-			return
-		}
-		
 		this.newPosition = new THREE.Vector3()
 		this.globalResult.skeleton.bones[0].scale.set(0.5, 0.5, 0.5)
 		this.globalResult.skeleton.bones[0].getWorldPosition(this.newPosition) // Get the new position
@@ -592,41 +564,23 @@ let myScene = {
 			this.grid.position
 		) // Calculate displacement
 
-		// Check if camera and controls exist before using them
-		if (this.camera && this.controls) {
-			this.camera.position.add(this.displacement) // Move the camera based on displacement
-			this.controls.update() // Update controls
-		}
-		
-		if (this.grid) {
-			this.grid.position.copy(this.newPosition) // Update grid position
-		}
-		if (this.axesHelper) {
-			this.axesHelper.position.copy(this.newPosition)
-		}
-		
-		if (this.globalResult.skeleton.bones[1]) {
-			this.specificBone = this.globalResult.skeleton.bones[1]
-			this.hipsPosition = new THREE.Vector3()
-			if (this.camera) {
-				this.camera.lookAt(this.specificBone.getWorldPosition(this.hipsPosition)) // Make the camera look at the new position
-			}
-			if (this.controls) {
-				this.controls.target.copy(this.hipsPosition) // Update controls target
-			}
-		}
-		
-		if (this.controls && this.container) {
-			this.helper = new OrbitControlsGizmo(this.controls, {
-				size: 100,
-				padding: 8,
-				bubbleSizePrimary: 9,
-				bubbleSizeSecondary: 9,
-				// fontSize: 8,
-			})
-			this.helper.domElement.id = "helperElement"
-			this.container.appendChild(this.helper.domElement)
-		}
+		this.camera.position.add(this.displacement) // Move the camera based on displacement
+		this.controls.update() // Update controls
+		this.grid.position.copy(this.newPosition) // Update grid position
+		this.axesHelper.position.copy(this.newPosition)
+		this.specificBone = this.globalResult.skeleton.bones[1]
+		this.hipsPosition = new THREE.Vector3()
+		this.camera.lookAt(this.specificBone.getWorldPosition(this.hipsPosition)) // Make the camera look at the new position
+		this.controls.target.copy(this.hipsPosition) // Update controls target
+		this.helper = new OrbitControlsGizmo(this.controls, {
+			size: 100,
+			padding: 8,
+			bubbleSizePrimary: 9,
+			bubbleSizeSecondary: 9,
+			// fontSize: 8,
+		})
+		this.helper.domElement.id = "helperElement"
+		this.container.appendChild(this.helper.domElement)
 
 		// Scale down the skeleton for visibility
 	},
@@ -689,19 +643,13 @@ let myScene = {
 				})
 
 				setSelectedValue(valueSelected)
-				
-				// Safely update sphere mesh colors
-				const currentSelectedJoint = selectedJoint()
-				if (currentSelectedJoint && this.jointIndex[currentSelectedJoint] !== undefined) {
-					this.sphereMeshes[this.jointIndex[currentSelectedJoint]].material.color.set(0x145e9f)
-				}
-				
+				this.sphereMeshes[this.jointIndex[selectedJoint()]].material.color.set(
+					0x145e9f
+				)
 				setSelectedJoint(mouseJointHover()[1])
-				
-				const newSelectedJoint = mouseJointHover()[1]
-				if (newSelectedJoint && this.jointIndex[newSelectedJoint] !== undefined) {
-					this.sphereMeshes[this.jointIndex[newSelectedJoint]].material.color.set("red")
-				}
+				this.sphereMeshes[this.jointIndex[selectedJoint()]].material.color.set(
+					"red"
+				)
 			}
 		})
 	},
@@ -796,10 +744,7 @@ let myScene = {
 			// mesh.material.color.set(0x005f9f) // Reset mesh color to blue
 			mesh.material.color.set(0x145e9f) // Reset mesh color to blue
 
-			// Safely check if this is the selected joint
-			const currentSelectedJoint = selectedJoint()
-			if (currentSelectedJoint && this.jointIndex[currentSelectedJoint] !== undefined && 
-				index === this.jointIndex[currentSelectedJoint]) {
+			if (index === this.jointIndex[selectedJoint()]) {
 				mesh.material.color.set("red") // Reset mesh color to green
 			}
 
@@ -823,8 +768,7 @@ let myScene = {
 					)
 					if (!exists) {
 						mesh.material.color.set(0x104a7e) // Reset mesh color to green
-					} else if (currentSelectedJoint && this.jointIndex[currentSelectedJoint] !== undefined && 
-						index === this.jointIndex[currentSelectedJoint]) {
+					} else if (index === this.jointIndex[selectedJoint()]) {
 						mesh.material.color.set(0xb30000) // Reset mesh color to green
 					} else {
 						mesh.material.color.set(0x00ff00) // Change mesh color to green

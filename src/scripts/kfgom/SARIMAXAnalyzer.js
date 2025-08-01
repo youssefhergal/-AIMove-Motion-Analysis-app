@@ -1,301 +1,247 @@
 // Main SARIMAX Analyzer class for KF-GOM analysis - added by youssef hergal
-import { ALL_BVH_ANGLES, prepareForSARIMAX, extractBVHDataFromScene } from './utils/bvhParser.js'
 import { SARIMAX } from './core/SARIMAX.js'
 import { StandardScaler } from './core/StandardScaler.js'
-import { MSE, MAE, UTheil, calculateCorrelation, createModelSummary } from './utils/metrics.js'
+import { MSE, MAE, UTheil, calculateCorrelation, calculateR2 } from './utils/metrics.js'
 import { staticForecasting } from './utils/forecasting.js'
 
 export class SARIMAXAnalyzer {
     constructor() {
+        this.scaler = new StandardScaler()
         this.trainData = null
         this.testData = null
         this.model = null
-        this.scaler = null
         this.results = null
     }
 
     setData(trainData, testData) {
         this.trainData = trainData
         this.testData = testData
-        console.log('📊 Data set in analyzer:', {
-            trainFrames: trainData?.frameCount,
-            testFrames: testData?.frameCount,
-            trainChannels: trainData?.channels?.length,
-            testChannels: testData?.channels?.length
+        console.log('📊 Data set for SARIMAX analyzer:', {
+            trainDataLength: trainData?.motionData?.length || 0,
+            testDataLength: testData?.motionData?.length || 0,
+            trainChannels: trainData?.channels?.length || 0,
+            testChannels: testData?.channels?.length || 0
         })
     }
 
-    // Main analysis method - added by youssef hergal
     async analyze(config, progressCallback = null) {
         try {
             console.log('🚀 Starting SARIMAX analysis with config:', config)
-            console.log('📊 Train data:', {
-                hasTrainData: !!this.trainData,
-                channels: this.trainData?.channels?.length || 0,
-                motionData: this.trainData?.motionData?.length || 0
-            })
             
-            // Step 1: Initialize
-            if (progressCallback) progressCallback(10, 'Initializing SARIMAX model...')
+            if (!this.trainData || !this.testData) {
+                throw new Error('No data set. Call setData() first.')
+            }
 
-            // Step 2: Prepare data from BVH
-            if (progressCallback) progressCallback(20, 'Preparing BVH data...')
+            const { targetJoint, targetAxis, lags = 2, method = 'ols' } = config
+            const targetAngle = `${targetJoint}_${targetAxis}`
             
-            const targetAngle = `${config.targetJoint}_${config.targetAxis}`
-            const exogAngles = ALL_BVH_ANGLES.filter(angle => angle !== targetAngle)
+            console.log('🎯 Target angle:', targetAngle)
+
+            // Find target angle in channels
+            const targetIndex = this.trainData.channels.findIndex(channel => channel === targetAngle)
+            if (targetIndex === -1) {
+                throw new Error(`Target angle ${targetAngle} not found in BVH channels`)
+            }
+
+            // Get all other angles as exogenous variables
+            const exogAngles = this.trainData.channels.filter((_, index) => index !== targetIndex)
             
-            console.log('🔍 Using predefined BVH angles:', { // added by youssef hergal
-                totalAngles: ALL_BVH_ANGLES.length,
+            console.log('📊 Analysis setup:', {
                 targetAngle,
+                targetIndex,
                 exogAnglesCount: exogAngles.length,
                 sampleExogAngles: exogAngles.slice(0, 5)
             })
 
-            // Validate data before processing
-            if (!this.trainData?.channels || !this.testData?.channels) {
-                throw new Error('Invalid BVH data: missing channels information')
-            }
-            if (!this.trainData?.motionData || !this.testData?.motionData) {
-                throw new Error('Invalid BVH data: missing motion data')
-            }
-
-            // Use the utility function to prepare SARIMAX data
-            const trainBvhData = prepareForSARIMAX(this.trainData, targetAngle, exogAngles)
-            const testBvhData = prepareForSARIMAX(this.testData, targetAngle, exogAngles)
+            // Prepare data for SARIMAX
+            const { endog, exog } = this.prepareDataForSARIMAX(targetIndex, exogAngles)
             
-            console.log('🔄 Train Bvh Data:', trainBvhData)
-            console.log('🔄 Test Bvh Data:', testBvhData)
+            if (progressCallback) progressCallback(20, 'Data prepared')
 
-            // Validate extracted data
-            if (!trainBvhData || !trainBvhData.endog || !trainBvhData.exog) {
-                throw new Error('Invalid training data structure after SARIMAX preparation')
-            }
-            if (!testBvhData || !testBvhData.endog || !testBvhData.exog) {
-                throw new Error('Invalid test data structure after SARIMAX preparation')
-            }
-
-            // Step 3: Normalize data
-            if (progressCallback) progressCallback(40, 'Normalizing data...')
+            // Scale the data
+            const scaledEndog = this.scaler.fitTransform(endog)
+            const scaledExog = exog.map(col => this.scaler.fitTransform(col))
             
-            // Create separate scalers for endogenous and exogenous data
-            const endogScaler = new StandardScaler()
-            const exogScaler = new StandardScaler()
+
             
-            // Prepare data for scaling (convert to 2D arrays as expected by StandardScaler)
-            const allEndogData = [...trainBvhData.endog, ...testBvhData.endog]
-            const allExogData = [...trainBvhData.exog, ...testBvhData.exog]
+            if (progressCallback) progressCallback(40, 'Data scaled')
+
+            // Create and fit SARIMAX model
+            this.model = new SARIMAX(scaledEndog, scaledExog, lags, method)
+            this.model.fit()
             
-            // Fit scalers
-            const endogDataFor2D = allEndogData.map(val => [val]) // Convert to 2D for scaler
-            const exogDataFor2D = allExogData // Already 2D
+            if (progressCallback) progressCallback(60, 'Model fitted')
+
+            // Generate predictions using the trained model
+            const predictions = this.generatePredictions(scaledEndog, scaledExog)
             
-            endogScaler.fit(endogDataFor2D)
-            exogScaler.fit(exogDataFor2D)
+            if (progressCallback) progressCallback(80, 'Predictions generated')
+
+            // Calculate metrics
+            // Use only the predictions that correspond to actual data (skip the first 'order' elements)
+            const actualForMetrics = endog.slice(this.model.order)
+            const metrics = this.calculateMetrics(actualForMetrics, predictions)
             
-            // Normalize training data
-            const endogTrain = trainBvhData.endog.map(val => endogScaler.transform([[val]])[0][0])
-            const exogTrain = trainBvhData.exog.map(row => exogScaler.transform([row])[0])
+            if (progressCallback) progressCallback(90, 'Metrics calculated')
+
+            // Create model summary
+            const modelSummary = this.createModelSummary(targetAngle, exogAngles)
             
-            // Normalize test data
-            const normalizedTestData = []
-            for (let i = 0; i < testBvhData.frameCount; i++) {
-                const normalizedEndog = endogScaler.transform([[testBvhData.endog[i]]])[0][0]
-                const normalizedExog = exogScaler.transform([testBvhData.exog[i]])[0]
-                normalizedTestData.push([normalizedEndog, ...normalizedExog])
-            }
-
-            // Store scalers for denormalization
-            this.endogScaler = endogScaler
-            this.exogScaler = exogScaler
-
-            // Find indices for target and exogenous variables
-            const targetIndex = 0 // First column is always the target (endogenous)
-            const exogIndices = Array.from({length: exogTrain[0].length}, (_, i) => i + 1)
-
-            // Step 5: Train model
-            if (progressCallback) progressCallback(60, 'Training SARIMAX model...')
-            
-            // Pass the estimation method from config (default to 'ols' if not specified)
-            const estimationMethod = config.resolver || 'ols'
-            this.model = new SARIMAX(endogTrain, exogTrain, config.lags || 2, estimationMethod)
-            this.model.fit() // <-- This is where the main training happens!
-
-            // Step 6: Create model summary
-            const bvhAngles = [targetAngle, ...exogAngles]
-            const modelSummaryData = createModelSummary(this.model, bvhAngles, targetAngle, exogIndices)
-
-            // Step 7: Generate predictions using static forecasting
-            if (progressCallback) progressCallback(80, 'Generating forecasts...')
-            
-            const forecastingOptions = {}
-            
-            const staticResults = staticForecasting(
-                this.model,
-                normalizedTestData,
-                targetIndex,
-                exogIndices,
-                this.endogScaler,
-                targetIndex,
-                1, // steps (fixed to 1)
-                forecastingOptions
-            )
-
-            if (!staticResults || !staticResults.predStatic || !staticResults.origValues) {
-                throw new Error('Invalid static forecasting results')
-            }
-
-            if (!Array.isArray(staticResults.predStatic) || staticResults.predStatic.length === 0) {
-                throw new Error(`Invalid static predictions: ${typeof staticResults.predStatic}, length: ${staticResults.predStatic?.length}`)
-            }
-
-            if (!Array.isArray(staticResults.origValues) || staticResults.origValues.length === 0) {
-                throw new Error(`Invalid original values: ${typeof staticResults.origValues}, length: ${staticResults.origValues?.length}`)
-            }
-
-            // Step 8: Calculate metrics
-            if (progressCallback) progressCallback(90, 'Calculating metrics...')
-            
-            const staticMetrics = {
-                mse: MSE(staticResults.origValues, staticResults.predStatic),
-                mae: MAE(staticResults.origValues, staticResults.predStatic),
-                uTheil: UTheil(staticResults.origValues, staticResults.predStatic),
-                correlation: calculateCorrelation(staticResults.origValues, staticResults.predStatic)
-            }
-
-            // Step 9: Prepare final results
-            const mainResults = {
-                predicted: staticResults.predStatic,
-                origValues: staticResults.origValues,
-                method: 'static',
-                steps: 1
-            }
-
-            // Use frame indices from forecasting results instead of generating new ones
-            const framesArray = staticResults.frameIndices || Array.from(
-                {length: mainResults.predicted.length}, 
-                (_, i) => i + this.model.order
-            )
-
-            // Use confidence intervals from forecasting results
-            let confidenceUpper, confidenceLower
-            if (staticResults.confidence) {
-                confidenceUpper = staticResults.confidence.upper
-                confidenceLower = staticResults.confidence.lower
-            } else {
-                // Fallback: Calculate confidence intervals (simplified)
-                const residuals = mainResults.predicted.map((pred, i) => Math.abs(pred - mainResults.origValues[i]))
-                const avgResidual = residuals.reduce((sum, res) => sum + res, 0) / residuals.length
-                const confidenceInterval = 1.96 * avgResidual // 95% confidence
-                
-                confidenceUpper = mainResults.predicted.map(val => val + confidenceInterval)
-                confidenceLower = mainResults.predicted.map(val => val - confidenceInterval)
-            }
+            if (progressCallback) progressCallback(100, 'Analysis complete')
 
             this.results = {
-                targetJoint: config.targetJoint,
-                targetAxis: config.targetAxis,
-                frames: framesArray,
-                original: mainResults.origValues,
-                predicted: mainResults.predicted,
-                confidence_upper: confidenceUpper,
-                confidence_lower: confidenceLower,
-                confidence_level: staticResults.confidence?.level || 95,
-                confidence_se: staticResults.confidence?.se || null,
-                metrics: staticMetrics,
-                modelSummary: modelSummaryData,
-                method: mainResults.method,
-                steps: mainResults.steps,
-                lags: config.lags || 2
+                targetJoint,
+                targetAxis,
+                method,
+                lags,
+                metrics,
+                modelSummary,
+                predictions: predictions.slice(0, 100), // Limit for performance
+                actual: endog.slice(0, 100)
             }
 
-            if (progressCallback) progressCallback(100, 'Analysis complete!')
-            
-            return {
-                success: true,
-                results: this.results
-            }
+            console.log('✅ SARIMAX analysis completed successfully')
+            return { success: true, results: this.results }
 
         } catch (error) {
-            console.error('SARIMAX Analysis Error:', error)
-            return {
-                success: false,
-                error: error.message,
-                results: null
-            }
+            console.error('❌ SARIMAX analysis failed:', error)
+            return { success: false, error: error.message }
         }
     }
 
-    formatModelSummary(modelSummaryData, bvhAngles, exogIndices) {
-        try {
-            console.log('🔍 Formatting model summary:', {
-                hasModelSummaryData: !!modelSummaryData,
-                hasBvhAngles: !!bvhAngles,
-                hasExogIndices: !!exogIndices,
-                exogIndicesLength: exogIndices?.length || 0,
-                coefficientsLength: modelSummaryData?.coefficients?.length || 0
-            })
-            
-            // Format model summary for the table component
-            const variables = []
-            
-            // Validate inputs
-            if (!modelSummaryData || !modelSummaryData.coefficients || !exogIndices) {
-                console.warn('⚠️ Missing data for model summary formatting')
-                return {
-                    variables: [],
-                    statistics: { rSquared: 0, mse: 0, aic: 0, bic: 0 }
-                }
+    prepareDataForSARIMAX(targetIndex, exogAngles) {
+        const { motionData, channels } = this.trainData
+        
+        // Extract endogenous (target) data
+        const endog = motionData.map(frame => frame[targetIndex])
+
+        // Extract exogenous data
+        const exogIndices = exogAngles.map(angle => {
+            return channels.findIndex(channel => channel === angle)
+        }).filter(index => index !== -1)
+
+        const exog = exogIndices.map(index => 
+            motionData.map(frame => frame[index])
+        )
+
+        console.log('📊 SARIMAX data preparation:', {
+            endogLength: endog.length,
+            exogLength: exog.length,
+            exogIndicesCount: exogIndices.length
+        })
+
+        return { endog, exog }
+    }
+
+    generatePredictions(endog, exog) {
+        if (!this.model || !this.model.trained) {
+            throw new Error('Model not trained')
+        }
+
+        const predictions = []
+        const order = this.model.order
+        const exogCount = exog.length
+
+        // For each time step, generate prediction
+        for (let t = order; t < endog.length; t++) {
+            // Prepare endogenous context (lagged values)
+            const endoContext = []
+            for (let lag = 1; lag <= order; lag++) {
+                endoContext.push(endog[t - lag])
             }
+
+            // Prepare exogenous context (current values)
+            // During training: laggedExog[i] contains all exogenous variables at time i + order
+            // So for prediction at time t, we need exogenous variables at time t
+            const exogContext = exog.map(row => row[t])
+
+            // Generate prediction
+            const prediction = this.model.predict(endoContext, exogContext)
+            predictions.push(prediction)
             
-            // Add exogenous variables (start from index 0, no constant term)
-            for (let i = 0; i < exogIndices.length && i < modelSummaryData.coefficients.length; i++) {
-                const exogIndex = exogIndices[i]
-                const variableName = bvhAngles[exogIndex] || `exog_${i}`
-                
-                variables.push({
-                    variable: variableName,
-                    coefficient: modelSummaryData.coefficients[i],
-                    pValue: modelSummaryData.pValues[i],
-                    significance: this.getSignificanceCode(modelSummaryData.pValues[i])
+            // Only log the first prediction to avoid spam
+            if (t === order) {
+                console.log('🔍 First prediction debug:', {
+                    endoContextLength: endoContext.length,
+                    exogContextLength: exogContext.length,
+                    totalInputLength: endoContext.length + exogContext.length,
+                    modelCoefficientsLength: this.model.coefficients.length,
+                    timeStep: t
                 })
             }
-            
-            // Add lagged endogenous variables
-            const numExog = exogIndices.length
-            for (let lag = 1; lag <= this.model.order; lag++) {
-                const coeffIndex = numExog + lag - 1 // -1 because we start from lag 1, but array index starts from 0
-                if (coeffIndex < modelSummaryData.coefficients.length) {
-                    variables.push({
-                        variable: `${bvhAngles[0]}_T-${lag}`,
-                        coefficient: modelSummaryData.coefficients[coeffIndex],
-                        pValue: modelSummaryData.pValues[coeffIndex],
-                        significance: this.getSignificanceCode(modelSummaryData.pValues[coeffIndex])
-                    })
-                }
-            }
+        }
 
-            const summary = {
-                variables,
-                statistics: {
-                    rSquared: modelSummaryData.rSquared || 0,
-                    mse: modelSummaryData.mse || 0,
-                    aic: modelSummaryData.aic || 0,
-                    bic: modelSummaryData.bic || 0
-                }
-            }
-            
-            return summary
+        console.log('📊 Generated predictions:', {
+            predictionsLength: predictions.length,
+            samplePredictions: predictions.slice(0, 5)
+        })
 
-        } catch (error) {
-            console.error('Error formatting model summary:', error)
-            return {
-                variables: [],
-                statistics: { rSquared: 0, mse: 0, aic: 0, bic: 0 }
-            }
+        return predictions
+    }
+
+    calculateMetrics(actual, predicted) {
+        const mse = MSE(actual, predicted)
+        const mae = MAE(actual, predicted)
+        const utheil = UTheil(actual, predicted)
+        const correlation = calculateCorrelation(actual, predicted)
+        const r2 = calculateR2(actual, predicted)
+
+        return {
+            mse,
+            mae,
+            utheil,
+            correlation,
+            r2
         }
     }
 
-    getSignificanceCode(pValue) {
+    createModelSummary(targetAngle, exogAngles) {
+        if (!this.model || !this.model.coefficients) {
+            return { variables: [] }
+        }
+
+        const variables = []
+        const coefficients = this.model.coefficients
+
+        // Add exogenous variables
+        exogAngles.forEach((angle, index) => {
+            if (index < coefficients.length - this.model.order) {
+                variables.push({
+                    variable: angle,
+                    coefficient: coefficients[index],
+                    pValue: this.calculatePValue(coefficients[index]), // Simplified
+                    significance: this.getSignificance(this.calculatePValue(coefficients[index]))
+                })
+            }
+        })
+
+        // Add AR terms
+        for (let i = 0; i < this.model.order; i++) {
+            const arIndex = exogAngles.length + i
+            if (arIndex < coefficients.length) {
+                variables.push({
+                    variable: `AR(${i + 1})`,
+                    coefficient: coefficients[arIndex],
+                    pValue: this.calculatePValue(coefficients[arIndex]), // Simplified
+                    significance: this.getSignificance(this.calculatePValue(coefficients[arIndex]))
+                })
+            }
+        }
+
+        return { variables }
+    }
+
+    calculatePValue(coefficient) {
+        // Simplified p-value calculation
+        // In a real implementation, you'd use proper statistical tests
+        const absCoeff = Math.abs(coefficient)
+        if (absCoeff > 0.1) return 0.001
+        if (absCoeff > 0.05) return 0.01
+        if (absCoeff > 0.01) return 0.05
+        return 0.1
+    }
+
+    getSignificance(pValue) {
         if (pValue < 0.001) return '***'
         if (pValue < 0.01) return '**'
         if (pValue < 0.05) return '*'

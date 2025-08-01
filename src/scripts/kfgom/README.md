@@ -1,58 +1,40 @@
-# KF-GOM (SARIMAX) Module
+# KF-GOM Analysis Module
 
-This module contains the complete Kalman Filter - Gesture Operational Model (KF-GOM) implementation using SARIMAX (Seasonal Autoregressive Integrated Moving Average with Exogenous variables).
+Kinematic Feature-based Granger Causality with Outlier Management (KF-GOM) analysis using SARIMAX modeling.
 
-## 📁 Folder Structure
+## 📁 Structure
 
 ```
 kfgom/
-├── core/                    # Core SARIMAX classes
-│   ├── SARIMAX.js         # Main SARIMAX model implementation
-│   └── StandardScaler.js  # Data normalization utility
-├── utils/                  # Utility functions
-│   ├── bvhParser.js       # BVH data extraction and preparation
-│   ├── metrics.js         # Performance metrics (MSE, MAE, UTheil, etc.)
-│   └── forecasting.js     # Static forecasting method
-├── components/            # UI components
-│   └── KFGOMTable.tsx    # Results table component
-├── SARIMAXAnalyzer.js    # Main orchestrator class
-├── index.js              # Module exports
-└── README.md            # This file
+├── core/
+│   ├── SARIMAX.js          # SARIMAX model implementation
+│   └── StandardScaler.js   # Data normalization
+├── utils/
+│   ├── metrics.js          # Performance metrics calculation
+│   └── forecasting.js      # Forecasting utilities
+├── components/
+│   └── KFGOMTable.tsx     # Results table component
+├── SARIMAXAnalyzer.js      # Main analyzer class
+└── index.js               # Module exports
 ```
 
-## 🚀 Key Features
+## 🔧 Integration
 
-### **One-Shot Learning**
-- Uses the same BVH file for both training and testing
-- Perfect for gesture analysis where you want to analyze a single motion sequence
+This module integrates with the existing BVH processing pipeline:
 
-### **Multiple Estimation Methods**
-- **OLS** (Ordinary Least Squares) - Default method
-- **MLE** (Maximum Likelihood Estimation)
-- **Ridge** (L2 Regularization)
+- **Uses existing BVH data**: Leverages `rawSkeletenBones` from the main app
+- **No duplicate processing**: Converts existing processed data to SARIMAX format
+- **Seamless integration**: Works with the main app's file upload/selection system
 
-### **Forecasting**
-- **Static forecasting** (one-step-ahead predictions)
-- **95% confidence intervals** (fixed)
+## 🎯 Usage
 
-### **Advanced Features**
-- **Lags = 2** (configurable)
-- **Confidence Intervals** (95% default)
-- **Comprehensive Metrics** (MSE, MAE, UTheil, Correlation, R²)
-
-## 📊 Usage
-
-### Basic Import
 ```javascript
-import { SARIMAXAnalyzer, KFGOMTable } from './kfgom/index.js'
-```
+import { SARIMAXAnalyzer } from './kfgom/SARIMAXAnalyzer.js'
 
-### Running Analysis
-```javascript
-// Initialize analyzer
+// Create analyzer
 const analyzer = new SARIMAXAnalyzer()
 
-// Set data (one-shot: same data for train and test)
+// Set data (uses existing BVH processing)
 analyzer.setData(bvhData, bvhData)
 
 // Run analysis
@@ -68,12 +50,6 @@ const result = await analyzer.analyze(config, (progress, message) => {
 })
 ```
 
-### UI Integration
-```jsx
-// Results table component
-<KFGOMTable />
-```
-
 ## 🔧 Configuration
 
 ### SARIMAX Config
@@ -86,14 +62,8 @@ const config = {
 }
 ```
 
-### Available Joints (19 predefined joints)
-- `Spine`, `Spine1`, `Spine2`, `Spine3`, `Hips`
-- `Neck`, `Head`
-- `LeftArm`, `LeftForeArm`, `RightArm`, `RightForeArm`
-- `LeftShoulder`, `LeftShoulder2`, `RightShoulder`, `RightShoulder2`
-- `LeftUpLeg`, `LeftLeg`, `RightUpLeg`, `RightLeg`
-
-**Total: 19 joints × 3 axes = 57 channels**
+### Available Joints
+Uses all joints available in the BVH file (not limited to predefined set)
 
 ### Available Axes
 - `Xrotation`, `Yrotation`, `Zrotation`
@@ -112,16 +82,11 @@ const config = {
 - **Correlation** (Pearson correlation)
 - **R²** (Coefficient of determination)
 
-## 🔄 Model Retraining
+## 🔄 Data Flow
 
-```javascript
-// Retrain model without specific variables
-const retrainResult = await analyzer.retrainModelWithoutVariables(
-    ['Spine_Xrotation', 'LeftArm_Xrotation'], // Variables to remove
-    config,
-    progressCallback
-)
-```
+1. **Main App**: Loads BVH file → Processes → Stores in `rawSkeletenBones`
+2. **KF-GOM**: Converts existing data → SARIMAX format → Analysis
+3. **Results**: Displayed in interactive table with filtering
 
 ## 📋 Dependencies
 
@@ -131,16 +96,16 @@ const retrainResult = await analyzer.retrainModelWithoutVariables(
 
 ## 🎯 Example Workflow
 
-1. **Load BVH File** - Upload motion capture data
+1. **Load BVH File** - Upload motion capture data (uses existing system)
 2. **Select Target** - Choose joint and axis to analyze
 3. **Run Analysis** - Click "Run SARIMAX Analysis" button
 4. **View Results** - Check table for coefficients and significance
-5. **Interpret** - Analyze p-values and correlation metrics
+5. **Filter Results** - Use significance filter to focus on important variables
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
-- **"No BVH data found"** - Make sure a BVH file is loaded
+- **"No BVH data found"** - Make sure a BVH file is loaded via main app
 - **"Target angle not found"** - Check joint/axis combination
 - **"Matrix inversion failed"** - Try Ridge method or different lags
 
@@ -159,11 +124,11 @@ The model implements:
 - **Confidence intervals** for predictions
 
 ### Data Flow
-1. **BVH Extraction** → Extract motion data from scene
-2. **Data Preparation** → Normalize and structure for SARIMAX
+1. **Existing BVH Processing** → Main app processes BVH data
+2. **Data Conversion** → Convert to SARIMAX format
 3. **Model Training** → Fit SARIMAX model with chosen method
 4. **Forecasting** → Generate predictions with confidence intervals
 5. **Metrics Calculation** → Compute performance metrics
 6. **Results Display** → Show in interactive table
 
-This module provides a complete, production-ready implementation of KF-GOM analysis using SARIMAX modeling techniques. 
+This module provides a complete, production-ready implementation of KF-GOM analysis using SARIMAX modeling techniques, integrated with the existing BVH processing pipeline. 

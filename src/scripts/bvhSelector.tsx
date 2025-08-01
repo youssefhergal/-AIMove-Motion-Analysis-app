@@ -7,7 +7,7 @@ function cleanBVHpath(file) {
 
 	return file
 }
-function BVHSelector() {
+function BVHSelector(props) {
 	const BVH_list = [
 		"GBBSS01G03R01.bvh",
 		"GBBSS01G03R02.bvh",
@@ -45,6 +45,10 @@ function BVHSelector() {
 				onChange={(file) => {
 					const file_path = "bvh2/" + file
 					loadFile(file_path)
+					// Call the callback if provided
+					if (props.onFileSelect) {
+						props.onFileSelect(file)
+					}
 				}}
 				placeholder="Select a BVH file..."
 				itemComponent={(props) => (
@@ -56,7 +60,10 @@ function BVHSelector() {
 					</Select.Item>
 				)}
 			>
-				<Select.Trigger class="select__trigger" aria-label="Fruit">
+				<Select.Trigger 
+					class="select__trigger" 
+					aria-label="Fruit"
+				>
 					<Select.Value class="select__value">
 						{(state) => cleanBVHpath(state.selectedOption())}
 					</Select.Value>

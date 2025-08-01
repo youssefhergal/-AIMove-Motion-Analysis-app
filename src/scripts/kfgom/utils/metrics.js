@@ -92,6 +92,38 @@ export function calculateCorrelation(actual, predicted) {
     return numerator / denominator
 }
 
+// Calculate R-squared (coefficient of determination)
+export function calculateR2(actual, predicted) {
+    if (!actual || !predicted || actual.length !== predicted.length) {
+        throw new Error('Invalid input for R² calculation')
+    }
+
+    const n = actual.length
+    if (n === 0) return 0
+
+    // Calculate mean of actual values
+    const actualMean = actual.reduce((sum, val) => sum + val, 0) / n
+
+    // Calculate total sum of squares (TSS)
+    let tss = 0
+    for (let i = 0; i < n; i++) {
+        tss += Math.pow(actual[i] - actualMean, 2)
+    }
+
+    // Calculate residual sum of squares (RSS)
+    let rss = 0
+    for (let i = 0; i < n; i++) {
+        rss += Math.pow(actual[i] - predicted[i], 2)
+    }
+
+    // Calculate R-squared
+    if (tss === 0) {
+        return 0
+    }
+
+    return 1 - (rss / tss)
+}
+
 // Create model summary for table display
 export function createModelSummary(model, bvhAngles, targetAngle, exogIndices) {
     try {

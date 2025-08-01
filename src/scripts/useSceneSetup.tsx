@@ -40,8 +40,15 @@ import {
 // import { initMathJax } from "./InitMathJax.js"
 
 async function initialize() {
+	console.log("🔄 Starting initialize function")
 	await myScene.init({
 		setCurrentAnimationTime, // Pass the SolidJS setter
+	})
+
+	console.log("✅ myScene.init completed, globalResult:", {
+		hasGlobalResult: !!myScene.globalResult,
+		hasBvhBones: !!(myScene.globalResult && myScene.globalResult.bvhBones),
+		bonesLength: myScene.globalResult?.bvhBones?.length || 0
 	})
 
 	await myScene.onWindowResize()
@@ -69,6 +76,8 @@ async function initialize() {
 	console.log("PreparePLotsDataAgaiin???", selectedJoint())
 	await createPlot2D(currentAnimationTime(), toggleValue())
 	await createPlot3D(currentAnimationTime())
+
+	console.log("✅ Initialize function completed")
 
 	// await initMathJax()
 	// do_gom(val).then(({ df_coef, df_pred }) => {
@@ -193,8 +202,8 @@ function updateDuration() {
 }
 
 async function clearEverything(file) {
+	console.log(`🔄 clearEverything called with file: ${file}`)
 	setCheckboxFistClick(false)
-	ResizeEverything()
 	setAppIsLoaded(false)
 	setMainPageLoaded(false)
 	setSelectedJoint("Hips")
@@ -202,13 +211,17 @@ async function clearEverything(file) {
 	setLoadingDone(false)
 	await myScene.clearScene()
 	myScene.bvhFilePath = file
+	console.log(`📁 Set bvhFilePath to: ${myScene.bvhFilePath}`)
 	await initialize()
+	// Move ResizeEverything() here after initialization is complete
+	ResizeEverything()
+	console.log(`✅ clearEverything completed for file: ${file}`)
 	if (checkboxValue()) {
 		DoGOM_init()
 	}
 }
 
-async function uploadFile(obj, file_path) {
+async function uploadFile(obj, file_path, callback = null) {
 	const file = URL.createObjectURL(obj)
 
 	const parts = file_path.split("\\") // Splits the string by '/' into an array
@@ -218,6 +231,11 @@ async function uploadFile(obj, file_path) {
 	if (lastPart.endsWith(".bvh")) {
 		await clearEverything(file)
 		setUploadOutput(lastPart)
+		
+		// Call the callback with the result if provided
+		if (callback && myScene.globalResult) {
+			callback(myScene.globalResult)
+		}
 	} else {
 		setUploadOutput("Please upload a .bvh file only! ")
 	}
@@ -225,7 +243,33 @@ async function uploadFile(obj, file_path) {
 }
 
 async function loadFile(file) {
+	console.log(`🔄 Loading file: ${file}`)
 	await clearEverything(file)
+	// Wait for the scene to be fully initialized and globalResult to be available
+	return new Promise((resolve) => {
+		let attempts = 0
+		const maxAttempts = 100 // 10 seconds max wait
+		
+		const checkResult = () => {
+			attempts++
+			console.log(`🔍 Checking for globalResult (attempt ${attempts}):`, {
+				hasGlobalResult: !!myScene.globalResult,
+				hasBvhBones: !!(myScene.globalResult && myScene.globalResult.bvhBones),
+				bonesLength: myScene.globalResult?.bvhBones?.length || 0
+			})
+			
+			if (myScene.globalResult && myScene.globalResult.bvhBones) {
+				console.log(`✅ File loaded successfully: ${file} with ${myScene.globalResult.bvhBones.length} bones`)
+				resolve(myScene.globalResult)
+			} else if (attempts >= maxAttempts) {
+				console.error(`❌ Timeout loading file: ${file} after ${maxAttempts} attempts`)
+				resolve(null)
+			} else {
+				setTimeout(checkResult, 100)
+			}
+		}
+		checkResult()
+	})
 }
 
 const play = () => {
