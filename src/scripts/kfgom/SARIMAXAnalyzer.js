@@ -97,7 +97,8 @@ export class SARIMAXAnalyzer {
                 metrics,
                 modelSummary,
                 predictions: predictions.slice(0, 100), // Limit for performance
-                actual: endog.slice(0, 100)
+                actual: endog.slice(0, 100),
+                modelStatistics: this.model.summary() // Include full model statistics
             }
 
             console.log('✅ SARIMAX analysis completed successfully')
@@ -182,6 +183,7 @@ export class SARIMAXAnalyzer {
     calculateMetrics(actual, predicted) {
         const mse = MSE(actual, predicted)
         const mae = MAE(actual, predicted)
+        const rmse = Math.sqrt(mse) // Calculate RMSE from MSE
         const utheil = UTheil(actual, predicted)
         const correlation = calculateCorrelation(actual, predicted)
         const r2 = calculateR2(actual, predicted)
@@ -189,6 +191,7 @@ export class SARIMAXAnalyzer {
         return {
             mse,
             mae,
+            rmse,
             utheil,
             correlation,
             r2
@@ -200,8 +203,14 @@ export class SARIMAXAnalyzer {
             return { variables: [] }
         }
 
+        // Get the model summary with proper statistical information
+        const summary = this.model.summary()
+        const coefficients = summary.coefficients
+        const pValues = summary.pValues
+        const stdErrors = summary.stdErrors
+        const tStats = summary.tStats
+
         const variables = []
-        const coefficients = this.model.coefficients
 
         // Add exogenous variables
         exogAngles.forEach((angle, index) => {
@@ -209,8 +218,10 @@ export class SARIMAXAnalyzer {
                 variables.push({
                     variable: angle,
                     coefficient: coefficients[index],
-                    pValue: this.calculatePValue(coefficients[index]), // Simplified
-                    significance: this.getSignificance(this.calculatePValue(coefficients[index]))
+                    pValue: pValues[index], // Real p-value from statistical test
+                    significance: this.getSignificance(pValues[index]),
+                    stdError: stdErrors[index],
+                    tStat: tStats[index]
                 })
             }
         })
@@ -222,23 +233,23 @@ export class SARIMAXAnalyzer {
                 variables.push({
                     variable: `AR(${i + 1})`,
                     coefficient: coefficients[arIndex],
-                    pValue: this.calculatePValue(coefficients[arIndex]), // Simplified
-                    significance: this.getSignificance(this.calculatePValue(coefficients[arIndex]))
+                    pValue: pValues[arIndex], // Real p-value from statistical test
+                    significance: this.getSignificance(pValues[arIndex]),
+                    stdError: stdErrors[arIndex],
+                    tStat: tStats[arIndex]
                 })
             }
         }
 
-        return { variables }
-    }
-
-    calculatePValue(coefficient) {
-        // Simplified p-value calculation
-        // In a real implementation, you'd use proper statistical tests
-        const absCoeff = Math.abs(coefficient)
-        if (absCoeff > 0.1) return 0.001
-        if (absCoeff > 0.05) return 0.01
-        if (absCoeff > 0.01) return 0.05
-        return 0.1
+        return { 
+            variables,
+            statistics: {
+                rSquared: summary.rSquared,
+                mse: summary.mse,
+                aic: summary.aic,
+                bic: summary.bic
+            }
+        }
     }
 
     getSignificance(pValue) {
