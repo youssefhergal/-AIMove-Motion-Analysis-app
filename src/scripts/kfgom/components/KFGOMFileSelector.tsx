@@ -173,12 +173,14 @@ export default function KFGOMFileSelector() {
 						<strong style={{ color: "#1976d2" }}>Train:</strong> {trainFileBones().length > 0 ? `${trainFileBones().length} bones` : "No data"}
 					</div>
 					<div>
-						<strong style={{ color: "#c2185b" }}>Test:</strong> {testFileBones().length > 0 ? `${testFileBones().length} bones` : "Will use training data"}
+						<strong style={{ color: "#c2185b" }}>Test:</strong> {testFileBones().length > 0 ? `${testFileBones().length} bones` : "No data"}
 					</div>
 					<div style={{ color: "#666" }}>
-						{trainFileBones().length > 0 ? 
+						{trainFileBones().length > 0 && testFileBones().length > 0 ? 
 							"✅ Ready for analysis" : 
-							"⏳ Select training file"
+							trainFileBones().length > 0 ? 
+								"⏳ Select testing file" : 
+								"⏳ Select training file"
 						}
 					</div>
 				</div>

@@ -24,6 +24,7 @@
  * 
  * @author youssef hergal
  * @version 1.0
+ * @version 1.1
  */
 
 // Main KF-GOM Analysis Component - added by youssef hergal
@@ -234,14 +235,16 @@ const KFGOMAnalysis = () => {
 				throw new Error("Failed to convert training data")
 			}
 
-			// Use test data if available, otherwise use training data for both
-			let testData = trainData
-			if (testBones && testBones.length > 0) {
-				testData = convertExistingBVHData(testBones)
-				if (!testData) {
-					throw new Error("Failed to convert test data")
-				}
+			// Use separate test data if available, otherwise throw error
+			if (!testBones || testBones.length === 0) {
+				throw new Error("No testing file loaded. Please select a separate testing file.")
 			}
+			
+			const testData = convertExistingBVHData(testBones)
+			if (!testData) {
+				throw new Error("Failed to convert test data")
+			}
+			
 
 			// Validate converted data
 			if (!trainData.motionData || !trainData.channels) {
@@ -253,7 +256,7 @@ const KFGOMAnalysis = () => {
 
 			// Update configuration with selected joint and axis
 			const currentConfig = sarimaxConfig()
-			const updatedConfig = { // added by youssef hergal
+			const updatedConfig = { 
 				...currentConfig,
 				targetJoint: selectedJoint(),
 				targetAxis: `${axisSelected()}rotation`
@@ -571,11 +574,11 @@ const KFGOMAnalysis = () => {
 							{/* MSE Card */}
 							<div style={{
 								background: '#007bff',
-								borderRadius: '3px',
+								"border-radius": '3px',
 								padding: '3px 6px',
 								color: 'white',
-								boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-								textAlign: 'center',
+								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+								"text-align": 'center',
 								display: 'inline-flex',
 								"align-items": "center",
 								gap: '3px',
@@ -591,11 +594,11 @@ const KFGOMAnalysis = () => {
 							{/* Correlation Card */}
 							<div style={{
 								background: '#007bff',
-								borderRadius: '3px',
+								"border-radius": '3px',
 								padding: '3px 6px',
 								color: 'white',
-								boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-								textAlign: 'center',
+								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+								"text-align": 'center',
 								display: 'inline-flex',
 								"align-items": "center",
 								gap: '3px',
@@ -611,11 +614,11 @@ const KFGOMAnalysis = () => {
 							{/* RMSE Card */}
 							<div style={{
 								background: '#007bff',
-								borderRadius: '3px',
+								"border-radius": '3px',
 								padding: '3px 6px',
 								color: 'white',
-								boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-								textAlign: 'center',
+								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+								"text-align": 'center',
 								display: 'inline-flex',
 								"align-items": "center",
 								gap: '3px',
@@ -634,11 +637,11 @@ const KFGOMAnalysis = () => {
 							{/* MAE Card */}
 							<div style={{
 								background: '#007bff',
-								borderRadius: '3px',
+								"border-radius": '3px',
 								padding: '3px 6px',
 								color: 'white',
-								boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-								textAlign: 'center',
+								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+								"text-align": 'center',
 								display: 'inline-flex',
 								"align-items": "center",
 								gap: '3px',
