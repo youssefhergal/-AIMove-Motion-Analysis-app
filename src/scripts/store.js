@@ -81,8 +81,7 @@ const [selectedTab, setSelectedTab] = createSignal("Assumptions")
 const [kfgomData, setKfgomData] = createSignal([]) // added by youssef hergal
 const [kfgomFilters, setKfgomFilters] = createSignal({ // added by youssef hergal
 	jointName: "",
-	significance: "all",
-	pValueThreshold: 0.05
+	significance: "all"
 })
 
 const [rawSkeletenBones, setRawSkeletenBones] = createSignal([])

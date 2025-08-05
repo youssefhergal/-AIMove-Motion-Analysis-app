@@ -82,7 +82,9 @@ export class SARIMAXAnalyzer {
 
             // Calculate metrics
             // Use only the predictions that correspond to actual data (skip the first 'order' elements)
-            const actualForMetrics = endog.slice(this.model.order)
+            // We need to use the original (non-normalized) endog data for comparison
+            const originalEndog = this.trainData.motionData.map(frame => frame[targetIndex])
+            const actualForMetrics = originalEndog.slice(this.model.order)
             const metrics = this.calculateMetrics(actualForMetrics, predictions)
             
             if (progressCallback) progressCallback(90, 'Metrics calculated')
@@ -159,9 +161,13 @@ export class SARIMAXAnalyzer {
             // So for prediction at time t, we need exogenous variables at time t
             const exogContext = exog.map(row => row[t])
 
-            // Generate prediction
-            const prediction = this.model.predict(endoContext, exogContext)
-            predictions.push(prediction)
+            // Generate prediction (this is in normalized space)
+            const normalizedPrediction = this.model.predict(endoContext, exogContext)
+            
+            // Denormalize the prediction
+            const denormalizedPrediction = this.scaler.inverseTransform([normalizedPrediction])[0]
+            
+            predictions.push(denormalizedPrediction)
             
             // Only log the first prediction to avoid spam
             if (t === order) {
@@ -170,7 +176,12 @@ export class SARIMAXAnalyzer {
                     exogContextLength: exogContext.length,
                     totalInputLength: endoContext.length + exogContext.length,
                     modelCoefficientsLength: this.model.coefficients.length,
-                    timeStep: t
+                    timeStep: t,
+                    endoContext: endoContext.map(v => v.toFixed(4)),
+                    exogContext: exogContext.map(v => v.toFixed(4)),
+                    actualValue: endog[t],
+                    normalizedPrediction: normalizedPrediction,
+                    denormalizedPrediction: denormalizedPrediction
                 })
             }
         }
@@ -184,12 +195,37 @@ export class SARIMAXAnalyzer {
     }
 
     calculateMetrics(actual, predicted) {
+        console.log('🔍 Detailed prediction analysis:')
+        console.log('📊 Actual vs Predicted values (ALL):')
+        
+        // Log detailed comparison for ALL values
+        for (let i = 0; i < actual.length; i++) {
+            const actualVal = actual[i]
+            const predictedVal = predicted[i]
+            const diff = actualVal - predictedVal
+            const squaredDiff = diff * diff
+            
+            console.log(`  Step ${i + 1}: Actual=${actualVal.toFixed(4)}, Predicted=${predictedVal.toFixed(4)}, Diff=${diff.toFixed(4)}, Squared=${squaredDiff.toFixed(4)}`)
+        }
+        
+        // Log summary statistics
+        console.log('📊 Summary Statistics:')
+        console.log(`  Actual values - Min: ${Math.min(...actual).toFixed(4)}, Max: ${Math.max(...actual).toFixed(4)}, Mean: ${(actual.reduce((a, b) => a + b, 0) / actual.length).toFixed(4)}`)
+        console.log(`  Predicted values - Min: ${Math.min(...predicted).toFixed(4)}, Max: ${Math.max(...predicted).toFixed(4)}, Mean: ${(predicted.reduce((a, b) => a + b, 0) / predicted.length).toFixed(4)}`)
+        
         const mse = MSE(actual, predicted)
         const mae = MAE(actual, predicted)
         const rmse = Math.sqrt(mse) // Calculate RMSE from MSE
         const utheil = UTheil(actual, predicted)
         const correlation = calculateCorrelation(actual, predicted)
         const r2 = calculateR2(actual, predicted)
+
+        console.log('📊 Calculated Metrics:')
+        console.log(`  MSE: ${mse.toFixed(4)}`)
+        console.log(`  MAE: ${mae.toFixed(4)}`)
+        console.log(`  RMSE: ${rmse.toFixed(4)}`)
+        console.log(`  Correlation: ${correlation.toFixed(4)}`)
+        console.log(`  R²: ${r2.toFixed(4)}`)
 
         return {
             mse,

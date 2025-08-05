@@ -53,21 +53,10 @@ export default function KFGOMTable() {
 
     // Cell renderer for joint ID with checkbox
     const jointIdCellRenderer = (params) => {
-        // Check if this row should be automatically selected based on filter
-        const filters = kfgomFilters()
-        const isSignificant = params.data.significance === '***' || params.data.significance === '**' || params.data.significance === '*'
+        // Check if this joint is in the selectedJoints Set
+        const isSelected = selectedJoints().has(params.data.jointId)
+        const checked = isSelected ? 'checked' : ''
         
-        let shouldBeChecked = false
-        if (filters.significance === 'significant') {
-            shouldBeChecked = isSignificant
-        } else if (filters.significance === 'non-significant') {
-            shouldBeChecked = !isSignificant
-        } else {
-            // For 'all' filter, use manual selection
-            shouldBeChecked = params.data.selected || false
-        }
-        
-        const checked = shouldBeChecked ? 'checked' : ''
         return `<div style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" ${checked} onchange="window.toggleJointSelection('${params.data.jointId}', this.checked)" style="margin: 0;" />
             <span>${params.value}</span>
@@ -135,6 +124,8 @@ export default function KFGOMTable() {
                 sortable: true,
                 filter: true
             },
+            suppressColumnVirtualisation: true,
+            suppressRowVirtualisation: false,
             pagination: true,
             paginationPageSize: 200,
             paginationPageSizeSelector: [200],
@@ -177,8 +168,22 @@ export default function KFGOMTable() {
         const filters = kfgomFilters()
         
         if (data && data.length > 0) {
-            const filtered = filterDataBySignificance(data, filters.significance)
-            setFilteredData(filtered)
+            // Always show all data in the table
+            setFilteredData(data)
+            
+            // But only select variables based on significance filter
+            if (filters.significance === 'all') {
+                // Select all variables
+                const allJointIds = data.map(item => item.jointId)
+                setSelectedJoints(new Set(allJointIds))
+                console.log('🔍 Auto-selected all variables for retraining:', allJointIds.length)
+            } else {
+                // Select only significant or non-significant variables
+                const filtered = filterDataBySignificance(data, filters.significance)
+                const filteredJointIds = filtered.map(item => item.jointId)
+                setSelectedJoints(new Set(filteredJointIds))
+                console.log('🔍 Auto-selected filtered variables for retraining:', filteredJointIds.length)
+            }
         }
     })
 

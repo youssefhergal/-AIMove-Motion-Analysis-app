@@ -414,6 +414,8 @@ const KFGOMAnalysis = () => {
 		console.log('🔍 Significance filter changed to:', newFilter)
 	}
 
+
+
 	// Handle method change
 	const handleMethodChange = (event) => {
 		const newMethod = event.target.value
@@ -427,7 +429,8 @@ const KFGOMAnalysis = () => {
 			console.log('🔄 Retraining model with selected variables...')
 			
 			// Get selected joints from the table
-			const selectedJoints = (window as any).selectedJoints || new Set()
+			const selectedJointsFunction = (window as any).selectedJoints
+			const selectedJoints = selectedJointsFunction ? selectedJointsFunction() : new Set()
 			const selectedJointArray = Array.from(selectedJoints)
 			
 			if (selectedJointArray.length === 0) {
@@ -448,19 +451,22 @@ const KFGOMAnalysis = () => {
 			const trainData = convertExistingBVHData(trainBones)
 			const testData = convertExistingBVHData(testBones)
 			
-			// Filter data to include only selected variables
-			const filteredTrainData = filterDataForSelectedVariables(trainData, selectedJointArray)
-			const filteredTestData = filterDataForSelectedVariables(testData, selectedJointArray)
-			
-			// Set filtered data for analysis
-			analyzer().setData(filteredTrainData, filteredTestData)
-			
 			// Get current configuration parameters
 			const currentConfig = sarimaxConfig()
 			const targetJoint = selectedJoint()
 			const targetAxis = `${axisSelected()}rotation`
 			const lags = currentConfig.lags || 2
 			const method = currentConfig.method || 'ols'
+			
+			// Get target variable name
+			const targetVariable = `${targetJoint}_${targetAxis}`
+			
+			// Filter data to include only selected variables
+			const filteredTrainData = filterDataForSelectedVariables(trainData, selectedJointArray, targetVariable)
+			const filteredTestData = filterDataForSelectedVariables(testData, selectedJointArray, targetVariable)
+			
+			// Set filtered data for analysis
+			analyzer().setData(filteredTrainData, filteredTestData)
 			
 			console.log('🎯 Retraining with selected variables:', {
 				selectedVariables: selectedJointArray.length,
@@ -494,14 +500,20 @@ const KFGOMAnalysis = () => {
 	}
 
 	// Filter data to include only selected variables
-	const filterDataForSelectedVariables = (data, selectedVariables) => {
+	const filterDataForSelectedVariables = (data, selectedVariables, targetVariable) => {
 		if (!data || !data.channels || !data.motionData) {
 			return data
 		}
 		
+		// Ensure target variable is always included
+		const variablesToInclude = new Set(selectedVariables)
+		if (targetVariable) {
+			variablesToInclude.add(targetVariable)
+		}
+		
 		// Find indices of selected variables
 		const selectedIndices = []
-		selectedVariables.forEach(variable => {
+		Array.from(variablesToInclude).forEach(variable => {
 			const index = data.channels.findIndex(channel => channel === variable)
 			if (index !== -1) {
 				selectedIndices.push(index)
@@ -513,6 +525,14 @@ const KFGOMAnalysis = () => {
 		const filteredMotionData = data.motionData.map(frame => 
 			frame.filter((_, index) => selectedIndices.includes(index))
 		)
+		
+		console.log('🔍 Filtered data for retraining:', {
+			originalChannels: data.channels.length,
+			filteredChannels: filteredChannels.length,
+			targetVariable,
+			selectedVariables: selectedVariables.length,
+			variablesToInclude: variablesToInclude.size
+		})
 		
 		return {
 			...data,
@@ -657,6 +677,7 @@ const KFGOMAnalysis = () => {
 									<option value="non-significant">Non-significant</option>
 								</select>
 							</div>
+
 							<div>
 								<button 
 									onClick={retrainWithSelectedVariables}
@@ -672,7 +693,7 @@ const KFGOMAnalysis = () => {
 									}}
 									title="Retrain model with only the checked variables"
 								>
-									🔄 Retrain with Selected
+									Retrain 
 								</button>
 							</div>
 						</div>
