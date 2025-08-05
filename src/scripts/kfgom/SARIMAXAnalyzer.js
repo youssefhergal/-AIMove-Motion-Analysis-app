@@ -24,15 +24,18 @@ export class SARIMAXAnalyzer {
         })
     }
 
-    async analyze(config, progressCallback = null) {
+    async analyze(targetJoint, targetAxis, lags = 2, method = 'ols', progressCallback = null) {
         try {
-            console.log('🚀 Starting SARIMAX analysis with config:', config)
+            console.log('🚀 Starting SARIMAX analysis with parameters:', {
+                targetJoint,
+                targetAxis,
+                lags,
+                method
+            })
             
             if (!this.trainData || !this.testData) {
                 throw new Error('No data set. Call setData() first.')
             }
-
-            const { targetJoint, targetAxis, lags = 2, method = 'ols' } = config
             const targetAngle = `${targetJoint}_${targetAxis}`
             
             console.log('🎯 Target angle:', targetAngle)

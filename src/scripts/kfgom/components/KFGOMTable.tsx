@@ -53,7 +53,21 @@ export default function KFGOMTable() {
 
     // Cell renderer for joint ID with checkbox
     const jointIdCellRenderer = (params) => {
-        const checked = params.data.selected ? 'checked' : ''
+        // Check if this row should be automatically selected based on filter
+        const filters = kfgomFilters()
+        const isSignificant = params.data.significance === '***' || params.data.significance === '**' || params.data.significance === '*'
+        
+        let shouldBeChecked = false
+        if (filters.significance === 'significant') {
+            shouldBeChecked = isSignificant
+        } else if (filters.significance === 'non-significant') {
+            shouldBeChecked = !isSignificant
+        } else {
+            // For 'all' filter, use manual selection
+            shouldBeChecked = params.data.selected || false
+        }
+        
+        const checked = shouldBeChecked ? 'checked' : ''
         return `<div style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" ${checked} onchange="window.toggleJointSelection('${params.data.jointId}', this.checked)" style="margin: 0;" />
             <span>${params.value}</span>
@@ -71,8 +85,11 @@ export default function KFGOMTable() {
                 newSet.delete(jointId)
             }
             setSelectedJoints(newSet)
-
+            console.log('🔍 Joint selection updated:', { jointId, checked, selectedCount: newSet.size })
         }
+        
+        // Expose selectedJoints globally for retraining
+        (window as any).selectedJoints = selectedJoints
     }
 
     onMount(() => {

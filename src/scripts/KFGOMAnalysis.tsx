@@ -254,25 +254,30 @@ const KFGOMAnalysis = () => {
 			// Set data for training and testing
 			analyzer().setData(trainData, testData)
 
-			// Update configuration with selected joint and axis
+			// Get current configuration parameters
 			const currentConfig = sarimaxConfig()
-			const updatedConfig = { 
-				...currentConfig,
-				targetJoint: selectedJoint(),
-				targetAxis: `${axisSelected()}rotation`
-			}
+			const targetJoint = selectedJoint()
+			const targetAxis = `${axisSelected()}rotation`
+			const lags = currentConfig.lags || 2
+			const method = currentConfig.method || 'ols'
 			
-			console.log('🎯 Using selected joint and axis:', { // added by youssef hergal
-				joint: selectedJoint(),
+			console.log('🎯 Using selected joint and axis:', { 
+				joint: targetJoint,
 				axis: axisSelected(),
-				targetAngle: `${selectedJoint()}_${axisSelected()}rotation`
+				targetAngle: `${targetJoint}_${targetAxis}`
 			})
 
-			// Run analysis with progress callback
-			const result = await analyzer().analyze(updatedConfig, (progress, message) => {
-				setAnalysisProgress(progress)
-				console.log(`Progress: ${progress}% - ${message}`)
-			})
+			// Run analysis with individual parameters and progress callback
+			const result = await analyzer().analyze(
+				targetJoint, 
+				targetAxis, 
+				lags, 
+				method, 
+				(progress, message) => {
+					setAnalysisProgress(progress)
+					console.log(`Progress: ${progress}% - ${message}`)
+				}
+			)
 
 			if (result.success) {
 				setSarimaxResults(result.results)
@@ -416,6 +421,106 @@ const KFGOMAnalysis = () => {
 		console.log('🔧 Method changed to:', newMethod)
 	}
 
+	// Retrain model with selected variables
+	const retrainWithSelectedVariables = async () => {
+		try {
+			console.log('🔄 Retraining model with selected variables...')
+			
+			// Get selected joints from the table
+			const selectedJoints = (window as any).selectedJoints || new Set()
+			const selectedJointArray = Array.from(selectedJoints)
+			
+			if (selectedJointArray.length === 0) {
+				console.warn('⚠️ No variables selected for retraining')
+				return
+			}
+			
+			console.log('📊 Selected variables for retraining:', selectedJointArray)
+			
+			// Set data for training and testing
+			const trainBones = trainFileBones()
+			const testBones = testFileBones()
+			
+			if (!trainBones || !testBones) {
+				throw new Error("Training and test data required for retraining")
+			}
+			
+			const trainData = convertExistingBVHData(trainBones)
+			const testData = convertExistingBVHData(testBones)
+			
+			// Filter data to include only selected variables
+			const filteredTrainData = filterDataForSelectedVariables(trainData, selectedJointArray)
+			const filteredTestData = filterDataForSelectedVariables(testData, selectedJointArray)
+			
+			// Set filtered data for analysis
+			analyzer().setData(filteredTrainData, filteredTestData)
+			
+			// Get current configuration parameters
+			const currentConfig = sarimaxConfig()
+			const targetJoint = selectedJoint()
+			const targetAxis = `${axisSelected()}rotation`
+			const lags = currentConfig.lags || 2
+			const method = currentConfig.method || 'ols'
+			
+			console.log('🎯 Retraining with selected variables:', {
+				selectedVariables: selectedJointArray.length,
+				targetJoint,
+				targetAxis,
+				method
+			})
+			
+			// Run analysis with filtered data
+			const result = await analyzer().analyze(
+				targetJoint, 
+				targetAxis, 
+				lags, 
+				method, 
+				(progress, message) => {
+					setAnalysisProgress(progress)
+					console.log(`Retraining Progress: ${progress}% - ${message}`)
+				}
+			)
+			
+			if (result.success) {
+				setSarimaxResults(result.results)
+				console.log("✅ Model retrained successfully with selected variables")
+			} else {
+				console.error("❌ Model retraining failed:", result.error)
+			}
+			
+		} catch (error) {
+			console.error("❌ Error retraining model:", error)
+		}
+	}
+
+	// Filter data to include only selected variables
+	const filterDataForSelectedVariables = (data, selectedVariables) => {
+		if (!data || !data.channels || !data.motionData) {
+			return data
+		}
+		
+		// Find indices of selected variables
+		const selectedIndices = []
+		selectedVariables.forEach(variable => {
+			const index = data.channels.findIndex(channel => channel === variable)
+			if (index !== -1) {
+				selectedIndices.push(index)
+			}
+		})
+		
+		// Filter channels and motion data
+		const filteredChannels = data.channels.filter((_, index) => selectedIndices.includes(index))
+		const filteredMotionData = data.motionData.map(frame => 
+			frame.filter((_, index) => selectedIndices.includes(index))
+		)
+		
+		return {
+			...data,
+			channels: filteredChannels,
+			motionData: filteredMotionData
+		}
+	}
+
 	/**
 	 * STEP 7: UI Rendering & Results Display
 	 * =======================================
@@ -551,6 +656,24 @@ const KFGOMAnalysis = () => {
 									<option value="significant">Significant</option>
 									<option value="non-significant">Non-significant</option>
 								</select>
+							</div>
+							<div>
+								<button 
+									onClick={retrainWithSelectedVariables}
+									style={{
+										padding: "4px 8px",
+										"background-color": "#28a745",
+										color: "white",
+										border: "none",
+										"border-radius": "3px",
+										cursor: "pointer",
+										"font-size": "11px",
+										"font-weight": "bold"
+									}}
+									title="Retrain model with only the checked variables"
+								>
+									🔄 Retrain with Selected
+								</button>
 							</div>
 						</div>
 					</div>
