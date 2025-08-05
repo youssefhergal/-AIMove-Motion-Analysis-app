@@ -19,12 +19,14 @@ import {
 	setSelectedTab,
 	selectedJoint,
 	axisSelected,
+	sarimaxResults,
 } from "./store"
 import { TabContent, Tabs } from "@ark-ui/solid"
 import { pred_ang_coef } from "./tensorflowGOM"
 import { createPlot2D_Predict } from "./plots"
 import * as aq from "arquero"
 import { get_mathjax_svg } from "./InitMathJax"
+import * as echarts from "echarts"
 
 async function GenerateMovement() {
 	setAppIsLoaded(false)
@@ -61,6 +63,12 @@ async function DownloadCSV() {
 export { DownloadCSV, GenerateMovement }
 
 function TabsGOM_main(props: { valueButton: string }) {
+	// Signals for storing prediction data
+	const [originalData, setOriginalData] = createSignal([])
+	const [initialPrediction, setInitialPrediction] = createSignal([])
+	const [retrainedPrediction, setRetrainedPrediction] = createSignal([])
+	const [chartInstance, setChartInstance] = createSignal(null)
+
 	const renderMathJax = () => {
 		document.getElementById("equation1").innerHTML = get_mathjax_svg(
 			"Entity_{1,X}(t) = \\alpha_1 Entity_{1,X}(t-1) + \\alpha_2 Entity_{1,Y}(t-1)"
@@ -101,6 +109,157 @@ function TabsGOM_main(props: { valueButton: string }) {
 	async function ResizeGenerate() {
 		chart2D_predict().resize()
 	}
+
+	// Function to create ECharts prediction plot
+	const createPredictionChart = () => {
+		const chartContainer = document.getElementById("prediction-chart")
+		if (!chartContainer) return
+
+		// Dispose existing chart if any
+		if (chartInstance()) {
+			chartInstance().dispose()
+		}
+
+		const chart = echarts.init(chartContainer)
+		setChartInstance(chart)
+
+		const results = sarimaxResults()
+		if (!results || !results.actual || !results.predicted) {
+			// Show empty chart with message
+			chart.setOption({
+				title: {
+					text: "No prediction data available",
+					left: "center",
+					top: "center",
+					textStyle: {
+						color: "#999"
+					}
+				}
+			})
+			return
+		}
+
+		const actual = results.actual
+		const predicted = results.predicted
+		const retrained = (window as any).retrainedPredictionData || []
+
+		// Create time series data
+		const timeData = Array.from({ length: actual.length }, (_, i) => i + 1)
+
+		// Prepare series data
+		const series = [
+			{
+				name: "Original",
+				type: "line",
+				data: actual,
+				smooth: true,
+				lineStyle: { width: 2 },
+				itemStyle: { color: "#5470c6" }
+			},
+			{
+				name: "Initial Prediction",
+				type: "line",
+				data: predicted,
+				smooth: true,
+				lineStyle: { width: 2 },
+				itemStyle: { color: "#91cc75" }
+			}
+		]
+
+		// Add retrained prediction if available
+		if (retrained && retrained.length > 0) {
+			series.push({
+				name: "Retrained Prediction",
+				type: "line",
+				data: retrained,
+				smooth: true,
+				lineStyle: { width: 2 },
+				itemStyle: { color: "#ee6666" }
+			})
+		}
+
+		const option = {
+			title: {
+				text: `Movement Prediction: ${selectedJoint()}_${axisSelected()}rotation`,
+				left: "center",
+				textStyle: {
+					fontSize: 14,
+					fontWeight: "bold"
+				}
+			},
+			tooltip: {
+				trigger: "axis",
+				formatter: function(params) {
+					let result = `Time: ${params[0].axisValue}<br/>`
+					params.forEach(param => {
+						result += `${param.seriesName}: ${param.value.toFixed(4)}<br/>`
+					})
+					return result
+				}
+			},
+			legend: {
+				data: series.map(s => s.name),
+				top: 30
+			},
+			grid: {
+				left: "3%",
+				right: "4%",
+				bottom: "3%",
+				containLabel: true
+			},
+			xAxis: {
+				type: "category",
+				data: timeData,
+				name: "Time Steps",
+				nameLocation: "middle",
+				nameGap: 30
+			},
+			yAxis: {
+				type: "value",
+				name: "Rotation Value",
+				nameLocation: "middle",
+				nameGap: 40
+			},
+			series: series,
+			animation: true
+		}
+
+		chart.setOption(option)
+
+		// Handle window resize
+		window.addEventListener("resize", () => {
+			chart.resize()
+		})
+	}
+
+	// Effect to update chart when data changes
+	createEffect(() => {
+		const results = sarimaxResults()
+		if (results && selectedTab() === "Generated Movement") {
+			setTimeout(() => {
+				createPredictionChart()
+			}, 100)
+		}
+	})
+
+	// Effect to update chart when tab changes
+	createEffect(() => {
+		if (selectedTab() === "Generated Movement") {
+			setTimeout(() => {
+				createPredictionChart()
+			}, 100)
+		}
+	})
+
+	// Effect to update chart when retrained data changes
+	createEffect(() => {
+		const retrainedData = (window as any).retrainedPredictionData
+		if (retrainedData && selectedTab() === "Generated Movement") {
+			setTimeout(() => {
+				createPredictionChart()
+			}, 100)
+		}
+	})
 	return (
 		<>
 			<Tabs.Root
@@ -477,14 +636,11 @@ function TabsGOM_main(props: { valueButton: string }) {
 				>
 					<div class="plotCoefContainer">
 						<div class="plotTitle" id="plotPredict">
-							2D Original & Generated Trajectory of{" "}
-							<span class="selectedRowColor">
-								{`${selectedJoint()}_${axisSelected()}rotation`}
-							</span>
+							Movement Prediction Analysis
 						</div>
 						<div
-							id="plotPredict_2D"
-							style={{ width: "100%", height: "100%" }}
+							id="prediction-chart"
+							style={{ width: "100%", height: "400px" }}
 						/>
 					</div>
 				</Tabs.Content>

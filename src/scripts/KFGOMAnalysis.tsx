@@ -281,6 +281,9 @@ const KFGOMAnalysis = () => {
 
 			if (result.success) {
 				setSarimaxResults(result.results)
+				
+				// Clear retrained data when new analysis is run
+				;(window as any).retrainedPredictionData = null
 				console.log("✅ SARIMAX analysis completed successfully")
 			} else {
 				console.error("❌ SARIMAX analysis failed:", result.error)
@@ -489,7 +492,14 @@ const KFGOMAnalysis = () => {
 			
 			if (result.success) {
 				setSarimaxResults(result.results)
-				console.log("✅ Model retrained successfully with selected variables")
+				
+				// Store retrained prediction data for the chart
+				if (result.results.actual && result.results.predicted) {
+					// Expose retrained data globally for the chart
+					;(window as any).retrainedPredictionData = result.results.predicted
+					console.log("✅ Model retrained successfully with selected variables")
+					console.log("📊 Retrained prediction data stored for chart")
+				}
 			} else {
 				console.error("❌ Model retraining failed:", result.error)
 			}
