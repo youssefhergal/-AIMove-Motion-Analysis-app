@@ -99,7 +99,7 @@ const [sarimaxConfig, setSarimaxConfig] = createSignal({ // added by youssef her
 	targetJoint: "Hips",
 	targetAxis: "Xrotation", 
 	lags: 2,
-	method: "ols"
+	method: "ridge"
 })
 const [isAnalyzing, setIsAnalyzing] = createSignal(false) // added by youssef hergal
 const [analysisProgress, setAnalysisProgress] = createSignal(0) // added by youssef hergal

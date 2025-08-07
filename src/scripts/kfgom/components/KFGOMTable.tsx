@@ -16,7 +16,8 @@ export default function KFGOMTable() {
         }
         
         const filtered = data.filter(item => {
-            const isSignificant = item.significance === '***' || item.significance === '**' || item.significance === '*'
+            // Include variables with any significance level (including marginal '~')
+            const isSignificant = item.significance === '***' || item.significance === '**' || item.significance === '*' || item.significance === '.' || item.significance === '~'
             const shouldInclude = significanceFilter === 'significant' ? isSignificant : !isSignificant
             return shouldInclude
         })
@@ -26,7 +27,16 @@ export default function KFGOMTable() {
 
     // Convert SARIMAX results to table data format
     const convertSARIMAXToTableData = (results) => {
+        console.log('🔍 Converting SARIMAX results to table data:', {
+            hasResults: !!results,
+            hasModelSummary: !!results?.modelSummary,
+            hasVariables: !!results?.modelSummary?.variables,
+            variablesLength: results?.modelSummary?.variables?.length || 0,
+            sampleVariables: results?.modelSummary?.variables?.slice(0, 3) || []
+        })
+        
         if (!results || !results.modelSummary || !results.modelSummary.variables) {
+            console.warn('⚠️ No model summary variables found')
             return []
         }
 
@@ -39,6 +49,22 @@ export default function KFGOMTable() {
             significance: variable.significance,
             selected: false
         }))
+        
+        // Log p-value distribution for debugging
+        const pValueRanges = {
+            'p < 0.001': tableData.filter(v => v.pValue < 0.001).length,
+            'p < 0.01': tableData.filter(v => v.pValue < 0.01).length,
+            'p < 0.05': tableData.filter(v => v.pValue < 0.05).length,
+            'p < 0.1': tableData.filter(v => v.pValue < 0.1).length,
+            'p < 0.2': tableData.filter(v => v.pValue < 0.2).length,
+            'p >= 0.2': tableData.filter(v => v.pValue >= 0.2).length
+        }
+        console.log('📊 P-value distribution:', pValueRanges)
+        
+        console.log('✅ Converted table data:', {
+            tableDataLength: tableData.length,
+            sampleTableData: tableData.slice(0, 3)
+        })
         
         return tableData
     }
@@ -154,11 +180,24 @@ export default function KFGOMTable() {
     // Update data when SARIMAX results change
     createEffect(() => {
         const results = sarimaxResults()
+        console.log('🔄 SARIMAX results changed in table:', {
+            hasResults: !!results,
+            resultsKeys: results ? Object.keys(results) : [],
+            hasModelSummary: !!results?.modelSummary,
+            modelSummaryKeys: results?.modelSummary ? Object.keys(results.modelSummary) : []
+        })
         
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
             setKfgomData(tableData)
+            console.log('📊 Table data updated:', {
+                tableDataLength: tableData.length,
+                sampleData: tableData.slice(0, 3)
+            })
             // Don't set filtered data here - let the filter effect handle it
+        } else {
+            console.log('⚠️ No SARIMAX results available for table')
+            setKfgomData([])
         }
     })
 
@@ -184,6 +223,18 @@ export default function KFGOMTable() {
                 setSelectedJoints(new Set(filteredJointIds))
                 console.log('🔍 Auto-selected filtered variables for retraining:', filteredJointIds.length)
             }
+        }
+    })
+
+    // Refresh grid cells when selection changes
+    createEffect(() => {
+        const selected = selectedJoints()
+        const api = gridApi()
+        
+        if (api) {
+            // Force refresh of all cells to update checkboxes
+            api.refreshCells({ force: true })
+            console.log('🔄 Grid cells refreshed due to selection change:', selected.size)
         }
     })
 

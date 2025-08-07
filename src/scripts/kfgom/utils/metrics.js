@@ -186,6 +186,7 @@ function getSignificanceCode(pValue) {
     if (pValue < 0.01) return '**'
     if (pValue < 0.05) return '*'
     if (pValue < 0.1) return '.'
+    if (pValue < 0.2) return '~'  // Add marginal significance
     return ''
 }
 

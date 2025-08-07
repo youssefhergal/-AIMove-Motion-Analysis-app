@@ -267,23 +267,33 @@ const KFGOMAnalysis = () => {
 				targetAngle: `${targetJoint}_${targetAxis}`
 			})
 
-			// Run analysis with individual parameters and progress callback
-			const result = await analyzer().analyze(
-				targetJoint, 
-				targetAxis, 
-				lags, 
-				method, 
-				(progress, message) => {
-					setAnalysisProgress(progress)
-					console.log(`Progress: ${progress}% - ${message}`)
-				}
-			)
+					// Run analysis with individual parameters and progress callback
+		console.log('🔍 Debug parameters being passed to analyze:', {
+			targetJoint,
+			targetAxis,
+			lags,
+			method,
+			targetAxisType: typeof targetAxis,
+			targetAxisValue: targetAxis
+		})
+		
+		const result = await analyzer().analyze(
+			targetJoint, 
+			targetAxis, 
+			lags, 
+			method, 
+			(progress, message) => {
+				setAnalysisProgress(progress)
+				console.log(`Progress: ${progress}% - ${message}`)
+			}
+		)
 
 			if (result.success) {
 				setSarimaxResults(result.results)
 				
 				// Clear retrained data when new analysis is run
 				;(window as any).retrainedPredictionData = null
+				;(window as any).initialPredictionData = null
 				console.log("✅ SARIMAX analysis completed successfully")
 			} else {
 				console.error("❌ SARIMAX analysis failed:", result.error)
@@ -426,15 +436,21 @@ const KFGOMAnalysis = () => {
 		console.log('🔧 Method changed to:', newMethod)
 	}
 
+	// Handle lag change
+	const handleLagChange = (event) => {
+		const newLags = parseInt(event.target.value)
+		setSarimaxConfig({ ...sarimaxConfig(), lags: newLags })
+		console.log('🔧 Lags changed to:', newLags)
+	}
+
 	// Retrain model with selected variables
 	const retrainWithSelectedVariables = async () => {
 		try {
 			console.log('🔄 Retraining model with selected variables...')
 			
 			// Get selected joints from the table
-			const selectedJointsFunction = (window as any).selectedJoints
-			const selectedJoints = selectedJointsFunction ? selectedJointsFunction() : new Set()
-			const selectedJointArray = Array.from(selectedJoints)
+			const selectedJoints = (window as any).selectedJoints
+			const selectedJointArray = selectedJoints ? Array.from(selectedJoints()) : []
 			
 			if (selectedJointArray.length === 0) {
 				console.warn('⚠️ No variables selected for retraining')
@@ -491,14 +507,37 @@ const KFGOMAnalysis = () => {
 			)
 			
 			if (result.success) {
+				// Store the initial prediction data before updating results
+				const currentResults = sarimaxResults()
+				if (currentResults && currentResults.predicted) {
+					;(window as any).initialPredictionData = currentResults.predicted
+					console.log("📊 Initial prediction data preserved for chart")
+					console.log("📊 Initial prediction sample:", currentResults.predicted.slice(0, 5).map(v => v.toFixed(4)))
+				}
+				
 				setSarimaxResults(result.results)
 				
 				// Store retrained prediction data for the chart
-				if (result.results.actual && result.results.predicted) {
+				if (result.results.original && result.results.predicted) {
 					// Expose retrained data globally for the chart
 					;(window as any).retrainedPredictionData = result.results.predicted
 					console.log("✅ Model retrained successfully with selected variables")
 					console.log("📊 Retrained prediction data stored for chart")
+					console.log("📊 Retrained prediction sample:", result.results.predicted.slice(0, 5).map(v => v.toFixed(4)))
+					
+					// Compare initial vs retrained predictions
+					if ((window as any).initialPredictionData) {
+						const initial = (window as any).initialPredictionData
+						const retrained = result.results.predicted
+						const actual = result.results.original
+						const minLength = Math.min(initial.length, retrained.length)
+						
+						console.log("🔍 Comparing initial vs retrained predictions (first 5):")
+						for (let i = 0; i < Math.min(5, minLength); i++) {
+							const diff = Math.abs(initial[i] - retrained[i])
+							console.log(`  Step ${i + 1}:Original=${actual[i].toFixed(4)} ,Initial=${initial[i].toFixed(4)}, Retrained=${retrained[i].toFixed(4)}, Diff=${diff.toFixed(4)}`)
+						}
+					}
 				}
 			} else {
 				console.error("❌ Model retraining failed:", result.error)
@@ -657,14 +696,26 @@ const KFGOMAnalysis = () => {
 								</select>
 							</div>
 							<div>
-								<strong>Lags:</strong> {sarimaxConfig().lags}
+								<strong>Lags:</strong> 
+								<select 
+									value={sarimaxConfig().lags}
+									onChange={handleLagChange}
+									style={{
+										"margin-left": "5px",
+										padding: "2px 6px",
+										"border": "1px solid #ccc",
+										"border-radius": "3px",
+										"background-color": "white",
+										"font-size": "11px"
+									}}
+								>
+									<option value="2">2</option>
+									<option value="3">3</option>
+									<option value="4">4</option>
+									<option value="5">5</option>
+								</select>
 							</div>
-							<div>
-								<strong>MSE:</strong> {sarimaxResults().metrics?.mse?.toFixed(4) || "N/A"}
-							</div>
-							<div>
-								<strong>Correlation:</strong> {sarimaxResults().metrics?.correlation?.toFixed(4) || "N/A"}
-							</div>
+						
 							<div>
 								<strong>Variables:</strong> {sarimaxResults().modelSummary?.variables?.length || "N/A"} {/* added by youssef hergal */}
 							</div>

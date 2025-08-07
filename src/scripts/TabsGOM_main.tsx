@@ -106,14 +106,32 @@ function TabsGOM_main(props: { valueButton: string }) {
 		}
 	})
 
+	// Manual trigger to create chart when component mounts
+	onMount(() => {
+		console.log("🚀 Component mounted")
+		if (selectedTab() === "Generated Movement") {
+			setTimeout(() => {
+				createPredictionChart()
+			}, 200)
+		}
+	})
+
 	async function ResizeGenerate() {
-		chart2D_predict().resize()
+		// Resize ECharts chart if it exists
+		if (chartInstance()) {
+			chartInstance().resize()
+		}
 	}
 
 	// Function to create ECharts prediction plot
 	const createPredictionChart = () => {
+		console.log("🔍 Creating prediction chart...")
 		const chartContainer = document.getElementById("prediction-chart")
-		if (!chartContainer) return
+		if (!chartContainer) {
+			console.log("❌ Chart container not found")
+			return
+		}
+		console.log("✅ Chart container found")
 
 		// Dispose existing chart if any
 		if (chartInstance()) {
@@ -122,9 +140,13 @@ function TabsGOM_main(props: { valueButton: string }) {
 
 		const chart = echarts.init(chartContainer)
 		setChartInstance(chart)
+		console.log("✅ ECharts instance created")
 
 		const results = sarimaxResults()
-		if (!results || !results.actual || !results.predicted) {
+		console.log("📊 SARIMAX results:", results)
+		
+		if (!results || !results.original || !results.predicted) {
+			console.log("❌ No prediction data available")
 			// Show empty chart with message
 			chart.setOption({
 				title: {
@@ -139,92 +161,164 @@ function TabsGOM_main(props: { valueButton: string }) {
 			return
 		}
 
-		const actual = results.actual
+		const actual = results.original
 		const predicted = results.predicted
+		const initialPrediction = (window as any).initialPredictionData || predicted
 		const retrained = (window as any).retrainedPredictionData || []
 
-		// Create time series data
-		const timeData = Array.from({ length: actual.length }, (_, i) => i + 1)
+		console.log("📈 Data for chart:", {
+			actualLength: actual.length,
+			predictedLength: predicted.length,
+			retrainedLength: retrained.length,
+			sampleActual: actual.slice(0, 5),
+			samplePredicted: predicted.slice(0, 5),
+			sampleRetrained: retrained.slice(0, 5)
+		})
 
-		// Prepare series data
+		// Calculate min/max for better y-axis scaling
+		const allData = [...actual, ...predicted, ...retrained]
+		const yMin = Math.min(...allData)
+		const yMax = Math.max(...allData)
+
+		function minPlot2D() {
+			const yMinValue = Number(yMin)
+			const yMaxValue = Number(yMax)
+			const value = (yMinValue - (yMaxValue - yMinValue) * 0.3).toFixed(0)
+			return parseFloat(value)
+		}
+
+		function maxPlot2D() {
+			const yMinValue = Number(yMin)
+			const yMaxValue = Number(yMax)
+			const value = (yMaxValue + (yMaxValue - yMinValue) * 0.3).toFixed(0)
+			return parseFloat(value)
+		}
+
+		// Create time series data
+		const timeData = Array.from({ length: actual.length }, (_, i) => i)
+
+		// Prepare series data - always show all available predictions
 		const series = [
 			{
-				name: "Original",
+				name: "Original Movement",
 				type: "line",
 				data: actual,
-				smooth: true,
-				lineStyle: { width: 2 },
-				itemStyle: { color: "#5470c6" }
+				smooth: false,
+				lineStyle: {
+					color: "#145e9f",
+					width: 2
+				},
+				itemStyle: {
+					color: "#145e9f"
+				}
 			},
 			{
 				name: "Initial Prediction",
 				type: "line",
-				data: predicted,
-				smooth: true,
-				lineStyle: { width: 2 },
-				itemStyle: { color: "#91cc75" }
+				data: initialPrediction,
+				smooth: false,
+				lineStyle: {
+					color: "red",
+					type: "dashed",
+					width: 2
+				},
+				itemStyle: {
+					color: "red"
+				}
 			}
 		]
 
-		// Add retrained prediction if available
+		// Add retrained prediction if available (keep it as a third line)
 		if (retrained && retrained.length > 0) {
 			series.push({
 				name: "Retrained Prediction",
 				type: "line",
 				data: retrained,
-				smooth: true,
-				lineStyle: { width: 2 },
-				itemStyle: { color: "#ee6666" }
+				smooth: false,
+				lineStyle: {
+					color: "#DBA21C",
+					type: "dotted",
+					width: 2
+				},
+				itemStyle: {
+					color: "#DBA21C"
+				}
 			})
 		}
 
 		const option = {
-			title: {
-				text: `Movement Prediction: ${selectedJoint()}_${axisSelected()}rotation`,
-				left: "center",
-				textStyle: {
-					fontSize: 14,
-					fontWeight: "bold"
-				}
-			},
 			tooltip: {
 				trigger: "axis",
-				formatter: function(params) {
-					let result = `Time: ${params[0].axisValue}<br/>`
-					params.forEach(param => {
-						result += `${param.seriesName}: ${param.value.toFixed(4)}<br/>`
-					})
-					return result
-				}
+				axisPointer: {
+					type: "cross",
+					animation: false,
+					label: {
+						backgroundColor: "#ccc",
+						borderColor: "#aaa",
+						borderWidth: 1,
+						shadowBlur: 0,
+						shadowOffsetX: 0,
+						shadowOffsetY: 0,
+						color: "#222",
+					},
+				},
+			},
+			toolbox: {
+				feature: {
+					dataZoom: {},
+				},
+				right: "65px",
 			},
 			legend: {
 				data: series.map(s => s.name),
-				top: 30
+				orient: "vertical",
+				left: "10px",
+				top: "0px",
 			},
-			grid: {
-				left: "3%",
-				right: "4%",
-				bottom: "3%",
-				containLabel: true
-			},
+			grid: { left: "40px", right: "80px", bottom: "100px", top: "100px" },
+			dataZoom: [
+				{ type: "inside", xAxisIndex: 0 },
+				{
+					type: "slider",
+					xAxisIndex: 0,
+					filterMode: "none",
+					bottom: "20px",
+					height: 30,
+				},
+				{ type: "inside", yAxisIndex: 0, filterMode: "none" },
+				{
+					type: "slider",
+					yAxisIndex: 0,
+					filterMode: "none",
+					right: "15px",
+					width: 30,
+				},
+			],
 			xAxis: {
 				type: "category",
 				data: timeData,
-				name: "Time Steps",
-				nameLocation: "middle",
-				nameGap: 30
+				axisLine: {
+					onZero: false,
+				},
 			},
 			yAxis: {
 				type: "value",
-				name: "Rotation Value",
-				nameLocation: "middle",
-				nameGap: 40
+				name: `Rotation Value (${selectedJoint()}_${axisSelected()}rotation)`,
+				min: minPlot2D(),
+				max: maxPlot2D(),
 			},
 			series: series,
-			animation: true
 		}
 
 		chart.setOption(option)
+		chart.dispatchAction(
+			{
+				type: "takeGlobalCursor",
+				key: "brush",
+				brushOption: { brushType: "lineX", brushMode: "single" },
+			},
+			true
+		)
 
 		// Handle window resize
 		window.addEventListener("resize", () => {
@@ -235,6 +329,11 @@ function TabsGOM_main(props: { valueButton: string }) {
 	// Effect to update chart when data changes
 	createEffect(() => {
 		const results = sarimaxResults()
+		console.log("🔄 Effect triggered - SARIMAX results changed:", {
+			hasResults: !!results,
+			selectedTab: selectedTab(),
+			isGeneratedMovement: selectedTab() === "Generated Movement"
+		})
 		if (results && selectedTab() === "Generated Movement") {
 			setTimeout(() => {
 				createPredictionChart()
@@ -244,6 +343,10 @@ function TabsGOM_main(props: { valueButton: string }) {
 
 	// Effect to update chart when tab changes
 	createEffect(() => {
+		console.log("🔄 Effect triggered - Tab changed:", {
+			selectedTab: selectedTab(),
+			isGeneratedMovement: selectedTab() === "Generated Movement"
+		})
 		if (selectedTab() === "Generated Movement") {
 			setTimeout(() => {
 				createPredictionChart()
@@ -254,6 +357,12 @@ function TabsGOM_main(props: { valueButton: string }) {
 	// Effect to update chart when retrained data changes
 	createEffect(() => {
 		const retrainedData = (window as any).retrainedPredictionData
+		console.log("🔄 Effect triggered - Retrained data changed:", {
+			hasRetrainedData: !!retrainedData,
+			retrainedDataLength: retrainedData?.length,
+			selectedTab: selectedTab(),
+			isGeneratedMovement: selectedTab() === "Generated Movement"
+		})
 		if (retrainedData && selectedTab() === "Generated Movement") {
 			setTimeout(() => {
 				createPredictionChart()
@@ -269,9 +378,14 @@ function TabsGOM_main(props: { valueButton: string }) {
 				onValueChange={async (e) => {
 					setSelectedTab(e.value)
 					if (e.value === "Generated Movement") {
+						console.log("📊 Tab changed to Generated Movement")
 						setTimeout(() => {
-							chart2D_predict().resize()
-						}, 1)
+							// Create or resize ECharts chart
+							createPredictionChart()
+							if (chartInstance()) {
+								chartInstance().resize()
+							}
+						}, 100)
 					}
 				}}
 			>

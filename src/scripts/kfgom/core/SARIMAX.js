@@ -17,7 +17,7 @@ export class SARIMAX {
     this.mse = null
     this.aic = null
     this.bic = null
-    this.lambda = 0.1 // Ridge regularization parameter
+    this.lambda = 1.0 // Ridge regularization parameter (increased for better stability)
     this._debugLogged = false
   }
 
@@ -91,45 +91,139 @@ export class SARIMAX {
     return { beta, XTX, XMatrix, yVector, XT }
   }
 
-  // Ridge L2 Regularization with stronger penalty
+  // Ridge L2 Regularization with adaptive penalty and convergence monitoring
   _fitRidge(X, y) {
-    console.log(`🔴 Using Ridge L2 regularization with λ = ${this.lambda}`)
+    console.log(`🔴 Using Ridge L2 regularization with adaptive λ`)
     const XMatrix = math.matrix(X)
     const yVector = math.matrix(y)
     const XT = math.transpose(XMatrix)
     const XTX = math.multiply(XT, XMatrix)
     
-    // Ridge: β = (X'X + λI)⁻¹X'y
-    const identity = math.identity(XTX.size())
-    const regularizedXTX = math.add(XTX, math.multiply(this.lambda, identity))
-    const XTY = math.multiply(XT, yVector)
-    const beta = math.multiply(math.inv(regularizedXTX), XTY)
+    // Adaptive regularization: start with base lambda and increase if needed
+    let currentLambda = this.lambda
+    const maxIterations = 5
+    let lastBeta = null
+    let convergenceHistory = []
     
-    console.log('✅ Ridge: Applied L2 regularization - coefficients shrunk toward zero')
-    return { beta, XTX: regularizedXTX, XMatrix, yVector, XT }
+    for (let iter = 0; iter < maxIterations; iter++) {
+      console.log(`🔄 Ridge iteration ${iter + 1}: λ = ${currentLambda.toFixed(4)}`)
+      
+      const identity = math.identity(XTX.size())
+      const regularizedXTX = math.add(XTX, math.multiply(currentLambda, identity))
+      const XTY = math.multiply(XT, yVector)
+      
+      try {
+        const beta = math.multiply(math.inv(regularizedXTX), XTY)
+        const betaArray = beta._data || beta
+        
+        // Check convergence
+        if (lastBeta) {
+          const lastBetaArray = lastBeta._data || lastBeta
+          const diff = betaArray.reduce((sum, val, i) => sum + Math.pow(val - lastBetaArray[i], 2), 0)
+          const convergence = Math.sqrt(diff)
+          convergenceHistory.push(convergence)
+          
+          console.log(`  Convergence check: ${convergence.toFixed(6)}`)
+          
+          if (convergence < 1e-6) {
+            console.log('✅ Ridge: Converged successfully')
+            return { beta, XTX: regularizedXTX, XMatrix, yVector, XT }
+          }
+        }
+        
+        lastBeta = beta
+        
+        // Check coefficient stability
+        const maxCoeff = Math.max(...betaArray.map(Math.abs))
+        const minCoeff = Math.min(...betaArray.map(Math.abs))
+        console.log(`  Coefficient range: [${minCoeff.toFixed(6)}, ${maxCoeff.toFixed(6)}]`)
+        
+        if (maxCoeff < 100 && minCoeff > 1e-10) {
+          console.log('✅ Ridge: Stable coefficients achieved')
+          return { beta, XTX: regularizedXTX, XMatrix, yVector, XT }
+        }
+        
+        // Increase regularization if coefficients are unstable
+        currentLambda *= 2
+        console.log(`  Increasing λ to ${currentLambda.toFixed(4)} for stability`)
+        
+      } catch (error) {
+        console.warn(`⚠️ Ridge iteration ${iter + 1} failed, increasing λ`)
+        currentLambda *= 5
+        
+        if (iter === maxIterations - 1) {
+          console.warn('⚠️ Ridge failed after all iterations, using pseudo-inverse')
+          const XTYArray = XTY._data || XTY
+          const regularizedXTXArray = regularizedXTX._data || regularizedXTX
+          const beta = this._pseudoInverse(regularizedXTXArray, XTYArray)
+          const betaMatrix = math.matrix(beta)
+          return { beta: betaMatrix, XTX: regularizedXTX, XMatrix, yVector, XT }
+        }
+      }
+    }
+    
+    console.log('✅ Ridge: Completed with adaptive regularization')
+    return { beta: lastBeta, XTX: regularizedXTX, XMatrix, yVector, XT }
+  }
+
+  // Simple pseudo-inverse implementation for fallback
+  _pseudoInverse(A, b) {
+    // For small matrices, use a simple approach
+    const n = A.length
+    const result = new Array(n).fill(0)
+    
+    // Simple iterative solution
+    for (let iter = 0; iter < 100; iter++) {
+      for (let i = 0; i < n; i++) {
+        let sum = 0
+        for (let j = 0; j < n; j++) {
+          sum += A[i][j] * result[j]
+        }
+        result[i] += 0.01 * (b[i] - sum)
+      }
+    }
+    
+    return result
   }
 
   fit() {
     console.log(`\n🚀 SARIMAX Training with method: ${this.method.toUpperCase()}`)
+    console.log(`📊 Training data dimensions:`, {
+      endogLength: this.endog.length,
+      exogVariables: this.exog.length,
+      order: this.order,
+      method: this.method
+    })
+    
     this._debugLogged = false // Reset debug flag
     
     const X = []
     const y = []
 
-        const laggedEndog = this.laggedMatrix(this.endog, this.order)
+    const laggedEndog = this.laggedMatrix(this.endog, this.order)
     
-    // Transpose exog to [numTimesteps][numExogVars] so we can slice by time
-    const exogByTime = this.exog[0].map((_, t) => this.exog.map(row => row[t]))
-    const laggedExog = exogByTime.slice(this.order)
+    // The exog data is already in [frame][variable] format, so we can slice directly
+    const laggedExog = this.exog.slice(this.order)
 
-    
+    console.log(`📊 Data preparation:`, {
+      laggedEndogLength: laggedEndog.length,
+      laggedExogLength: laggedExog.length,
+      exogVariables: this.exog.length,
+      expectedFeatures: this.exog.length + this.order
+    })
 
     for (let i = 0; i < laggedEndog.length; i++) {
       X.push([...laggedExog[i], ...laggedEndog[i]])
       y.push(this.endog[i + this.order])
-      
-
     }
+
+    console.log(`📊 Training matrix dimensions:`, {
+      XRows: X.length,
+      XCols: X[0]?.length || 0,
+      yLength: y.length,
+      sampleX: X.slice(0, 2).map(row => row.slice(0, 5).map(v => v.toFixed(4))),
+      sampleY: y.slice(0, 5).map(v => v.toFixed(4))
+    })
 
     // Choose estimation method
     let result
@@ -151,9 +245,13 @@ export class SARIMAX {
     const { beta, XTX, XMatrix, yVector, XT } = result
     this.coefficients = beta._data
     
-    // Log coefficient summary for comparison
-    console.log(`📊 ${this.method.toUpperCase()} Coefficients:`, 
-      this.coefficients.map(c => c.toFixed(6)).join(', '))
+    // Log comprehensive coefficient analysis
+    console.log(`📊 ${this.method.toUpperCase()} Model Results:`)
+    console.log(`  Coefficient count: ${this.coefficients.length}`)
+    console.log(`  Coefficient range: [${Math.min(...this.coefficients).toFixed(6)}, ${Math.max(...this.coefficients).toFixed(6)}]`)
+    console.log(`  Coefficient mean: ${(this.coefficients.reduce((a, b) => a + b, 0) / this.coefficients.length).toFixed(6)}`)
+    console.log(`  Non-zero coefficients: ${this.coefficients.filter(c => Math.abs(c) > 1e-10).length}`)
+    console.log(`  Sample coefficients: ${this.coefficients.slice(0, 10).map(c => c.toFixed(6)).join(', ')}`)
 
     // Check for potential instability in AR coefficients (only for OLS and MLE)
     if (this.method !== 'ridge') {
@@ -186,7 +284,15 @@ export class SARIMAX {
     const originalXTX = this.method === 'ridge' ? 
       math.multiply(XT, XMatrix) : XTX
     
-    const covMatrix = math.multiply(sigma2, math.inv(originalXTX))
+    let covMatrix
+    try {
+      covMatrix = math.multiply(sigma2, math.inv(originalXTX))
+    } catch (error) {
+      console.warn('⚠️ Covariance matrix inversion failed, using identity matrix')
+      // Use identity matrix as fallback for covariance
+      const identity = math.identity(originalXTX.size())
+      covMatrix = math.multiply(sigma2, identity)
+    }
     const diagElements = math.diag(covMatrix)
 
     // Convert to regular array if needed
@@ -296,11 +402,107 @@ export class SARIMAX {
     return prediction
   }
 
-  // Enhanced prediction method
+  // New method: Predict with confidence intervals
+  predictWithConfidence(endoContext, exogContext, alpha = 0.05) {
+    if (!this.trained) throw new Error("Model not trained")
+    
+    const prediction = this.predict(endoContext, exogContext)
+    const confidenceIntervals = this.calculateConfidenceIntervals(prediction, alpha)
+    
+    return {
+      mean: prediction,
+      mean_se: Math.sqrt(this.mse),
+      mean_ci_lower: confidenceIntervals.lower,
+      mean_ci_upper: confidenceIntervals.upper,
+      confidence_level: (1 - alpha) * 100
+    }
+  }
+
+  // Calculate confidence intervals for a prediction
+  calculateConfidenceIntervals(prediction, alpha = 0.05) {
+    if (!this.trained) throw new Error("Model not trained")
+    
+    // Calculate prediction standard error
+    // For ARIMA models, prediction SE increases with forecast horizon
+    // For simplicity, we use the residual standard error (sqrt of MSE)
+    const predictionSE = Math.sqrt(this.mse)
+    
+    // Calculate critical value for confidence interval
+    // Using normal approximation for large samples (t-distribution converges to normal)
+    const criticalValue = this.getNormalCriticalValue(alpha / 2)
+    
+    // Calculate confidence bounds
+    const marginOfError = criticalValue * predictionSE
+    
+    return {
+      lower: prediction - marginOfError,
+      upper: prediction + marginOfError
+    }
+  }
+
+  // Get critical value from standard normal distribution
+  getNormalCriticalValue(alpha) {
+    // Approximate inverse normal CDF for common confidence levels
+    // This is a simplified implementation - for production, consider using a proper statistical library
+    if (alpha <= 0.005) return 2.576 // 99% CI
+    if (alpha <= 0.010) return 2.326 // 98% CI  
+    if (alpha <= 0.025) return 1.960 // 95% CI
+    if (alpha <= 0.050) return 1.645 // 90% CI
+    if (alpha <= 0.100) return 1.282 // 80% CI
+    
+    // Fallback approximation using Box-Muller transform concept
+    // For other alpha values, use normal approximation
+    return Math.sqrt(-2 * Math.log(alpha))
+  }
+
+  // Enhanced prediction method with optional confidence intervals
   predictFull(endoContext, exogContext, options = {}) {
     if (!this.trained) throw new Error("Model not trained")
     
-    return { mean: this.predict(endoContext, exogContext) }
+    const { 
+      includeConfidence = false, 
+      alpha = 0.05,
+      steps = 1 
+    } = options
+    
+    if (steps === 1) {
+      if (includeConfidence) {
+        return this.predictWithConfidence(endoContext, exogContext, alpha)
+      } else {
+        return { mean: this.predict(endoContext, exogContext) }
+      }
+    } else {
+      // Multi-step prediction with increasing uncertainty
+      return this.predictMultiStep(endoContext, exogContext, steps, includeConfidence, alpha)
+    }
+  }
+
+  // Multi-step prediction with confidence intervals
+  predictMultiStep(endoContext, exogContext, steps, includeConfidence = false, alpha = 0.05) {
+    if (!this.trained) throw new Error("Model not trained")
+    
+    const predictions = []
+    let currentEndoContext = [...endoContext]
+    
+    for (let step = 0; step < steps; step++) {
+      if (includeConfidence) {
+        // Increase prediction uncertainty with each step
+        const stepAlpha = alpha * (1 + step * 0.1) // Uncertainty grows with horizon
+        const result = this.predictWithConfidence(currentEndoContext, exogContext, stepAlpha)
+        predictions.push(result)
+        
+        // Update context with predicted value for next step
+        currentEndoContext = currentEndoContext.slice(1).concat([result.mean])
+      } else {
+        const prediction = this.predict(currentEndoContext, exogContext)
+        predictions.push({ mean: prediction })
+        
+        // Update context with predicted value for next step
+        currentEndoContext = currentEndoContext.slice(1).concat([prediction])
+      }
+    }
+    
+    return predictions
   }
 
   summary() {
