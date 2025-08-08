@@ -280,17 +280,23 @@ export class SARIMAX {
     const sse = math.sum(math.dotMultiply(residuals, residuals))
     const sigma2 = sse / (n - k)
 
-    // For statistical inference, use the original XTX (not regularized for Ridge)
-    const originalXTX = this.method === 'ridge' ? 
-      math.multiply(XT, XMatrix) : XTX
-    
+    // For statistical inference, use appropriate covariance matrix
     let covMatrix
     try {
-      covMatrix = math.multiply(sigma2, math.inv(originalXTX))
+      if (this.method === 'ridge') {
+        // For Ridge, use the regularized XTX for covariance
+        // Ridge coefficients are biased, so we need to adjust the inference
+        const regularizedXTX = XTX // This is already regularized
+        covMatrix = math.multiply(sigma2, math.inv(regularizedXTX))
+      } else {
+        // For OLS/MLE, use the original XTX
+        const originalXTX = math.multiply(XT, XMatrix)
+        covMatrix = math.multiply(sigma2, math.inv(originalXTX))
+      }
     } catch (error) {
       console.warn('⚠️ Covariance matrix inversion failed, using identity matrix')
       // Use identity matrix as fallback for covariance
-      const identity = math.identity(originalXTX.size())
+      const identity = math.identity(XTX.size())
       covMatrix = math.multiply(sigma2, identity)
     }
     const diagElements = math.diag(covMatrix)
@@ -308,44 +314,65 @@ export class SARIMAX {
       return isNaN(tStat) || !isFinite(tStat) ? 0 : tStat
     })
 
-    const pValues = tStats.map(t => {
+    const pValues = tStats.map((t, i) => {
       try {
         const absT = Math.abs(t)
         if (!isFinite(absT) || isNaN(absT)) return 0.999
 
-        // Manual t-distribution approximation for p-values
-        // Using normal approximation for large degrees of freedom
         const df = n - k
         let pValue
 
-        if (df > 30) {
-          // Normal approximation for large df
-          const z = absT
-          // Approximate standard normal CDF
-          const erfApprox = (x) => {
-            const a1 =  0.254829592
-            const a2 = -0.284496736
-            const a3 =  1.421413741
-            const a4 = -1.453152027
-            const a5 =  1.061405429
-            const p  =  0.3275911
-            const sign = x < 0 ? -1 : 1
-            x = Math.abs(x)
-            const t2 = 1.0 / (1.0 + p * x)
-            const y2 = 1.0 - (((((a5 * t2 + a4) * t2) + a3) * t2 + a2) * t2 + a1) * t2 * Math.exp(-x * x)
-            return sign * y2
-          }
+        if (this.method === 'ridge') {
+          // RIDGE: Different approach for biased coefficients
+          // Ridge coefficients are biased, so we use a different significance test
+          // We focus on the magnitude of coefficients relative to their standard errors
+          const coefficient = this.coefficients[i]
+          const stdError = stdErrors[i]
+          const relativeMagnitude = Math.abs(coefficient) / stdError
           
-          const cdf = 0.5 * (1 + erfApprox(z / Math.sqrt(2)))
-          pValue = 2 * (1 - cdf)
+          // For Ridge, we use a more lenient threshold due to bias
+          // Also consider the regularization effect
+          const ridgeFactor = 1.0 / (1.0 + this.lambda) // Account for regularization
+          const adjustedMagnitude = relativeMagnitude * ridgeFactor
+          
+          if (adjustedMagnitude > 3.0) pValue = 0.001
+          else if (adjustedMagnitude > 2.5) pValue = 0.01
+          else if (adjustedMagnitude > 2.0) pValue = 0.05
+          else if (adjustedMagnitude > 1.5) pValue = 0.1
+          else if (adjustedMagnitude > 1.0) pValue = 0.2
+          else pValue = 0.5
+          
         } else {
-          // Simple approximation for small df
-          if (absT > 4) pValue = 0.001
-          else if (absT > 3) pValue = 0.01
-          else if (absT > 2.5) pValue = 0.02
-          else if (absT > 2) pValue = 0.05
-          else if (absT > 1.5) pValue = 0.1
-          else pValue = 0.2
+          // OLS/MLE: Standard t-distribution approach
+          if (df > 30) {
+            // Normal approximation for large df
+            const z = absT
+            const erfApprox = (x) => {
+              const a1 =  0.254829592
+              const a2 = -0.284496736
+              const a3 =  1.421413741
+              const a4 = -1.453152027
+              const a5 =  1.061405429
+              const p  =  0.3275911
+              const sign = x < 0 ? -1 : 1
+              x = Math.abs(x)
+              const t2 = 1.0 / (1.0 + p * x)
+              const y2 = 1.0 - (((((a5 * t2 + a4) * t2) + a3) * t2 + a2) * t2 + a1) * t2 * Math.exp(-x * x)
+              return sign * y2
+            }
+            
+            const cdf = 0.5 * (1 + erfApprox(z / Math.sqrt(2)))
+            pValue = 2 * (1 - cdf)
+          } else {
+            // Standard t-distribution approximation for small df
+            if (absT > 4) pValue = 0.001
+            else if (absT > 3) pValue = 0.01
+            else if (absT > 2.5) pValue = 0.02
+            else if (absT > 2) pValue = 0.05
+            else if (absT > 1.5) pValue = 0.1
+            else if (absT > 1) pValue = 0.2
+            else pValue = 0.5
+          }
         }
 
         return Math.max(0.001, Math.min(0.999, pValue))
@@ -363,6 +390,27 @@ export class SARIMAX {
     // Calculate AIC and BIC
     this.aic = 2 * k - 2 * Math.log(sse / n)
     this.bic = k * Math.log(n) - 2 * Math.log(sse / n)
+
+    // Log p-value statistics for debugging
+    const pValueStats = {
+      min: Math.min(...pValues),
+      max: Math.max(...pValues),
+      mean: pValues.reduce((a, b) => a + b, 0) / pValues.length,
+      significant: pValues.filter(p => p < 0.05).length,
+      marginal: pValues.filter(p => p < 0.1).length,
+      method: this.method,
+      lambda: this.lambda
+    }
+    console.log(`📊 ${this.method.toUpperCase()} P-value statistics:`, pValueStats)
+    
+    // Log sample coefficients and their p-values for comparison
+    const sampleIndices = [0, 1, 2, 3, 4]
+    console.log(`🔍 Sample coefficients and p-values (${this.method.toUpperCase()}):`)
+    sampleIndices.forEach(i => {
+      if (i < this.coefficients.length) {
+        console.log(`  Coef[${i}]: ${this.coefficients[i].toFixed(6)}, p-value: ${pValues[i].toFixed(6)}, t-stat: ${tStats[i].toFixed(6)}`)
+      }
+    })
 
     this.trained = true
     this.stdErrors = stdErrors

@@ -429,18 +429,30 @@ const KFGOMAnalysis = () => {
 
 
 
-	// Handle method change
+	// Handle method change - auto retrain
 	const handleMethodChange = (event) => {
 		const newMethod = event.target.value
 		setSarimaxConfig({ ...sarimaxConfig(), method: newMethod })
 		console.log('🔧 Method changed to:', newMethod)
+		
+		// Auto retrain with new method
+		if (sarimaxResults() && analyzer()) {
+			console.log('🔄 Auto-retraining with new method...')
+			runAnalysis()
+		}
 	}
 
-	// Handle lag change
+	// Handle lag change - auto retrain
 	const handleLagChange = (event) => {
 		const newLags = parseInt(event.target.value)
 		setSarimaxConfig({ ...sarimaxConfig(), lags: newLags })
 		console.log('🔧 Lags changed to:', newLags)
+		
+		// Auto retrain with new lags
+		if (sarimaxResults() && analyzer()) {
+			console.log('🔄 Auto-retraining with new lags...')
+			runAnalysis()
+		}
 	}
 
 	// Retrain model with selected variables
@@ -756,6 +768,17 @@ const KFGOMAnalysis = () => {
 								>
 									Retrain 
 								</button>
+								{/* Show selected variables count */}
+								{(window as any).selectedJoints && (window as any).selectedJoints().size > 0 && (
+									<span style={{
+										"margin-left": "8px",
+										"font-size": "10px",
+										color: "#666",
+										"font-style": "italic"
+									}}>
+										({(window as any).selectedJoints().size} selected)
+									</span>
+								)}
 							</div>
 						</div>
 					</div>

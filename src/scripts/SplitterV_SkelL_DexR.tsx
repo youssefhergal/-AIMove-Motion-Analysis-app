@@ -1,7 +1,7 @@
 import { Splitter } from "@ark-ui/solid"
 import { myScene } from "./myScene"
 import { resizePlots } from "./plots"
-import { TabsGOM_main, DownloadCSV, GenerateMovement } from "./TabsGOM_main"
+import { TabsGOM_main, DownloadCSV, GenerateMovement} from "./TabsGOM_main"
 import {
 	splitterSizeL,
 	splitterSizeR,
@@ -14,6 +14,7 @@ import { Separator } from "@kobalte/core/separator"
 import { ToggleGroup } from "@kobalte/core/toggle-group"
 import { AxisSelector } from "./AxisSelector"
 import { createSignal, onMount } from "solid-js"
+import KFGOMFileSelector from "./kfgom/components/KFGOMFileSelector"
 
 const SplitterV_SkelL_DexR = () => {
 	function thisOnChange() {
