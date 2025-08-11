@@ -752,6 +752,138 @@ function TabsGOM_main(props: { valueButton: string }) {
 						<div class="plotTitle" id="plotPredict">
 							Movement Prediction Analysis
 						</div>
+						
+						{/* Metric Cards - Now above the plot */}
+						<div class="metric-cards-container" style={{
+							display: "flex",
+							"flex-direction": "row",
+							"justify-content": "center",
+							"align-items": "center",
+							gap: "15px",
+							"margin-bottom": "20px",
+							padding: "0 20px"
+						}}>
+							{/* Max Angle Card */}
+							<div class="metric-card" style={{
+								background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+								"border-radius": "8px",
+								padding: "12px 16px",
+								"text-align": "center",
+								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								color: "white",
+								"min-width": "80px"
+							}}>
+								<div class="metric-icon" style={{
+									"font-size": "16px",
+									"margin-bottom": "6px"
+								}}></div>
+								<div class="metric-value" style={{
+									"font-size": "18px",
+									"font-weight": "bold",
+									"margin-bottom": "3px"
+								}}>
+									{sarimaxResults()?.original ? 
+										Math.max(...sarimaxResults().original).toFixed(1) : 
+										"N/A"
+									}°
+								</div>
+								<div class="metric-label" style={{
+									"font-size": "11px",
+									opacity: "0.9"
+								}}>Max Angle</div>
+							</div>
+
+							{/* Min Angle Card */}
+							<div class="metric-card" style={{
+								background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+								"border-radius": "8px",
+								padding: "12px 16px",
+								"text-align": "center",
+								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								color: "white",
+								"min-width": "80px"
+							}}>
+								<div class="metric-icon" style={{
+									"font-size": "16px",
+									"margin-bottom": "6px"
+								}}></div>
+								<div class="metric-value" style={{
+									"font-size": "18px",
+									"font-weight": "bold",
+									"margin-bottom": "3px"
+								}}>
+									{sarimaxResults()?.original ? 
+										Math.min(...sarimaxResults().original).toFixed(1) : 
+										"N/A"
+									}°
+								</div>
+								<div class="metric-label" style={{
+									"font-size": "11px",
+									opacity: "0.9"
+								}}>Min Angle</div>
+							</div>
+
+							{/* MSE Card */}
+							<div class="metric-card" style={{
+								background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+								"border-radius": "8px",
+								padding: "12px 16px",
+								"text-align": "center",
+								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								color: "white",
+								"min-width": "80px"
+							}}>
+								<div class="metric-icon" style={{
+									"font-size": "16px",
+									"margin-bottom": "6px"
+								}}></div>
+								<div class="metric-value" style={{
+									"font-size": "18px",
+									"font-weight": "bold",
+									"margin-bottom": "3px"
+								}}>
+									{sarimaxResults()?.metrics?.mse ? 
+										sarimaxResults().metrics.mse.toFixed(2) : 
+										"N/A"
+									}
+								</div>
+								<div class="metric-label" style={{
+									"font-size": "11px",
+									opacity: "0.9"
+								}}>MSE</div>
+							</div>
+
+							{/* R² Card */}
+							<div class="metric-card" style={{
+								background: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+								"border-radius": "8px",
+								padding: "12px 16px",
+								"text-align": "center",
+								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								color: "white",
+								"min-width": "80px"
+							}}>
+								<div class="metric-icon" style={{
+									"font-size": "16px",
+									"margin-bottom": "6px"
+								}}></div>
+								<div class="metric-value" style={{
+									"font-size": "18px",
+									"font-weight": "bold",
+									"margin-bottom": "3px"
+								}}>
+									{sarimaxResults()?.metrics?.correlation ? 
+										Math.pow(sarimaxResults().metrics.correlation, 2).toFixed(3) : 
+										"N/A"
+									}
+								</div>
+								<div class="metric-label" style={{
+									"font-size": "11px",
+									opacity: "0.9"
+								}}>R²</div>
+							</div>
+						</div>
+						
 						<div
 							id="prediction-chart"
 							style={{ width: "100%", height: "400px" }}
