@@ -743,6 +743,7 @@ function TabsGOM_main(props: { valueButton: string }) {
 						</div> */}
 					</div>
 				</Tabs.Content>
+				
 				<Tabs.Content
 					id="tab_content_fixed"
 					class="tabs__content"
@@ -759,28 +760,28 @@ function TabsGOM_main(props: { valueButton: string }) {
 							"flex-direction": "row",
 							"justify-content": "center",
 							"align-items": "center",
-							gap: "15px",
-							"margin-bottom": "20px",
-							padding: "0 20px"
+							gap: "8px",
+							"margin-bottom": "15px",
+							padding: "0 15px"
 						}}>
 							{/* Max Angle Card */}
 							<div class="metric-card" style={{
-								background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-								"border-radius": "8px",
-								padding: "12px 16px",
+								background: "#007bff",
+								"border-radius": "4px",
+								padding: "6px 10px",
 								"text-align": "center",
-								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								"box-shadow": "0 1px 3px rgba(0,0,0,0.15)",
 								color: "white",
-								"min-width": "80px"
+								"min-width": "60px"
 							}}>
 								<div class="metric-icon" style={{
-									"font-size": "16px",
-									"margin-bottom": "6px"
+									"font-size": "12px",
+									"margin-bottom": "3px"
 								}}></div>
 								<div class="metric-value" style={{
-									"font-size": "18px",
+									"font-size": "14px",
 									"font-weight": "bold",
-									"margin-bottom": "3px"
+									"margin-bottom": "2px"
 								}}>
 									{sarimaxResults()?.original ? 
 										Math.max(...sarimaxResults().original).toFixed(1) : 
@@ -788,29 +789,29 @@ function TabsGOM_main(props: { valueButton: string }) {
 									}°
 								</div>
 								<div class="metric-label" style={{
-									"font-size": "11px",
+									"font-size": "9px",
 									opacity: "0.9"
 								}}>Max Angle</div>
 							</div>
 
 							{/* Min Angle Card */}
 							<div class="metric-card" style={{
-								background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-								"border-radius": "8px",
-								padding: "12px 16px",
+								background: "#007bff",
+								"border-radius": "4px",
+								padding: "6px 10px",
 								"text-align": "center",
-								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								"box-shadow": "0 1px 3px rgba(0,0,0,0.15)",
 								color: "white",
-								"min-width": "80px"
+								"min-width": "60px"
 							}}>
 								<div class="metric-icon" style={{
-									"font-size": "16px",
-									"margin-bottom": "6px"
+									"font-size": "12px",
+									"margin-bottom": "3px"
 								}}></div>
 								<div class="metric-value" style={{
-									"font-size": "18px",
+									"font-size": "14px",
 									"font-weight": "bold",
-									"margin-bottom": "3px"
+									"margin-bottom": "2px"
 								}}>
 									{sarimaxResults()?.original ? 
 										Math.min(...sarimaxResults().original).toFixed(1) : 
@@ -818,29 +819,29 @@ function TabsGOM_main(props: { valueButton: string }) {
 									}°
 								</div>
 								<div class="metric-label" style={{
-									"font-size": "11px",
+									"font-size": "9px",
 									opacity: "0.9"
 								}}>Min Angle</div>
 							</div>
 
 							{/* MSE Card */}
 							<div class="metric-card" style={{
-								background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-								"border-radius": "8px",
-								padding: "12px 16px",
+								background: "#007bff",
+								"border-radius": "4px",
+								padding: "6px 10px",
 								"text-align": "center",
-								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								"box-shadow": "0 1px 3px rgba(0,0,0,0.15)",
 								color: "white",
-								"min-width": "80px"
+								"min-width": "60px"
 							}}>
 								<div class="metric-icon" style={{
-									"font-size": "16px",
-									"margin-bottom": "6px"
+									"font-size": "12px",
+									"margin-bottom": "3px"
 								}}></div>
 								<div class="metric-value" style={{
-									"font-size": "18px",
+									"font-size": "14px",
 									"font-weight": "bold",
-									"margin-bottom": "3px"
+									"margin-bottom": "2px"
 								}}>
 									{sarimaxResults()?.metrics?.mse ? 
 										sarimaxResults().metrics.mse.toFixed(2) : 
@@ -848,29 +849,29 @@ function TabsGOM_main(props: { valueButton: string }) {
 									}
 								</div>
 								<div class="metric-label" style={{
-									"font-size": "11px",
+									"font-size": "9px",
 									opacity: "0.9"
 								}}>MSE</div>
 							</div>
 
 							{/* R² Card */}
 							<div class="metric-card" style={{
-								background: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-								"border-radius": "8px",
-								padding: "12px 16px",
+								background: "#007bff",
+								"border-radius": "4px",
+								padding: "6px 10px",
 								"text-align": "center",
-								"box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+								"box-shadow": "0 1px 3px rgba(0,0,0,0.15)",
 								color: "white",
-								"min-width": "80px"
+								"min-width": "60px"
 							}}>
 								<div class="metric-icon" style={{
-									"font-size": "16px",
-									"margin-bottom": "6px"
+									"font-size": "12px",
+									"margin-bottom": "3px"
 								}}></div>
 								<div class="metric-value" style={{
-									"font-size": "18px",
+									"font-size": "14px",
 									"font-weight": "bold",
-									"margin-bottom": "3px"
+									"margin-bottom": "2px"
 								}}>
 									{sarimaxResults()?.metrics?.correlation ? 
 										Math.pow(sarimaxResults().metrics.correlation, 2).toFixed(3) : 
@@ -878,7 +879,7 @@ function TabsGOM_main(props: { valueButton: string }) {
 									}
 								</div>
 								<div class="metric-label" style={{
-									"font-size": "11px",
+									"font-size": "9px",
 									opacity: "0.9"
 								}}>R²</div>
 							</div>

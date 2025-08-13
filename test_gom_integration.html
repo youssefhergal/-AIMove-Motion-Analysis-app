@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOM Integration Test</title>
+</head>
+<body>
+    <h1>GOM Integration Test</h1>
+    <p>Testing GOM variable selection logic...</p>
+    
+    <div id="output"></div>
+
+    <script type="module">
+        import { 
+            selectGOMVariablesByAssumption, 
+            getGOMSummary,
+            getVariablesByAssumptionName 
+        } from './src/scripts/kfgom/utils/gomVariableSelector.js'
+
+        // Test data - sample BVH rotation channels
+        const testChannels = [
+            'Hips_Xrotation', 'Hips_Yrotation', 'Hips_Zrotation',
+            'LeftHip_Xrotation', 'LeftHip_Yrotation', 'LeftHip_Zrotation',
+            'LeftKnee_Xrotation', 'LeftKnee_Yrotation', 'LeftKnee_Zrotation',
+            'LeftAnkle_Xrotation', 'LeftAnkle_Yrotation', 'LeftAnkle_Zrotation',
+            'RightHip_Xrotation', 'RightHip_Yrotation', 'RightHip_Zrotation',
+            'RightKnee_Xrotation', 'RightKnee_Yrotation', 'RightKnee_Zrotation',
+            'RightAnkle_Xrotation', 'RightAnkle_Yrotation', 'RightAnkle_Zrotation',
+            'Spine_Xrotation', 'Spine_Yrotation', 'Spine_Zrotation',
+            'LeftShoulder_Xrotation', 'LeftShoulder_Yrotation', 'LeftShoulder_Zrotation',
+            'LeftElbow_Xrotation', 'LeftElbow_Yrotation', 'LeftElbow_Zrotation',
+            'LeftWrist_Xrotation', 'LeftWrist_Yrotation', 'LeftWrist_Zrotation',
+            'RightShoulder_Xrotation', 'RightShoulder_Yrotation', 'RightShoulder_Zrotation',
+            'RightElbow_Xrotation', 'RightElbow_Yrotation', 'RightElbow_Zrotation',
+            'RightWrist_Xrotation', 'RightWrist_Yrotation', 'RightWrist_Zrotation',
+            'Neck_Xrotation', 'Neck_Yrotation', 'Neck_Zrotation',
+            'Head_Xrotation', 'Head_Yrotation', 'Head_Zrotation'
+        ]
+
+        const output = document.getElementById('output')
+
+        function log(message) {
+            output.innerHTML += '<p>' + message + '</p>'
+            console.log(message)
+        }
+
+        log('🧪 Testing GOM Integration...')
+        log('📊 Total test channels: ' + testChannels.length)
+
+        // Test each assumption
+        const assumptions = [
+            { index: 0, name: 'GOM' },
+            { index: 2, name: 'Transitioning' },
+            { index: 4, name: 'Intra-joint association' },
+            { index: 6, name: 'Inter-limb synergy' },
+            { index: 8, name: 'Serial intra-limb mediation' },
+            { index: 10, name: 'Non-serial intra-limb mediation' },
+            { index: 12, name: 'All assumptions statistics' }
+        ]
+
+        assumptions.forEach(assumption => {
+            const filtered = selectGOMVariablesByAssumption(testChannels, assumption.index)
+            log(`🎯 ${assumption.name} (index ${assumption.index}): ${filtered.length} variables`)
+            
+            // Show first few examples
+            if (filtered.length > 0) {
+                const examples = filtered.slice(0, 5).join(', ')
+                log(`   Examples: ${examples}${filtered.length > 5 ? '...' : ''}`)
+            }
+        })
+
+        // Test GOM summary
+        const summary = getGOMSummary(testChannels)
+        log('📈 GOM Summary:')
+        log(`   Total: ${summary.total}`)
+        log(`   Intrajoint: ${summary.intrajoint}`)
+        log(`   Transitioning: ${summary.transitioning}`)
+        log(`   Interlimb: ${summary.interlimb}`)
+        log(`   Intralimb Serial: ${summary['intralimb-serial']}`)
+        log(`   Intralimb Non-Serial: ${summary['intralimb-nonserial']}`)
+
+        log('✅ GOM Integration Test Complete!')
+    </script>
+</body>
+</html>

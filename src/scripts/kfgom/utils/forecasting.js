@@ -52,16 +52,7 @@ export function staticForecasting(model, nobs, targetIndex, exogIndices, scaler,
       staticOriginals.push(nobs[i][targetIndex])
       frameIndices.push(i)
       
-      // Debug logging for first few frames
-      if (i < model.order + 5) {
-        console.log(`🔍 Frame ${i}:`)
-        console.log(`  Input lags: [${endoContext.map((val, idx) => `t-${model.order-idx}=${val.toFixed(2)}`).join(', ')}]`)
-        console.log(`  Input exog: [${exogContext.map(val => val.toFixed(2)).join(', ')}]`)
-        console.log(`  Prediction: ${staticPreds[staticPreds.length-1].toFixed(2)}`)
-        console.log(`  Original: ${staticOriginals[staticOriginals.length-1].toFixed(2)}`)
-        console.log(`  Error: ${Math.abs(staticPreds[staticPreds.length-1] - staticOriginals[staticOriginals.length-1]).toFixed(2)}`)
-        console.log('')
-      }
+
     }
     
     // Denormalize predictions and originals

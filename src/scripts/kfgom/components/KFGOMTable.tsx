@@ -1,25 +1,82 @@
 import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
-import { sarimaxResults, sarimaxConfig, kfgomFilters, setKfgomFilters } from '../../store.js'
+import { sarimaxResults, sarimaxConfig, kfgomFilters, setKfgomFilters, selectedAssumptionsIndex } from '../../store.js'
 import { myScene } from '../../myScene.js'
+import { selectGOMVariablesByAssumption, getGOMSummary } from '../utils/gomVariableSelector.js'
 
 export default function KFGOMTable() {
     const [kfgomData, setKfgomData] = createSignal([])
     const [filteredData, setFilteredData] = createSignal([])
     const [gridApi, setGridApi] = createSignal(null)
     const [selectedJoints, setSelectedJoints] = createSignal(new Set())
+    const [gomFilteredData, setGomFilteredData] = createSignal([]) // New: GOM filtered data
+    const [gomSummary, setGomSummary] = createSignal({}) // New: GOM summary statistics
 
     // Filter data based on significance
     const filterDataBySignificance = (data, significanceFilter) => {
+        console.log('🔍 filterDataBySignificance called with:', { significanceFilter, dataLength: data.length })
+        
         if (significanceFilter === 'all') {
+            console.log('🔍 Returning all data:', data.length)
             return data
         }
         
+        // Count significance levels for debugging
+        const significanceCounts = {
+            '***': data.filter(item => item.significance === '***').length,
+            '**': data.filter(item => item.significance === '**').length,
+            '*': data.filter(item => item.significance === '*').length,
+            '.': data.filter(item => item.significance === '.').length,
+            '~': data.filter(item => item.significance === '~').length,
+            'empty': data.filter(item => item.significance === '' || item.significance === undefined).length
+        }
+        console.log('🔍 Significance distribution:', significanceCounts)
+        
         const filtered = data.filter(item => {
-            // Include variables with any significance level (including marginal '~')
+            // Define what constitutes "significant" (including marginal significance)
             const isSignificant = item.significance === '***' || item.significance === '**' || item.significance === '*' || item.significance === '.' || item.significance === '~'
-            const shouldInclude = significanceFilter === 'significant' ? isSignificant : !isSignificant
-            return shouldInclude
+            
+            if (significanceFilter === 'significant') {
+                return isSignificant // Return only significant variables
+            } else if (significanceFilter === 'non-significant') {
+                return !isSignificant // Return only non-significant variables
+            }
+            
+            return false // Should never reach here
+        })
+        
+        console.log('🔍 Filter result:', { 
+            filterType: significanceFilter, 
+            originalCount: data.length, 
+            filteredCount: filtered.length,
+            sampleFiltered: filtered.slice(0, 3).map(v => ({ jointId: v.jointId, significance: v.significance }))
+        })
+        
+        return filtered
+    }
+
+    // NEW: Filter data based on GOM assumptions
+    const filterDataByGOMAssumption = (data, assumptionIndex) => {
+        if (!data || data.length === 0) {
+            console.log('🔍 No data to filter by GOM assumption')
+            return []
+        }
+
+        // Extract channel names from the data
+        const channels = data.map(item => item.jointId)
+        
+        // Get GOM filtered channels
+        const gomFilteredChannels = selectGOMVariablesByAssumption(channels, assumptionIndex)
+        
+        // Filter the data to only include GOM-selected variables
+        const filtered = data.filter(item => gomFilteredChannels.includes(item.jointId))
+        
+        console.log('🔍 GOM assumption filter result:', {
+            assumptionIndex,
+            originalCount: data.length,
+            gomFilteredCount: gomFilteredChannels.length,
+            finalFilteredCount: filtered.length,
+            sampleFiltered: filtered.slice(0, 3).map(v => v.jointId)
         })
         
         return filtered
@@ -205,24 +262,43 @@ export default function KFGOMTable() {
     createEffect(() => {
         const data = kfgomData()
         const filters = kfgomFilters()
+        const assumptionIndex = selectedAssumptionsIndex()
         
         if (data && data.length > 0) {
-            // Always show all data in the table
-            setFilteredData(data)
-            
-            // But only select variables based on significance filter
-            if (filters.significance === 'all') {
-                // Select all variables
-                const allJointIds = data.map(item => item.jointId)
-                setSelectedJoints(new Set(allJointIds))
-                console.log('🔍 Auto-selected all variables for retraining:', allJointIds.length)
-            } else {
-                // Select only significant or non-significant variables
-                const filtered = filterDataBySignificance(data, filters.significance)
-                const filteredJointIds = filtered.map(item => item.jointId)
-                setSelectedJoints(new Set(filteredJointIds))
-                console.log('🔍 Auto-selected filtered variables for retraining:', filteredJointIds.length)
+            // Step 1: Apply GOM assumption filter first
+            let gomFiltered = data
+            if (assumptionIndex !== null && assumptionIndex !== 2) { // Skip if "All assumptions statistics"
+                gomFiltered = filterDataByGOMAssumption(data, assumptionIndex)
+                console.log('🔍 GOM assumption filter applied:', {
+                    assumptionIndex,
+                    originalCount: data.length,
+                    gomFilteredCount: gomFiltered.length
+                })
             }
+            
+            // Step 2: Apply significance filter on top of GOM filtered data
+            if (filters.significance === 'all') {
+                // Show all GOM-filtered variables but don't select any
+                setFilteredData(gomFiltered)
+                setSelectedJoints(new Set()) // No variables selected
+                console.log('🔍 Showing all GOM-filtered variables with no selection')
+            } else {
+                // Show only significant/non-significant variables from GOM-filtered data
+                const filtered = filterDataBySignificance(gomFiltered, filters.significance)
+                setFilteredData(filtered) // Only show filtered variables
+                const filteredJointIds = filtered.map(item => item.jointId)
+                setSelectedJoints(new Set(filteredJointIds)) // Select all filtered variables
+                console.log('🔍 Showing GOM + significance filtered variables with all selected:', {
+                    assumptionIndex,
+                    filterType: filters.significance,
+                    gomFilteredCount: gomFiltered.length,
+                    finalFilteredCount: filtered.length,
+                    selectedCount: filteredJointIds.length
+                })
+            }
+            
+            // Note: Filter changes don't auto-retrain - user must click "Retrain" button
+            console.log('ℹ️ Variables filtered by GOM + significance. Click "Retrain" to apply changes.')
         }
     })
 
@@ -247,158 +323,70 @@ export default function KFGOMTable() {
         return results.metrics
     }
 
+    // Get current assumption name for display
+    const getCurrentAssumptionName = () => {
+        const assumptionIndex = selectedAssumptionsIndex()
+        const assumptionNames = [
+            'GOM',
+            '=',
+            'Transitioning', 
+            '+',
+            'Intra-joint association',
+            '+',
+            'Inter-limb synergy',
+            '+',
+            'Serial intra-limb mediation',
+            '+',
+            'Non-serial intra-limb mediation',
+            'All assumptions statistics'
+        ]
+        return assumptionNames[assumptionIndex] || 'Unknown'
+    }
+
     return (
         <div class="plotTableContainer">
-            <div id="kfgom-table" class="ag-theme-quartz"></div>
-            
-            {kfgomData().length === 0 && (
-                <div class="no-data">
-                    <p>
-                        No training file selected. Please select a training file first to run KF-GOM analysis.
-                    </p>
-                </div>
-            )}
-
-            {/* Metrics Display */}
-            {getMetrics() && (
-                <div style={{
-                    "margin-top": "20px",
-                    padding: "15px",
-                    "background-color": "#f8f9fa",
-                    "border-radius": "8px",
-                    border: "1px solid #e9ecef"
-                }}>
-                    <h4 style={{
-                        margin: "0 0 15px 0",
-                        color: "#495057",
-                        "font-size": "16px",
-                        "font-weight": "600"
-                    }}>
-                        Model Performance Metrics
-                    </h4>
-                    
-                    <div style={{
-                        display: "grid",
-                        "grid-template-columns": "repeat(auto-fit, minmax(200px, 1fr))",
-                        gap: "15px"
-                    }}>
-                        <div style={{
-                            padding: "12px",
-                            backgroundColor: "#fff",
-                            borderRadius: "6px",
-                            border: "1px solid #dee2e6",
-                            textAlign: "center"
-                        }}>
-                            <div style={{
-                                fontSize: "14px",
-                                color: "#6c757d",
-                                marginBottom: "5px"
-                            }}>
-                                Mean Squared Error (MSE)
-                            </div>
-                            <div style={{
-                                fontSize: "18px",
-                                fontWeight: "bold",
-                                color: "#495057"
-                            }}>
-                                {getMetrics().mse?.toFixed(6) || "N/A"}
-                            </div>
-                        </div>
-
-                        <div style={{
-                            padding: "12px",
-                            backgroundColor: "#fff",
-                            borderRadius: "6px",
-                            border: "1px solid #dee2e6",
-                            textAlign: "center"
-                        }}>
-                            <div style={{
-                                fontSize: "14px",
-                                color: "#6c757d",
-                                marginBottom: "5px"
-                            }}>
-                                Mean Absolute Error (MAE)
-                            </div>
-                            <div style={{
-                                fontSize: "18px",
-                                fontWeight: "bold",
-                                color: "#495057"
-                            }}>
-                                {getMetrics().mae?.toFixed(6) || "N/A"}
-                            </div>
-                        </div>
-
-                        <div style={{
-                            padding: "12px",
-                            backgroundColor: "#fff",
-                            borderRadius: "6px",
-                            border: "1px solid #dee2e6",
-                            textAlign: "center"
-                        }}>
-                            <div style={{
-                                fontSize: "14px",
-                                color: "#6c757d",
-                                marginBottom: "5px"
-                            }}>
-                                Correlation Coefficient
-                            </div>
-                            <div style={{
-                                fontSize: "18px",
-                                fontWeight: "bold",
-                                color: "#495057"
-                            }}>
-                                {getMetrics().correlation?.toFixed(6) || "N/A"}
-                            </div>
-                        </div>
-
-                        <div style={{
-                            padding: "12px",
-                            backgroundColor: "#fff",
-                            borderRadius: "6px",
-                            border: "1px solid #dee2e6",
-                            textAlign: "center"
-                        }}>
-                            <div style={{
-                                fontSize: "14px",
-                                color: "#6c757d",
-                                marginBottom: "5px"
-                            }}>
-                                R-squared (R²)
-                            </div>
-                            <div style={{
-                                fontSize: "18px",
-                                fontWeight: "bold",
-                                color: "#495057"
-                            }}>
-                                {getMetrics().r2?.toFixed(6) || "N/A"}
-                            </div>
-                        </div>
-
-                        <div style={{
-                            padding: "12px",
-                            backgroundColor: "#fff",
-                            borderRadius: "6px",
-                            border: "1px solid #dee2e6",
-                            textAlign: "center"
-                        }}>
-                            <div style={{
-                                fontSize: "14px",
-                                color: "#6c757d",
-                                marginBottom: "5px"
-                            }}>
-                                Theil's U Statistic
-                            </div>
-                            <div style={{
-                                fontSize: "18px",
-                                fontWeight: "bold",
-                                color: "#495057"
-                            }}>
-                                {getMetrics().utheil?.toFixed(6) || "N/A"}
-                            </div>
-                        </div>
+            {/* GOM Status Display */}
+            <div style={{
+                padding: "10px",
+                margin: "10px 0",
+                background: "#f8f9fa",
+                border: "1px solid #dee2e6",
+                "border-radius": "4px",
+                "font-size": "14px"
+            }}>
+                <div style={{ display: "flex", "justify-content": "space-between", "align-items": "center" }}>
+                    <div>
+                        <strong>GOM Assumption:</strong> {getCurrentAssumptionName()}
+                    </div>
+                    <div style={{ display: "flex", gap: "15px" }}>
+                        <span>
+                            <strong>Total Variables:</strong> {kfgomData().length}
+                        </span>
+                        <span>
+                            <strong>GOM Filtered:</strong> {gomFilteredData().length}
+                        </span>
+                        <span>
+                            <strong>Currently Selected:</strong> {selectedJoints().size}
+                        </span>
                     </div>
                 </div>
-            )}
+                {gomFilteredData().length > 0 && (
+                    <div style={{ 
+                        "margin-top": "8px", 
+                        "font-size": "12px", 
+                        color: "#666",
+                        "font-style": "italic"
+                    }}>
+                        💡 Variables automatically filtered by GOM assumption. Click "Retrain" to use selected variables.
+                    </div>
+                )}
+            </div>
+
+            <div id="kfgom-table" class="ag-theme-quartz"></div>
+            
+
+
+            {/* Metrics Display */}
         </div>
     )
 } 

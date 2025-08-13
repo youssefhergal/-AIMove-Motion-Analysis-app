@@ -144,32 +144,17 @@ const SplitterV_SkelL_DexR = () => {
 						</div>
 					</div>
 
-					<TabsGOM_main valueButton={valueButton()} />
-					{(selectedAssumptionsIndex() !== 0 ||
-						selectedTab() === "Generated Movement" ||
-						valueButton() === "KF-GOM") && (
-						<div class="generateButtons">
-							<div
-								id="grid-container-generateButtons"
-								class="grid-container-buttonCoef"
-							>
-								<button
-									id="generateButton"
-									class="buttonCoef"
-									onclick={valueButton() === "KF-GOM" ? () => console.log("KF-GOM Analysis") : GenerateMovement}
-								>
-									{valueButton() === "KF-GOM" ? "Analyze" : "Generate"}
-								</button>
-								<button
-									id="downloadButton"
-									class="buttonCoef"
-									onclick={valueButton() === "KF-GOM" ? () => console.log("Download KF-GOM Results") : DownloadCSV}
-								>
-									{valueButton() === "KF-GOM" ? "Download Results" : "Download CSV"}
-								</button>
-							</div>
+					{/* KF-GOM File Selection - Added here before tabs */}
+					{valueButton() === "KF-GOM" && (
+						<div style={{ 
+							"margin-top": "15px",
+							"border-top": "1px solid #e0e0e0"
+						}}>
+							<KFGOMFileSelector />
 						</div>
 					)}
+
+					<TabsGOM_main valueButton={valueButton()} />
 				</div>
 			</Splitter.Panel>
 		</Splitter.Root>

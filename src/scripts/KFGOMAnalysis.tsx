@@ -30,7 +30,7 @@
 // Main KF-GOM Analysis Component - added by youssef hergal
 import { createSignal, onMount, createEffect } from "solid-js"
 import KFGOMTable from "./kfgom/components/KFGOMTable"
-import KFGOMFileSelector from "./kfgom/components/KFGOMFileSelector"
+
 import { SARIMAXAnalyzer } from "./kfgom/SARIMAXAnalyzer.js"
 import { myScene } from "./myScene"
 import {
@@ -471,16 +471,10 @@ const KFGOMAnalysis = () => {
 			
 			console.log('📊 Selected variables for retraining:', selectedJointArray)
 			
-			// Set data for training and testing
-			const trainBones = trainFileBones()
-			const testBones = testFileBones()
-			
-			if (!trainBones || !testBones) {
-				throw new Error("Training and test data required for retraining")
+			// Check if we have existing data and analyzer
+			if (!analyzer() || !trainFileBones() || !testFileBones()) {
+				throw new Error("Please run initial analysis first before retraining")
 			}
-			
-			const trainData = convertExistingBVHData(trainBones)
-			const testData = convertExistingBVHData(testBones)
 			
 			// Get current configuration parameters
 			const currentConfig = sarimaxConfig()
@@ -492,7 +486,17 @@ const KFGOMAnalysis = () => {
 			// Get target variable name
 			const targetVariable = `${targetJoint}_${targetAxis}`
 			
-			// Filter data to include only selected variables
+			// Store the initial prediction data before retraining
+			const currentResults = sarimaxResults()
+			if (currentResults && currentResults.predicted) {
+				;(window as any).initialPredictionData = currentResults.predicted
+				console.log("📊 Initial prediction data preserved for chart comparison")
+			}
+			
+			// Filter existing data to include only selected variables
+			const trainData = convertExistingBVHData(trainFileBones())
+			const testData = convertExistingBVHData(testFileBones())
+			
 			const filteredTrainData = filterDataForSelectedVariables(trainData, selectedJointArray, targetVariable)
 			const filteredTestData = filterDataForSelectedVariables(testData, selectedJointArray, targetVariable)
 			
@@ -503,10 +507,11 @@ const KFGOMAnalysis = () => {
 				selectedVariables: selectedJointArray.length,
 				targetJoint,
 				targetAxis,
-				method
+				method,
+				lags
 			})
 			
-			// Run analysis with filtered data
+			// 🎯 REUSE the existing analyze method with filtered data
 			const result = await analyzer().analyze(
 				targetJoint, 
 				targetAxis, 
@@ -514,28 +519,19 @@ const KFGOMAnalysis = () => {
 				method, 
 				(progress, message) => {
 					setAnalysisProgress(progress)
-					console.log(`Retraining Progress: ${progress}% - ${message}`)
+					console.log(`🔄 Retraining Progress: ${progress}% - ${message}`)
 				}
 			)
 			
 			if (result.success) {
-				// Store the initial prediction data before updating results
-				const currentResults = sarimaxResults()
-				if (currentResults && currentResults.predicted) {
-					;(window as any).initialPredictionData = currentResults.predicted
-					console.log("📊 Initial prediction data preserved for chart")
-					console.log("📊 Initial prediction sample:", currentResults.predicted.slice(0, 5).map(v => v.toFixed(4)))
-				}
-				
+				// Update results with retrained model
 				setSarimaxResults(result.results)
 				
 				// Store retrained prediction data for the chart
 				if (result.results.original && result.results.predicted) {
-					// Expose retrained data globally for the chart
 					;(window as any).retrainedPredictionData = result.results.predicted
 					console.log("✅ Model retrained successfully with selected variables")
-					console.log("📊 Retrained prediction data stored for chart")
-					console.log("📊 Retrained prediction sample:", result.results.predicted.slice(0, 5).map(v => v.toFixed(4)))
+					console.log("📊 Retrained prediction data stored for chart comparison")
 					
 					// Compare initial vs retrained predictions
 					if ((window as any).initialPredictionData) {
@@ -547,16 +543,22 @@ const KFGOMAnalysis = () => {
 						console.log("🔍 Comparing initial vs retrained predictions (first 5):")
 						for (let i = 0; i < Math.min(5, minLength); i++) {
 							const diff = Math.abs(initial[i] - retrained[i])
-							console.log(`  Step ${i + 1}:Original=${actual[i].toFixed(4)} ,Initial=${initial[i].toFixed(4)}, Retrained=${retrained[i].toFixed(4)}, Diff=${diff.toFixed(4)}`)
+							console.log(`  Step ${i + 1}: Original=${actual[i].toFixed(4)}, Initial=${initial[i].toFixed(4)}, Retrained=${retrained[i].toFixed(4)}, Diff=${diff.toFixed(4)}`)
 						}
 					}
+					
+					// Show success message with comparison info
+					const initialMSE = currentResults?.metrics?.mse || 'N/A'
+					const retrainedMSE = result.results.metrics?.mse || 'N/A'
+					
+
 				}
 			} else {
-				console.error("❌ Model retraining failed:", result.error)
+				console.error("❌ Retraining failed:", result.error)
 			}
 			
 		} catch (error) {
-			console.error("❌ Error retraining model:", error)
+			console.error("❌ Model retraining failed:", error)
 		}
 	}
 
@@ -635,8 +637,7 @@ const KFGOMAnalysis = () => {
 	 */
 	return (
 		<div style={{ height: "100%" }}>
-			{/* File Selection Section */}
-			<KFGOMFileSelector />
+			{/* File Selection Section - Moved to main dexterity analysis section */}
 			
 			<div class="plotCoefContainer">
 				<div class="plotTitle" id="kfgomTableTitle">
@@ -764,19 +765,28 @@ const KFGOMAnalysis = () => {
 										"font-size": "11px",
 										"font-weight": "bold"
 									}}
-									title="Retrain model with only the checked variables"
+									title="Retrain model using only the checked variables"
 								>
-									Retrain 
+									Retrain with Selected
 								</button>
 								{/* Show selected variables count */}
-								{(window as any).selectedJoints && (window as any).selectedJoints().size > 0 && (
+								{(window as any).selectedJoints && (window as any).selectedJoints().size > 0 ? (
 									<span style={{
 										"margin-left": "8px",
 										"font-size": "10px",
 										color: "#666",
 										"font-style": "italic"
 									}}>
-										({(window as any).selectedJoints().size} selected)
+										({(window as any).selectedJoints().size} checked)
+									</span>
+								) : (
+									<span style={{
+										"margin-left": "8px",
+										"font-size": "10px",
+										color: "#999",
+										"font-style": "italic"
+									}}>
+										(no variables checked)
 									</span>
 								)}
 							</div>
@@ -797,89 +807,138 @@ const KFGOMAnalysis = () => {
 							gap: '6px', 
 							"align-items": "center",
 							"flex-wrap": "wrap",
-							"justify-content": "flex-start"
+							"justify-content": "space-between",
+							width: "100%"
 						}}>
-							{/* MSE Card */}
-							<div style={{
-								background: '#007bff',
-								"border-radius": '3px',
-								padding: '3px 6px',
-								color: 'white',
-								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
-								"text-align": 'center',
-								display: 'inline-flex',
+							{/* Left side - Metrics */}
+							<div style={{ 
+								display: 'flex', 
+								gap: '6px', 
 								"align-items": "center",
-								gap: '3px',
-								"font-size": "10px",
-								"font-weight": "bold",
-								"min-width": "fit-content",
-								"white-space": "nowrap"
+								"flex-wrap": "wrap"
 							}}>
-								<span>MSE:</span>
-								<span>{sarimaxResults().metrics?.mse?.toFixed(4) || "N/A"}</span>
+								{/* MSE Card */}
+								<div style={{
+									background: '#007bff',
+									"border-radius": '3px',
+									padding: '3px 6px',
+									color: 'white',
+									"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+									"text-align": 'center',
+									display: 'inline-flex',
+									"align-items": "center",
+									gap: '3px',
+									"font-size": "10px",
+									"font-weight": "bold",
+									"min-width": "fit-content",
+									"white-space": "nowrap"
+								}}>
+									<span>MSE:</span>
+									<span>{sarimaxResults().metrics?.mse?.toFixed(4) || "N/A"}</span>
+								</div>
+
+								{/* Correlation Card */}
+								<div style={{
+									background: '#007bff',
+									"border-radius": '3px',
+									padding: '3px 6px',
+									color: 'white',
+									"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+									"text-align": 'center',
+									display: 'inline-flex',
+									"align-items": "center",
+									gap: '3px',
+									"font-size": "10px",
+									"font-weight": "bold",
+									"min-width": "fit-content",
+									"white-space": "nowrap"
+								}}>
+									<span>Corr:</span>
+									<span>{sarimaxResults().metrics?.correlation?.toFixed(4) || "N/A"}</span>
+								</div>
+
+								{/* RMSE Card */}
+								<div style={{
+									background: '#007bff',
+									"border-radius": '3px',
+									padding: '3px 6px',
+									color: 'white',
+									"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+									"text-align": 'center',
+									display: 'inline-flex',
+									"align-items": "center",
+									gap: '3px',
+									"font-size": "10px",
+									"font-weight": "bold",
+									"min-width": "fit-content",
+									"white-space": "nowrap"
+								}}>
+									<span>RMSE:</span>
+									<span>
+										{sarimaxResults().metrics?.rmse?.toFixed(4) || 
+										 (sarimaxResults().metrics?.mse ? Math.sqrt(sarimaxResults().metrics.mse).toFixed(4) : "N/A")}
+									</span>
+								</div>
+
+								{/* MAE Card */}
+								<div style={{
+									background: '#007bff',
+									"border-radius": '3px',
+									padding: '3px 6px',
+									color: 'white',
+									"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
+									"text-align": 'center',
+									display: 'inline-flex',
+									"align-items": "center",
+									gap: '3px',
+									"font-size": "10px",
+									"font-weight": "bold",
+									"min-width": "fit-content",
+									"white-space": "nowrap"
+								}}>
+									<span>MAE:</span>
+									<span>{sarimaxResults().metrics?.mae?.toFixed(4) || "N/A"}</span>
+								</div>
 							</div>
 
-							{/* Correlation Card */}
-							<div style={{
-								background: '#007bff',
-								"border-radius": '3px',
-								padding: '3px 6px',
-								color: 'white',
-								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
-								"text-align": 'center',
-								display: 'inline-flex',
-								"align-items": "center",
-								gap: '3px',
-								"font-size": "10px",
-								"font-weight": "bold",
-								"min-width": "fit-content",
-								"white-space": "nowrap"
+							{/* Right side - Action Buttons */}
+							<div style={{ 
+								display: 'flex', 
+								gap: '8px', 
+								"align-items": "center"
 							}}>
-								<span>Corr:</span>
-								<span>{sarimaxResults().metrics?.correlation?.toFixed(4) || "N/A"}</span>
-							</div>
-
-							{/* RMSE Card */}
-							<div style={{
-								background: '#007bff',
-								"border-radius": '3px',
-								padding: '3px 6px',
-								color: 'white',
-								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
-								"text-align": 'center',
-								display: 'inline-flex',
-								"align-items": "center",
-								gap: '3px',
-								"font-size": "10px",
-								"font-weight": "bold",
-								"min-width": "fit-content",
-								"white-space": "nowrap"
-							}}>
-								<span>RMSE:</span>
-								<span>
-									{sarimaxResults().metrics?.rmse?.toFixed(4) || 
-									 (sarimaxResults().metrics?.mse ? Math.sqrt(sarimaxResults().metrics.mse).toFixed(4) : "N/A")}
-								</span>
-							</div>
-
-							{/* MAE Card */}
-							<div style={{
-								background: '#007bff',
-								"border-radius": '3px',
-								padding: '3px 6px',
-								color: 'white',
-								"box-shadow": '0 1px 2px rgba(0,0,0,0.15)',
-								"text-align": 'center',
-								display: 'inline-flex',
-								"align-items": "center",
-								gap: '3px',
-								"font-size": "10px",
-								"font-weight": "bold",
-								"min-width": "fit-content",
-								"white-space": "nowrap"
-							}}>
-								<span>MAE:</span>
-								<span>{sarimaxResults().metrics?.mae?.toFixed(4) || "N/A"}</span>
+								<button
+									onClick={() => console.log("KF-GOM Analysis")}
+									style={{
+										padding: "4px 8px",
+										"background-color": "#28a745",
+										color: "white",
+										border: "none",
+										"border-radius": "3px",
+										cursor: "pointer",
+										"font-size": "11px",
+										"font-weight": "bold"
+									}}
+									title="Run KF-GOM Analysis"
+								>
+									Analyze
+								</button>
+								<button
+									onClick={() => console.log("Download KF-GOM Results")}
+									style={{
+										padding: "4px 8px",
+										"background-color": "#007bff",
+										color: "white",
+										border: "none",
+										"border-radius": "3px",
+										cursor: "pointer",
+										"font-size": "11px",
+										"font-weight": "bold"
+									}}
+									title="Download Analysis Results"
+								>
+									Download Results
+								</button>
 							</div>
 						</div>
 					</div>
