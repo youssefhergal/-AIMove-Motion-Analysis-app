@@ -303,9 +303,11 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 	// })
 
 	const resetButton = document.getElementById("resetButton")
-	resetButton.addEventListener("click", function () {
-		resetButtonFunc()
-	})
+	if (resetButton) {
+		resetButton.addEventListener("click", function () {
+			resetButtonFunc()
+		})
+	}
 
 	async function resetButtonFunc() {
 		data = [...dataSeriesUnmod]

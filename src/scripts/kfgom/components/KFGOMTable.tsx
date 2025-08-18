@@ -2,17 +2,87 @@ import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
 import { sarimaxResults, sarimaxConfig, kfgomFilters, setKfgomFilters, selectedAssumptionsIndex } from '../../store.js'
 import { myScene } from '../../myScene.js'
-import { selectGOMVariablesByAssumption, getGOMSummary } from '../utils/gomVariableSelector.js'
+import { gomSelector } from '../utils/gomVariableSelector'
 
 export default function KFGOMTable() {
     const [kfgomData, setKfgomData] = createSignal([])
     const [filteredData, setFilteredData] = createSignal([])
     const [gridApi, setGridApi] = createSignal(null)
     const [selectedJoints, setSelectedJoints] = createSignal(new Set())
-    const [gomFilteredData, setGomFilteredData] = createSignal([]) // New: GOM filtered data
-    const [gomSummary, setGomSummary] = createSignal({}) // New: GOM summary statistics
 
-    // Filter data based on significance
+    // Filter data based on GOM assumptions first, then significance
+    const filterDataByGOMAssumption = (data, assumptionIndex) => {
+        console.log('🔍 filterDataByGOMAssumption called with:', { assumptionIndex, dataLength: data.length })
+        console.log('🔍 Current selectedAssumptionsIndex:', selectedAssumptionsIndex())
+        
+        // Map GOM tab indices to actual assumption indices
+        // GOM tabs: 0="GOM", 2="Transitioning", 4="Intra-joint association", etc.
+        let actualAssumptionIndex = 0
+        
+        if (assumptionIndex === 0) {
+            // "GOM" tab - show all joints
+            actualAssumptionIndex = 0
+        } else if (assumptionIndex === 2) {
+            // "Transitioning" tab - apply transitioning filtering
+            actualAssumptionIndex = 2
+        } else if (assumptionIndex === 4) {
+            // "Intra-joint association" tab - apply bilateral filtering
+            actualAssumptionIndex = 3 // Bilateral (left + right, no center)
+        		} else if (assumptionIndex === 6) {
+			// "Inter-limb synergy" tab - apply inter-limb synergies filtering
+			actualAssumptionIndex = 4
+        } else if (assumptionIndex === 8) {
+            // "Serial intra-limb mediation" tab - show all joints for now
+            actualAssumptionIndex = 0
+        } else if (assumptionIndex === 10) {
+            // "Non-serial intra-limb mediation" tab - show all joints for now
+            actualAssumptionIndex = 0
+        } else if (assumptionIndex === 12) {
+            // "All assumptions statistics" tab - show all joints
+            actualAssumptionIndex = 0
+        }
+        
+        if (actualAssumptionIndex === 0) {
+            // All joints - no filtering needed
+            console.log('✅ GOM Assumption: All joints selected')
+            return data
+        }
+        
+        // Extract joint names from the data
+        const jointNames = data.map(item => item.jointId)
+        console.log('🔍 Joint names for GOM filtering:', jointNames.slice(0, 10))
+        
+        		// Apply GOM assumption filtering (combine target joint + axis for Transitioning)
+		// Use the actual SARIMAX results to get the current target, not the config
+		const results = sarimaxResults()
+		let targetCombined = 'Hips_Xrotation' // fallback
+		
+		if (results && results.targetJoint && results.targetAxis) {
+			targetCombined = `${results.targetJoint}_${results.targetAxis}`
+			console.log(`🔍 Using target from SARIMAX results: ${targetCombined}`)
+		} else {
+			const cfg = sarimaxConfig()
+			targetCombined = cfg ? `${cfg.targetJoint}_${cfg.targetAxis}` : 'Hips_Xrotation'
+			console.log(`🔍 Using target from config (fallback): ${targetCombined}`)
+		}
+        const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
+        console.log('🔍 GOM filtered joint names:', selectedJointNames.slice(0, 10))
+        
+        // Filter the data to only include selected joints
+        const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
+        
+        console.log('🔍 GOM filter result:', {
+            assumptionIndex,
+            actualAssumptionIndex,
+            originalCount: data.length,
+            gomFilteredCount: gomFiltered.length,
+            sampleGomFiltered: gomFiltered.slice(0, 3).map(v => ({ jointId: v.jointId, significance: v.significance }))
+        })
+        
+        return gomFiltered
+    }
+
+    // Filter data based on significance only
     const filterDataBySignificance = (data, significanceFilter) => {
         console.log('🔍 filterDataBySignificance called with:', { significanceFilter, dataLength: data.length })
         
@@ -50,33 +120,6 @@ export default function KFGOMTable() {
             originalCount: data.length, 
             filteredCount: filtered.length,
             sampleFiltered: filtered.slice(0, 3).map(v => ({ jointId: v.jointId, significance: v.significance }))
-        })
-        
-        return filtered
-    }
-
-    // NEW: Filter data based on GOM assumptions
-    const filterDataByGOMAssumption = (data, assumptionIndex) => {
-        if (!data || data.length === 0) {
-            console.log('🔍 No data to filter by GOM assumption')
-            return []
-        }
-
-        // Extract channel names from the data
-        const channels = data.map(item => item.jointId)
-        
-        // Get GOM filtered channels
-        const gomFilteredChannels = selectGOMVariablesByAssumption(channels, assumptionIndex)
-        
-        // Filter the data to only include GOM-selected variables
-        const filtered = data.filter(item => gomFilteredChannels.includes(item.jointId))
-        
-        console.log('🔍 GOM assumption filter result:', {
-            assumptionIndex,
-            originalCount: data.length,
-            gomFilteredCount: gomFilteredChannels.length,
-            finalFilteredCount: filtered.length,
-            sampleFiltered: filtered.slice(0, 3).map(v => v.jointId)
         })
         
         return filtered
@@ -258,47 +301,74 @@ export default function KFGOMTable() {
         }
     })
 
-    // Apply significance filter when data or filter changes
+    // Apply GOM assumption and significance filters when data, filters, or assumption changes
     createEffect(() => {
         const data = kfgomData()
         const filters = kfgomFilters()
         const assumptionIndex = selectedAssumptionsIndex()
         
+        // Explicitly track the assumption index to ensure the effect runs when it changes
+        console.log('📊 Current assumption index:', assumptionIndex)
+        
+        console.log('🔄 Effect triggered with:', { 
+            hasData: !!data, 
+            dataLength: data?.length, 
+            assumptionIndex, 
+            significance: filters.significance 
+        })
+        
         if (data && data.length > 0) {
-            // Step 1: Apply GOM assumption filter first
-            let gomFiltered = data
-            if (assumptionIndex !== null && assumptionIndex !== 2) { // Skip if "All assumptions statistics"
-                gomFiltered = filterDataByGOMAssumption(data, assumptionIndex)
-                console.log('🔍 GOM assumption filter applied:', {
+            console.log('🔍 Applying filters:', { assumptionIndex, significance: filters.significance, dataLength: data.length })
+            
+            // Step 1: Apply GOM assumption filtering
+            const gomFilteredData = filterDataByGOMAssumption(data, assumptionIndex)
+            console.log('🔍 After GOM filtering:', { 
+                gomFilteredCount: gomFilteredData.length,
+                originalCount: data.length,
+                isFilteringWorking: gomFilteredData.length !== data.length
+            })
+            
+            // Step 2: Apply significance filter on top of GOM filtered data
+            let finalFilteredData
+            let selectedJointIds
+            
+            if (filters.significance === 'all') {
+                // Show all variables after GOM filter but don't select any
+                finalFilteredData = gomFilteredData
+                selectedJointIds = new Set() // No variables selected
+                console.log('🔍 Showing GOM-filtered variables with no selection:', {
                     assumptionIndex,
+                    gomFilteredCount: gomFilteredData.length,
+                    finalFilteredCount: finalFilteredData.length,
+                    selectedCount: 0
+                })
+            } else {
+                // Show only significant/non-significant variables from GOM filtered data
+                finalFilteredData = filterDataBySignificance(gomFilteredData, filters.significance)
+                selectedJointIds = new Set(finalFilteredData.map(item => item.jointId))
+                console.log('🔍 Showing GOM + significance filtered variables:', {
+                    assumptionIndex,
+                    filterType: filters.significance,
                     originalCount: data.length,
-                    gomFilteredCount: gomFiltered.length
+                    gomFilteredCount: gomFilteredData.length,
+                    finalFilteredCount: finalFilteredData.length,
+                    selectedCount: selectedJointIds.size
                 })
             }
             
-            // Step 2: Apply significance filter on top of GOM filtered data
-            if (filters.significance === 'all') {
-                // Show all GOM-filtered variables but don't select any
-                setFilteredData(gomFiltered)
-                setSelectedJoints(new Set()) // No variables selected
-                console.log('🔍 Showing all GOM-filtered variables with no selection')
-            } else {
-                // Show only significant/non-significant variables from GOM-filtered data
-                const filtered = filterDataBySignificance(gomFiltered, filters.significance)
-                setFilteredData(filtered) // Only show filtered variables
-                const filteredJointIds = filtered.map(item => item.jointId)
-                setSelectedJoints(new Set(filteredJointIds)) // Select all filtered variables
-                console.log('🔍 Showing GOM + significance filtered variables with all selected:', {
-                    assumptionIndex,
-                    filterType: filters.significance,
-                    gomFilteredCount: gomFiltered.length,
-                    finalFilteredCount: filtered.length,
-                    selectedCount: filteredJointIds.length
-                })
+            // Set the final filtered data and selected joints
+            setFilteredData(finalFilteredData)
+            setSelectedJoints(selectedJointIds)
+            
+            // Update the AG-Grid with the new filtered data
+            const api = gridApi()
+            if (api) {
+                api.setGridOption('rowData', finalFilteredData)
+                console.log('🔄 AG-Grid updated with filtered data:', finalFilteredData.length, 'rows')
             }
             
             // Note: Filter changes don't auto-retrain - user must click "Retrain" button
-            console.log('ℹ️ Variables filtered by GOM + significance. Click "Retrain" to apply changes.')
+            console.log('ℹ️ Variables filtered by GOM assumption + significance. Click "Retrain" to apply changes.')
         }
     })
 
@@ -323,29 +393,9 @@ export default function KFGOMTable() {
         return results.metrics
     }
 
-    // Get current assumption name for display
-    const getCurrentAssumptionName = () => {
-        const assumptionIndex = selectedAssumptionsIndex()
-        const assumptionNames = [
-            'GOM',
-            '=',
-            'Transitioning', 
-            '+',
-            'Intra-joint association',
-            '+',
-            'Inter-limb synergy',
-            '+',
-            'Serial intra-limb mediation',
-            '+',
-            'Non-serial intra-limb mediation',
-            'All assumptions statistics'
-        ]
-        return assumptionNames[assumptionIndex] || 'Unknown'
-    }
-
     return (
         <div class="plotTableContainer">
-            {/* GOM Status Display */}
+            {/* Basic Table Info */}
             <div style={{
                 padding: "10px",
                 margin: "10px 0",
@@ -356,28 +406,45 @@ export default function KFGOMTable() {
             }}>
                 <div style={{ display: "flex", "justify-content": "space-between", "align-items": "center" }}>
                     <div>
-                        <strong>GOM Assumption:</strong> {getCurrentAssumptionName()}
+                        <strong>Table Info:</strong> Variables from SARIMAX Analysis
                     </div>
                     <div style={{ display: "flex", gap: "15px" }}>
                         <span>
                             <strong>Total Variables:</strong> {kfgomData().length}
                         </span>
                         <span>
-                            <strong>GOM Filtered:</strong> {gomFilteredData().length}
+                            <strong>Filtered:</strong> {filteredData().length}
                         </span>
                         <span>
                             <strong>Currently Selected:</strong> {selectedJoints().size}
                         </span>
                     </div>
                 </div>
-                {gomFilteredData().length > 0 && (
+                {filteredData().length > 0 && (
                     <div style={{ 
                         "margin-top": "8px", 
                         "font-size": "12px", 
                         color: "#666",
                         "font-style": "italic"
                     }}>
-                        💡 Variables automatically filtered by GOM assumption. Click "Retrain" to use selected variables.
+                        <div style={{ "margin-bottom": "4px" }}>
+                            <strong>GOM Assumption:</strong> {(() => {
+                                const assumptionNames = [
+                                    'GOM Overview',
+                                    'Transitioning',
+                                    'Intra-joint Association',
+                                    'Inter-limb Synergy',
+                                    'Serial Intra-limb Mediation',
+                                    'Non-serial Intra-limb Mediation',
+                                    'All Assumptions Statistics'
+                                ]
+                                const index = selectedAssumptionsIndex()
+                                return assumptionNames[Math.floor(index / 2)] || 'Unknown'
+                            })()}
+                        </div>
+                        <div>
+                            Use significance filter to show specific variables. Click "Retrain" to use selected variables.
+                        </div>
                     </div>
                 )}
             </div>

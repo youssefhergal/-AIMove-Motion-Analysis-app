@@ -177,6 +177,12 @@ async function onSelectionChangedTable() {
 }
 
 async function createPlotSeries() {
+	// Check if df_coef exists before proceeding
+	if (!df_coef()) {
+		console.warn('⚠️ df_coef is not available, skipping plot creation')
+		return
+	}
+
 	let dataSeriesUnmodified = await df_coef().array(selectedRow())
 
 	let dataSeriesModified = await df_coef_mod().array(selectedRow())
