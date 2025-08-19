@@ -66,7 +66,7 @@ export class GOMVariableSelector {
 		
 		// Keep only variables that have the SAME joint name but DIFFERENT axes
 		// This excludes the target joint and its lags (same joint + same axis)
-		return jointNames.filter(name => {
+		const relevantVariables = jointNames.filter(name => {
 			// Must contain the base joint name
 			if (!name.includes(baseJoint)) {
 				return false
@@ -79,6 +79,10 @@ export class GOMVariableSelector {
 			
 			return true
 		})
+		
+		console.log('  🔍 Intra-joint Filter:', { baseJoint, excludedAxis: targetAxis, count: relevantVariables.length })
+		
+		return relevantVariables
 	}
 
 	/**
@@ -98,6 +102,7 @@ export class GOMVariableSelector {
 		}
 		
 		// Extract the base joint name and axis from the target
+		// Example: "RightShoulder_Xrotation" -> baseJoint: "Shoulder", axis: "Xrotation"
 		const targetParts = targetJoint.split('_')
 		if (targetParts.length < 2) return jointNames
 		
@@ -112,30 +117,32 @@ export class GOMVariableSelector {
 		// Find the opposite side of the SAME joint type with the same axis
 		const oppositeSide = targetSide === 'left' ? 'right' : 'left'
 		
-		return jointNames.filter(name => {
+		const oppositeSideJoints = jointNames.filter(name => {
 			// Must start with the opposite side prefix
 			if (!name.toLowerCase().startsWith(oppositeSide.toLowerCase())) {
 				return false
 			}
 			
-			// Must contain the EXACT base joint name (not partial matches)
-			// For "LeftArm" -> baseJoint = "Arm", we want "RightArm" NOT "RightForeArm"
+			// Must contain the base joint name (use simpler matching)
+			// Check if the name contains the base joint after removing the side prefix
 			const nameWithoutSide = name.toLowerCase().replace(new RegExp(`^${oppositeSide.toLowerCase()}`, 'i'), '')
-			
-			// Check if the base joint appears as a complete word in the name
-			// This prevents "Arm" from matching "ForeArm" or "Arm2"
-			const baseJointLower = baseJoint.toLowerCase()
-			const nameWords = nameWithoutSide.split(/[_\s]/) // Split by underscore or space
-			
-			// Look for exact word match
-			const hasExactMatch = nameWords.some(word => word === baseJointLower)
-			if (!hasExactMatch) {
+			if (!nameWithoutSide.includes(baseJoint.toLowerCase())) {
 				return false
 			}
 			
 			// Must contain the same axis
 			return name.toLowerCase().includes(axis.toLowerCase())
 		})
+		
+		console.log('  🔍 Inter-limb Filter:', { 
+			targetSide, 
+			baseJoint, 
+			axis, 
+			oppositeSide, 
+			count: oppositeSideJoints.length 
+		})
+		
+		return oppositeSideJoints
 	}
 
 	/**
@@ -163,7 +170,7 @@ export class GOMVariableSelector {
 		
 		// Find all variables that match the SAME base joint and axis
 		// This represents the autoregressive effect: same joint-axis at different time lags
-		return joints.filter(joint => {
+		const relevantJoints = joints.filter(joint => {
 			const jointName = joint.name
 			
 			// Check if this joint name contains the base joint
@@ -174,6 +181,10 @@ export class GOMVariableSelector {
 			// Check if this joint name contains the same axis
 			return jointName.includes(axis)
 		}).map(joint => joint.name)
+		
+		console.log('  🔍 Transitioning Filter:', { baseJoint, axis, count: relevantJoints.length })
+		
+		return relevantJoints
 	}
 
 	/**
@@ -207,6 +218,13 @@ export class GOMVariableSelector {
 			default:
 				result = jointNames
 		}
+		
+		console.log('🔍 GOM Assumption Applied:', {
+			assumption: assumptionIndex,
+			target: targetJoint || 'None',
+			input: jointNames.length,
+			output: result.length
+		})
 		
 		return result
 	}

@@ -466,10 +466,12 @@ const KFGOMAnalysis = () => {
 			
 			if (selectedJointArray.length === 0) {
 				console.warn('⚠️ No variables selected for retraining')
+				// Show user-friendly message instead of just returning
+				alert('No variables are currently selected. Please:\n\n1. Use the significance filter to show specific variables\n2. Check the variables you want to include\n3. Then click "Retrain with Selected"')
 				return
 			}
 			
-			console.log('📊 Selected variables for retraining:', selectedJointArray)
+			console.log('📊 Retraining with variables:', selectedJointArray.length)
 			
 			// Check if we have existing data and analyzer
 			if (!analyzer() || !trainFileBones() || !testFileBones()) {

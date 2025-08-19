@@ -12,9 +12,6 @@ export default function KFGOMTable() {
 
     // Filter data based on GOM assumptions first, then significance
     const filterDataByGOMAssumption = (data, assumptionIndex) => {
-        console.log('🔍 filterDataByGOMAssumption called with:', { assumptionIndex, dataLength: data.length })
-        console.log('🔍 Current selectedAssumptionsIndex:', selectedAssumptionsIndex())
-        
         // Map GOM tab indices to actual assumption indices
         // GOM tabs: 0="GOM", 2="Transitioning", 4="Intra-joint association", etc.
         let actualAssumptionIndex = 0
@@ -44,39 +41,34 @@ export default function KFGOMTable() {
         
         if (actualAssumptionIndex === 0) {
             // All joints - no filtering needed
-            console.log('✅ GOM Assumption: All joints selected')
             return data
         }
         
         // Extract joint names from the data
         const jointNames = data.map(item => item.jointId)
-        console.log('🔍 Joint names for GOM filtering:', jointNames.slice(0, 10))
         
-        		// Apply GOM assumption filtering (combine target joint + axis for Transitioning)
-		// Use the actual SARIMAX results to get the current target, not the config
-		const results = sarimaxResults()
-		let targetCombined = 'Hips_Xrotation' // fallback
-		
-		if (results && results.targetJoint && results.targetAxis) {
-			targetCombined = `${results.targetJoint}_${results.targetAxis}`
-			console.log(`🔍 Using target from SARIMAX results: ${targetCombined}`)
-		} else {
-			const cfg = sarimaxConfig()
-			targetCombined = cfg ? `${cfg.targetJoint}_${cfg.targetAxis}` : 'Hips_Xrotation'
-			console.log(`🔍 Using target from config (fallback): ${targetCombined}`)
-		}
+        // Apply GOM assumption filtering (combine target joint + axis for Transitioning)
+        // Use the actual SARIMAX results to get the current target, not the config
+        const results = sarimaxResults()
+        let targetCombined = 'Hips_Xrotation' // fallback
+        
+        if (results && results.targetJoint && results.targetAxis) {
+            targetCombined = `${results.targetJoint}_${results.targetAxis}`
+        } else {
+            const cfg = sarimaxConfig()
+            targetCombined = cfg ? `${cfg.targetJoint}_${cfg.targetAxis}` : 'Hips_Xrotation'
+        }
+        
         const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
-        console.log('🔍 GOM filtered joint names:', selectedJointNames.slice(0, 10))
         
         // Filter the data to only include selected joints
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
         
-        console.log('🔍 GOM filter result:', {
-            assumptionIndex,
-            actualAssumptionIndex,
-            originalCount: data.length,
-            gomFilteredCount: gomFiltered.length,
-            sampleGomFiltered: gomFiltered.slice(0, 3).map(v => ({ jointId: v.jointId, significance: v.significance }))
+        console.log('🔍 GOM Filter Applied:', {
+            assumption: assumptionIndex,
+            target: targetCombined,
+            original: data.length,
+            filtered: gomFiltered.length
         })
         
         return gomFiltered
@@ -84,42 +76,24 @@ export default function KFGOMTable() {
 
     // Filter data based on significance only
     const filterDataBySignificance = (data, significanceFilter) => {
-        console.log('🔍 filterDataBySignificance called with:', { significanceFilter, dataLength: data.length })
-        
         if (significanceFilter === 'all') {
-            console.log('🔍 Returning all data:', data.length)
             return data
         }
         
-        // Count significance levels for debugging
-        const significanceCounts = {
-            '***': data.filter(item => item.significance === '***').length,
-            '**': data.filter(item => item.significance === '**').length,
-            '*': data.filter(item => item.significance === '*').length,
-            '.': data.filter(item => item.significance === '.').length,
-            '~': data.filter(item => item.significance === '~').length,
-            'empty': data.filter(item => item.significance === '' || item.significance === undefined).length
-        }
-        console.log('🔍 Significance distribution:', significanceCounts)
-        
+        // Filter by significance level
         const filtered = data.filter(item => {
-            // Define what constitutes "significant" (including marginal significance)
-            const isSignificant = item.significance === '***' || item.significance === '**' || item.significance === '*' || item.significance === '.' || item.significance === '~'
-            
             if (significanceFilter === 'significant') {
-                return isSignificant // Return only significant variables
+                return item.significance === '***' || item.significance === '**' || item.significance === '*'
             } else if (significanceFilter === 'non-significant') {
-                return !isSignificant // Return only non-significant variables
+                return item.significance === '.' || item.significance === '~'
             }
-            
-            return false // Should never reach here
+            return true
         })
         
-        console.log('🔍 Filter result:', { 
-            filterType: significanceFilter, 
-            originalCount: data.length, 
-            filteredCount: filtered.length,
-            sampleFiltered: filtered.slice(0, 3).map(v => ({ jointId: v.jointId, significance: v.significance }))
+        console.log('🔍 Significance Filter Applied:', {
+            filter: significanceFilter,
+            original: data.length,
+            filtered: filtered.length
         })
         
         return filtered
@@ -194,13 +168,22 @@ export default function KFGOMTable() {
         (window as any).toggleJointSelection = (jointId: string, checked: boolean) => {
             const current = selectedJoints()
             const newSet = new Set(current)
+            // Update selectedJoints state
             if (checked) {
                 newSet.add(jointId)
             } else {
                 newSet.delete(jointId)
             }
             setSelectedJoints(newSet)
-            console.log('🔍 Joint selection updated:', { jointId, checked, selectedCount: newSet.size })
+            
+            // Expose selectedJoints globally for retraining
+            ;(window as any).selectedJoints = () => newSet
+            
+            console.log('🔍 Variable Selection:', { 
+                jointId, 
+                action: checked ? 'selected' : 'deselected', 
+                totalSelected: newSet.size 
+            })
         }
         
         // Expose selectedJoints globally for retraining
@@ -280,23 +263,15 @@ export default function KFGOMTable() {
     // Update data when SARIMAX results change
     createEffect(() => {
         const results = sarimaxResults()
-        console.log('🔄 SARIMAX results changed in table:', {
-            hasResults: !!results,
-            resultsKeys: results ? Object.keys(results) : [],
-            hasModelSummary: !!results?.modelSummary,
-            modelSummaryKeys: results?.modelSummary ? Object.keys(results.modelSummary) : []
-        })
         
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
             setKfgomData(tableData)
-            console.log('📊 Table data updated:', {
-                tableDataLength: tableData.length,
-                sampleData: tableData.slice(0, 3)
+            console.log('📊 SARIMAX Results Loaded:', {
+                target: `${results.targetJoint}_${results.targetAxis}`,
+                variables: tableData.length
             })
-            // Don't set filtered data here - let the filter effect handle it
         } else {
-            console.log('⚠️ No SARIMAX results available for table')
             setKfgomData([])
         }
     })
@@ -307,26 +282,9 @@ export default function KFGOMTable() {
         const filters = kfgomFilters()
         const assumptionIndex = selectedAssumptionsIndex()
         
-        // Explicitly track the assumption index to ensure the effect runs when it changes
-        console.log('📊 Current assumption index:', assumptionIndex)
-        
-        console.log('🔄 Effect triggered with:', { 
-            hasData: !!data, 
-            dataLength: data?.length, 
-            assumptionIndex, 
-            significance: filters.significance 
-        })
-        
         if (data && data.length > 0) {
-            console.log('🔍 Applying filters:', { assumptionIndex, significance: filters.significance, dataLength: data.length })
-            
             // Step 1: Apply GOM assumption filtering
             const gomFilteredData = filterDataByGOMAssumption(data, assumptionIndex)
-            console.log('🔍 After GOM filtering:', { 
-                gomFilteredCount: gomFilteredData.length,
-                originalCount: data.length,
-                isFilteringWorking: gomFilteredData.length !== data.length
-            })
             
             // Step 2: Apply significance filter on top of GOM filtered data
             let finalFilteredData
@@ -336,24 +294,10 @@ export default function KFGOMTable() {
                 // Show all variables after GOM filter but don't select any
                 finalFilteredData = gomFilteredData
                 selectedJointIds = new Set() // No variables selected
-                console.log('🔍 Showing GOM-filtered variables with no selection:', {
-                    assumptionIndex,
-                    gomFilteredCount: gomFilteredData.length,
-                    finalFilteredCount: finalFilteredData.length,
-                    selectedCount: 0
-                })
             } else {
                 // Show only significant/non-significant variables from GOM filtered data
                 finalFilteredData = filterDataBySignificance(gomFilteredData, filters.significance)
                 selectedJointIds = new Set(finalFilteredData.map(item => item.jointId))
-                console.log('🔍 Showing GOM + significance filtered variables:', {
-                    assumptionIndex,
-                    filterType: filters.significance,
-                    originalCount: data.length,
-                    gomFilteredCount: gomFilteredData.length,
-                    finalFilteredCount: finalFilteredData.length,
-                    selectedCount: selectedJointIds.size
-                })
             }
             
             // Set the final filtered data and selected joints
@@ -364,11 +308,14 @@ export default function KFGOMTable() {
             const api = gridApi()
             if (api) {
                 api.setGridOption('rowData', finalFilteredData)
-                console.log('🔄 AG-Grid updated with filtered data:', finalFilteredData.length, 'rows')
+                console.log('🔄 Table Updated:', {
+                    assumption: assumptionIndex,
+                    significance: filters.significance,
+                    total: data.length,
+                    filtered: finalFilteredData.length,
+                    selected: selectedJointIds.size
+                })
             }
-            
-            // Note: Filter changes don't auto-retrain - user must click "Retrain" button
-            console.log('ℹ️ Variables filtered by GOM assumption + significance. Click "Retrain" to apply changes.')
         }
     })
 
@@ -380,7 +327,6 @@ export default function KFGOMTable() {
         if (api) {
             // Force refresh of all cells to update checkboxes
             api.refreshCells({ force: true })
-            console.log('🔄 Grid cells refreshed due to selection change:', selected.size)
         }
     })
 
