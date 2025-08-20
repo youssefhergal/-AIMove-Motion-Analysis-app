@@ -75,6 +75,7 @@ The Variable Selection feature allows users to select specific variables from SA
 - **`applyTransitioningAssumption()`** - Autoregressive filtering
 - **`applyIntraJointXY()`** - Same joint, different axes
 - **`applyInterLimbSynergies()`** - Opposite side, same joint type
+- **`applySerialMediation()`** - Neighboring joints on same side with same axis (flexible naming)
 
 ### **4. store.js**
 - **`selectedAssumptionsIndex`** - Active GOM tab (0, 2, 4, 6, 8, 10, 12)
@@ -93,7 +94,7 @@ The Variable Selection feature allows users to select specific variables from SA
 | 2 | Transitioning | 2 | `applyTransitioningAssumption` | Same joint-axis (autoregressive) |
 | 4 | Intra-joint association | 3 | `applyIntraJointXY` | Same joint, different axes |
 | 6 | Inter-limb synergy | 4 | `applyInterLimbSynergies` | Opposite side, same joint type |
-| 8 | Serial intra-limb mediation | 0 | None | Show all joints (not implemented) |
+| 8 | Serial intra-limb mediation | 5 | `applySerialMediation` | Neighboring joints on same side with same axis (flexible naming) |
 | 10 | Non-serial intra-limb mediation | 0 | None | Show all joints (not implemented) |
 | 12 | All assumptions statistics | 0 | None | Show all joints (not implemented) |
 

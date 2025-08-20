@@ -1,9 +1,23 @@
 import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
-import { sarimaxResults, sarimaxConfig, kfgomFilters, setKfgomFilters, selectedAssumptionsIndex } from '../../store.js'
-import { myScene } from '../../myScene.js'
+import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex } from '../../store.js'
 import { gomSelector } from '../utils/gomVariableSelector'
 
+/**
+ * KFGOM Table Component
+ * 
+ * Displays SARIMAX analysis results in an interactive AG-Grid table.
+ * 
+ * ✅ FEATURES:
+ * - AG-Grid built-in multi-row selection with checkboxes
+ * - Header checkbox for select all/deselect all
+ * - Shift+Click for range selection
+ * - GOM assumption filtering with significance filtering
+ * - Real-time selection state tracking
+ * - Integration with retraining functionality
+ * 
+ * @author youssef hergal
+ */
 export default function KFGOMTable() {
     const [kfgomData, setKfgomData] = createSignal([])
     const [filteredData, setFilteredData] = createSignal([])
@@ -12,45 +26,31 @@ export default function KFGOMTable() {
 
     // Filter data based on GOM assumptions first, then significance
     const filterDataByGOMAssumption = (data, assumptionIndex) => {
-        // Map GOM tab indices to actual assumption indices
-        // GOM tabs: 0="GOM", 2="Transitioning", 4="Intra-joint association", etc.
         let actualAssumptionIndex = 0
         
         if (assumptionIndex === 0) {
-            // "GOM" tab - show all joints
             actualAssumptionIndex = 0
         } else if (assumptionIndex === 2) {
-            // "Transitioning" tab - apply transitioning filtering
             actualAssumptionIndex = 2
         } else if (assumptionIndex === 4) {
-            // "Intra-joint association" tab - apply bilateral filtering
-            actualAssumptionIndex = 3 // Bilateral (left + right, no center)
-        		} else if (assumptionIndex === 6) {
-			// "Inter-limb synergy" tab - apply inter-limb synergies filtering
-			actualAssumptionIndex = 4
+            actualAssumptionIndex = 3
+        } else if (assumptionIndex === 6) {
+            actualAssumptionIndex = 4
         } else if (assumptionIndex === 8) {
-            // "Serial intra-limb mediation" tab - show all joints for now
-            actualAssumptionIndex = 0
+            actualAssumptionIndex = 5
         } else if (assumptionIndex === 10) {
-            // "Non-serial intra-limb mediation" tab - show all joints for now
             actualAssumptionIndex = 0
         } else if (assumptionIndex === 12) {
-            // "All assumptions statistics" tab - show all joints
             actualAssumptionIndex = 0
         }
         
         if (actualAssumptionIndex === 0) {
-            // All joints - no filtering needed
             return data
         }
         
-        // Extract joint names from the data
         const jointNames = data.map(item => item.jointId)
-        
-        // Apply GOM assumption filtering (combine target joint + axis for Transitioning)
-        // Use the actual SARIMAX results to get the current target, not the config
         const results = sarimaxResults()
-        let targetCombined = 'Hips_Xrotation' // fallback
+        let targetCombined = 'Hips_Xrotation'
         
         if (results && results.targetJoint && results.targetAxis) {
             targetCombined = `${results.targetJoint}_${results.targetAxis}`
@@ -60,8 +60,6 @@ export default function KFGOMTable() {
         }
         
         const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
-        
-        // Filter the data to only include selected joints
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
         
         console.log('🔍 GOM Filter Applied:', {
@@ -80,7 +78,6 @@ export default function KFGOMTable() {
             return data
         }
         
-        // Filter by significance level
         const filtered = data.filter(item => {
             if (significanceFilter === 'significant') {
                 return item.significance === '***' || item.significance === '**' || item.significance === '*'
@@ -101,14 +98,6 @@ export default function KFGOMTable() {
 
     // Convert SARIMAX results to table data format
     const convertSARIMAXToTableData = (results) => {
-        console.log('🔍 Converting SARIMAX results to table data:', {
-            hasResults: !!results,
-            hasModelSummary: !!results?.modelSummary,
-            hasVariables: !!results?.modelSummary?.variables,
-            variablesLength: results?.modelSummary?.variables?.length || 0,
-            sampleVariables: results?.modelSummary?.variables?.slice(0, 3) || []
-        })
-        
         if (!results || !results.modelSummary || !results.modelSummary.variables) {
             console.warn('⚠️ No model summary variables found')
             return []
@@ -124,86 +113,35 @@ export default function KFGOMTable() {
             selected: false
         }))
         
-        // Log p-value distribution for debugging
-        const pValueRanges = {
-            'p < 0.001': tableData.filter(v => v.pValue < 0.001).length,
-            'p < 0.01': tableData.filter(v => v.pValue < 0.01).length,
-            'p < 0.05': tableData.filter(v => v.pValue < 0.05).length,
-            'p < 0.1': tableData.filter(v => v.pValue < 0.1).length,
-            'p < 0.2': tableData.filter(v => v.pValue < 0.2).length,
-            'p >= 0.2': tableData.filter(v => v.pValue >= 0.2).length
-        }
-        console.log('📊 P-value distribution:', pValueRanges)
-        
-        console.log('✅ Converted table data:', {
-            tableDataLength: tableData.length,
-            sampleTableData: tableData.slice(0, 3)
-        })
-        
         return tableData
     }
 
     // Cell renderer for significance with color coding
     const significanceCellRenderer = (params) => {
         const isSignificant = params.value === '***' || params.value === '**' || params.value === '*'
-        const color = isSignificant ? '#4CAF50' : '#F44336' // Green for significant, Red for not significant
-        const backgroundColor = isSignificant ? '#E8F5E8' : '#FFEBEE' // Light green/red background
+        const color = isSignificant ? '#4CAF50' : '#F44336'
+        const backgroundColor = isSignificant ? '#E8F5E8' : '#FFEBEE'
         return `<span style="color: ${color}; font-weight: bold; background-color: ${backgroundColor}; padding: 2px 6px; border-radius: 3px;">${params.value}</span>`
     }
 
-    // Cell renderer for joint ID with checkbox
+    // Cell renderer for joint ID (simplified - no custom checkboxes)
     const jointIdCellRenderer = (params) => {
-        // Check if this joint is in the selectedJoints Set
-        const isSelected = selectedJoints().has(params.data.jointId)
-        const checked = isSelected ? 'checked' : ''
-        
-        return `<div style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" ${checked} onchange="window.toggleJointSelection('${params.data.jointId}', this.checked)" style="margin: 0;" />
-            <span>${params.value}</span>
-        </div>`
+        return `<span>${params.value}</span>`
     }
 
-    // Add global function for checkbox handling
-    if (typeof window !== 'undefined') {
-        (window as any).toggleJointSelection = (jointId: string, checked: boolean) => {
-            const current = selectedJoints()
-            const newSet = new Set(current)
-            // Update selectedJoints state
-            if (checked) {
-                newSet.add(jointId)
-            } else {
-                newSet.delete(jointId)
-            }
-            setSelectedJoints(newSet)
-            
-            // Expose selectedJoints globally for retraining
-            ;(window as any).selectedJoints = () => newSet
-            
-            console.log('🔍 Variable Selection:', { 
-                jointId, 
-                action: checked ? 'selected' : 'deselected', 
-                totalSelected: newSet.size 
-            })
-        }
-        
-        // Expose selectedJoints globally for retraining
-        (window as any).selectedJoints = selectedJoints
-    }
+    // ✅ REMOVED: Custom checkbox handling - now using AG-Grid's built-in selection
 
     onMount(() => {
-        // Initialize with SARIMAX results if available, otherwise empty array
         const results = sarimaxResults()
         
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
             setKfgomData(tableData)
-            // Don't set filtered data here - let the filter effect handle it
         } else {
             setKfgomData([])
             setFilteredData([])
         }
 
-        // Create AG-Grid
         const gridOptions = {
             columnDefs: [
                 { field: 'id', headerName: 'ID', width: 80, sortable: true, filter: true },
@@ -213,7 +151,11 @@ export default function KFGOMTable() {
                     width: 220, 
                     sortable: true, 
                     filter: true,
-                    cellRenderer: jointIdCellRenderer
+                    cellRenderer: jointIdCellRenderer,
+                    // ✅ NEW: Add checkbox selection to Joint ID column
+                    checkboxSelection: true,
+                    headerCheckboxSelection: true,
+                    headerCheckboxSelectionFilteredOnly: true
                 },
                 { field: 'jointName', headerName: 'Joint Name', width: 200, sortable: true, filter: true },
                 { field: 'coefficient', headerName: 'Coefficient', width: 150, sortable: true, filter: true },
@@ -227,6 +169,12 @@ export default function KFGOMTable() {
                     cellRenderer: significanceCellRenderer
                 }
             ],
+            // ✅ NEW: Enable AG-Grid's built-in multi-row selection with checkboxes
+            rowSelection: 'multiple' as const,
+            rowMultiSelectWithClick: true,
+            suppressRowClickSelection: true,
+            headerCheckboxSelection: true,
+            headerCheckboxSelectionFilteredOnly: true,
             rowData: filteredData(),
             defaultColDef: {
                 resizable: true,
@@ -241,12 +189,27 @@ export default function KFGOMTable() {
             domLayout: 'normal' as const,
             onGridReady: (params) => {
                 setGridApi(params.api)
+                
+                // ✅ NEW: Listen for AG-Grid's built-in selection changes
+                params.api.addEventListener('selectionChanged', () => {
+                    const selectedRows = params.api.getSelectedRows()
+                    const selectedJointIds = new Set(selectedRows.map(row => row.jointId))
+                    setSelectedJoints(selectedJointIds)
+                    
+                    // Update global selectedJoints for retraining
+                    ;(window as any).selectedJoints = () => selectedJointIds
+                    
+                    console.log('🔍 AG-Grid Selection Changed:', {
+                        selectedCount: selectedJointIds.size,
+                        totalRows: params.api.getDisplayedRowCount()
+                    })
+                })
             }
         }
 
         const gridDiv = document.getElementById('kfgom-table')
         if (gridDiv) {
-            const grid = createGrid(gridDiv, gridOptions)
+            createGrid(gridDiv, gridOptions)
         }
     })
 
@@ -283,28 +246,22 @@ export default function KFGOMTable() {
         const assumptionIndex = selectedAssumptionsIndex()
         
         if (data && data.length > 0) {
-            // Step 1: Apply GOM assumption filtering
             const gomFilteredData = filterDataByGOMAssumption(data, assumptionIndex)
             
-            // Step 2: Apply significance filter on top of GOM filtered data
             let finalFilteredData
             let selectedJointIds
             
             if (filters.significance === 'all') {
-                // Show all variables after GOM filter but don't select any
                 finalFilteredData = gomFilteredData
-                selectedJointIds = new Set() // No variables selected
+                selectedJointIds = new Set()
             } else {
-                // Show only significant/non-significant variables from GOM filtered data
                 finalFilteredData = filterDataBySignificance(gomFilteredData, filters.significance)
                 selectedJointIds = new Set(finalFilteredData.map(item => item.jointId))
             }
             
-            // Set the final filtered data and selected joints
             setFilteredData(finalFilteredData)
             setSelectedJoints(selectedJointIds)
             
-            // Update the AG-Grid with the new filtered data
             const api = gridApi()
             if (api) {
                 api.setGridOption('rowData', finalFilteredData)
@@ -319,25 +276,14 @@ export default function KFGOMTable() {
         }
     })
 
-    // Refresh grid cells when selection changes
-    createEffect(() => {
-        const selected = selectedJoints()
-        const api = gridApi()
-        
-        if (api) {
-            // Force refresh of all cells to update checkboxes
-            api.refreshCells({ force: true })
-        }
-    })
-
-    // Extract metrics from SARIMAX results
-    const getMetrics = () => {
-        const results = sarimaxResults()
-        if (!results || !results.metrics) {
-            return null
-        }
-        return results.metrics
-    }
+    // ✅ REMOVED: Manual grid refresh - AG-Grid handles selection updates automatically
+    // createEffect(() => {
+    //     const api = gridApi()
+    //     
+    //     if (api) {
+    //         api.refreshCells({ force: true })
+    //     }
+    // })
 
     return (
         <div class="plotTableContainer">
@@ -395,11 +341,7 @@ export default function KFGOMTable() {
                 )}
             </div>
 
-            <div id="kfgom-table" class="ag-theme-quartz"></div>
-            
-
-
-            {/* Metrics Display */}
+            <div id="kfgom-table" class="ag-theme-quartz" />
         </div>
     )
 } 

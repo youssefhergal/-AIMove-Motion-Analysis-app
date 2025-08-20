@@ -1,11 +1,7 @@
-import { createSignal, createEffect } from "solid-js"
+import { createSignal } from "solid-js"
 import KFGOMFileList from "./KFGOMFileList"
 import { kfgomBVHLoader } from "../utils/bvhLoader"
 import { 
-	trainFile, 
-	setTrainFile, 
-	testFile, 
-	setTestFile,
 	trainFileBones,
 	setTrainFileBones,
 	testFileBones,
@@ -22,16 +18,13 @@ export default function KFGOMFileSelector() {
 		setTrainFileName(fileName)
 		
 		try {
-			// Load file independently using KF-GOM loader
 			const file_path = "bvh2/" + fileName
 			const result = await kfgomBVHLoader.loadBVHFile(file_path)
 			
-			// Validate the BVH structure
 			if (kfgomBVHLoader.validateBVHStructure(result)) {
 				const bonesData = kfgomBVHLoader.extractBonesData(result)
 				setTrainFileBones(bonesData)
 				console.log(`✅ Training file loaded: ${fileName} with ${bonesData.length} bones`)
-				console.log(`📊 Train file bones signal updated: ${trainFileBones().length} bones`)
 			} else {
 				console.error(`❌ Failed to load training file: ${fileName} - Invalid BVH structure`)
 			}
@@ -46,16 +39,13 @@ export default function KFGOMFileSelector() {
 		setTestFileName(fileName)
 		
 		try {
-			// Load file independently using KF-GOM loader
 			const file_path = "bvh2/" + fileName
 			const result = await kfgomBVHLoader.loadBVHFile(file_path)
 			
-			// Validate the BVH structure
 			if (kfgomBVHLoader.validateBVHStructure(result)) {
 				const bonesData = kfgomBVHLoader.extractBonesData(result)
 				setTestFileBones(bonesData)
 				console.log(`✅ Testing file loaded: ${fileName} with ${bonesData.length} bones`)
-				console.log(`📊 Test file bones signal updated: ${testFileBones().length} bones`)
 			} else {
 				console.error(`❌ Failed to load testing file: ${fileName} - Invalid BVH structure`)
 			}

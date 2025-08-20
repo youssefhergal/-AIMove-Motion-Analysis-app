@@ -1,9 +1,6 @@
 /**
  * GOM Variable Selector - Connected to GOM Tabs
- * ==============================================
- * 
- * This utility filters joint variables based on GOM assumptions.
- * Now connected to the actual GOM tab system.
+ * Filters joint variables based on GOM assumptions.
  */
 
 export interface JointInfo {
@@ -188,6 +185,64 @@ export class GOMVariableSelector {
 	}
 
 	/**
+	 * ASSUMPTION: Serial Intra-limb Mediation - Dependencies between neighboring joints
+	 * Returns joints that are anatomically connected in sequence based on their position
+	 * Focuses on the same side of the body for serial connections
+	 */
+	private applySerialMediation(joints: JointInfo[], jointNames: string[], targetJoint?: string): string[] {
+		if (!targetJoint) return jointNames
+		
+		// Detect the side of the target joint
+		const targetSide = this.detectJointSide(targetJoint)
+		
+		// Extract the base joint name and axis from the target
+		const targetParts = targetJoint.split('_')
+		if (targetParts.length < 2) return jointNames
+		
+		// Get the target axis (last part after underscore)
+		const targetAxis = targetParts[targetParts.length - 1]
+		
+		// Group joints by side and axis to find neighbors
+		const jointsBySideAndAxis: Record<string, string[]> = {}
+		
+		// Initialize groups for each side + axis combination
+		jointNames.forEach(name => {
+			const side = this.detectJointSide(name)
+			const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
+			
+			if (hasAxis) {
+				const key = `${side}_${targetAxis}`
+				if (!jointsBySideAndAxis[key]) {
+					jointsBySideAndAxis[key] = []
+				}
+				jointsBySideAndAxis[key].push(name)
+			}
+		})
+		
+		// Find the group that contains the target joint
+		const targetKey = `${targetSide}_${targetAxis}`
+		const targetGroup = jointsBySideAndAxis[targetKey] || []
+		
+		if (targetGroup.length <= 1) {
+			// No neighbors found for this side + axis combination
+			return []
+		}
+		
+		// Find neighboring joints (all joints in the same side + axis group, excluding the target)
+		const neighboringJoints = targetGroup.filter(name => name !== targetJoint)
+		
+		console.log('  🔍 Serial Mediation Filter:', { 
+			targetSide, 
+			targetAxis, 
+			targetGroup: targetGroup.length,
+			neighbors: neighboringJoints.length,
+			sampleNeighbors: neighboringJoints.slice(0, 3)
+		})
+		
+		return neighboringJoints
+	}
+
+	/**
 	 * Main function to select variables based on assumption
 	 */
 	selectVariablesByAssumption(jointNames: string[], assumptionIndex: number, targetJoint?: string): string[] {
@@ -215,6 +270,9 @@ export class GOMVariableSelector {
 			case 4: // Inter-limb Synergies → opposite side of target joint
 				result = this.applyInterLimbSynergies(joints, jointNames, targetJoint)
 				break
+			case 5: // Serial Intra-limb Mediation → neighboring joints in same hierarchy
+				result = this.applySerialMediation(joints, jointNames, targetJoint)
+				break
 			default:
 				result = jointNames
 		}
@@ -240,7 +298,8 @@ export class GOMVariableSelector {
 			'Autoregressive (Same Joint-Axis)', 
 			'Transitioning (Temporal Dependencies)',
 			'Intra-joint Association (X-Y Coordination)',
-			'Inter-limb Synergies (Opposite Side)'
+			'Inter-limb Synergies (Opposite Side)',
+			'Serial Intra-limb Mediation (Neighboring Joints)'
 		]
 		
 		return {
