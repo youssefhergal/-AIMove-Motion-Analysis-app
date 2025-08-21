@@ -89,6 +89,8 @@ const KFGOMAnalysis = () => {
 		setAnalyzer(newAnalyzer)
 		setSarimaxAnalyzer(newAnalyzer)
 	})
+	
+
 
 	/**
 	 * STEP 2: Data Conversion & Preprocessing
@@ -463,9 +465,11 @@ const KFGOMAnalysis = () => {
 
 	// Handle lag change - auto retrain
 	const handleLagChange = (event) => {
-		const newLags = parseInt(event.target.value)
-		setSarimaxConfig({ ...sarimaxConfig(), lags: newLags })
-		console.log('🔧 Lags changed to:', newLags)
+		const newLags = parseInt(event.target.value) || 2
+		// Ensure minimum value of 2
+		const validatedLags = Math.max(2, newLags)
+		setSarimaxConfig({ ...sarimaxConfig(), lags: validatedLags })
+		console.log('🔧 Lags changed to:', validatedLags)
 		
 		// Auto retrain with new lags
 		if (sarimaxResults() && analyzer()) {
@@ -768,23 +772,23 @@ const KFGOMAnalysis = () => {
 							</div>
 							<div>
 								<strong>Lags:</strong> 
-								<select 
+								<input 
+									type="number"
+									min="2"
 									value={sarimaxConfig().lags}
 									onChange={handleLagChange}
+
 									style={{
 										"margin-left": "5px",
 										padding: "2px 6px",
 										"border": "1px solid #ccc",
 										"border-radius": "3px",
 										"background-color": "white",
-										"font-size": "11px"
+										"font-size": "11px",
+										width: "60px"
 									}}
-								>
-									<option value="2">2</option>
-									<option value="3">3</option>
-									<option value="4">4</option>
-									<option value="5">5</option>
-								</select>
+								/>
+
 							</div>
 						
 							<div>
