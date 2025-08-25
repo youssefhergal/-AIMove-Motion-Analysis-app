@@ -46,7 +46,7 @@ export class GOMVariableSelector {
 	 * ASSUMPTION: Intra-joint Association (X–Y coordination)
 	 * Keep only variables that have the SAME joint name as the target, but DIFFERENT axes
 	 * This shows how different axes of the same joint relate to each other
-	 * EXCLUDES the target joint and its lags
+	 * EXCLUDES the tar!get joint and its lags
 	 */
 	private applyIntraJointXY(joints: JointInfo[], jointNames: string[], targetJoint?: string): string[] {
 		if (!targetJoint) return jointNames
@@ -243,6 +243,120 @@ export class GOMVariableSelector {
 	}
 
 	/**
+	 * ASSUMPTION: Non-serial Intra-limb Mediation - Dependencies between non-adjacent joints
+	 * Returns joints that are on the same side but NOT anatomically connected in sequence
+	 * Focuses on the same side of the body for non-serial connections
+	 * This captures coordination patterns between distant joints on the same limb/side
+	 */
+	private applyNonSerialMediation(joints: JointInfo[], jointNames: string[], targetJoint?: string): string[] {
+		if (!targetJoint) return jointNames
+		
+		// Detect the side of the target joint
+		const targetSide = this.detectJointSide(targetJoint)
+		
+		if (targetSide === 'center') {
+			// If target is center (like Hips, Spine), no intra-limb mediation possible
+			return []
+		}
+		
+		// Extract the base joint name and axis from the target
+		const targetParts = targetJoint.split('_')
+		if (targetParts.length < 2) return jointNames
+		
+		// Get the target axis (last part after underscore)
+		const targetAxis = targetParts[targetParts.length - 1]
+		
+		// Generic pattern-based approach for non-adjacent joint detection
+		// Instead of hardcoded names, use pattern matching and distance analysis
+		
+		// Generic approach: Find all joints on the same side with the same axis
+		const sameSideAxisJoints = jointNames.filter(name => {
+			const side = this.detectJointSide(name)
+			const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
+			return side === targetSide && hasAxis && name !== targetJoint
+		})
+		
+		if (sameSideAxisJoints.length <= 1) {
+			// No other joints on same side with same axis
+			return []
+		}
+		
+		// Group joints by their base name (without side prefix) to identify potential hierarchies
+		const jointGroups: Record<string, string[]> = {}
+		
+		sameSideAxisJoints.forEach(jointName => {
+			// Extract base joint name (remove side prefix and axis suffix)
+			const baseName = this.extractBaseJointName(jointName, targetSide)
+			if (!jointGroups[baseName]) {
+				jointGroups[baseName] = []
+			}
+			jointGroups[baseName].push(jointName)
+		})
+		
+		// Find the target joint's group
+		const targetBaseName = this.extractBaseJointName(targetJoint, targetSide)
+		const targetGroup = jointGroups[targetBaseName] || []
+		
+		// Find non-adjacent joints within the same group
+		const nonAdjacentJoints: string[] = []
+		
+		if (targetGroup.length > 2) {
+			// Sort by name to establish a consistent order for distance calculation
+			const sortedGroup = targetGroup.sort()
+			const targetIndex = sortedGroup.indexOf(targetJoint)
+			
+			sortedGroup.forEach((joint, index) => {
+				if (joint === targetJoint) return
+				
+				// Calculate distance from target (skip adjacent joints)
+				const distance = Math.abs(index - targetIndex)
+				if (distance > 1) {
+					nonAdjacentJoints.push(joint)
+				}
+			})
+		}
+		
+		// Include joints from other groups on the same side (different body regions)
+		for (const [baseName, joints] of Object.entries(jointGroups)) {
+			if (baseName === targetBaseName) continue // Skip same group
+			
+			// Add all joints from different groups (they are inherently non-adjacent)
+			nonAdjacentJoints.push(...joints)
+		}
+		
+		// Remove duplicates
+		const uniqueNonAdjacentJoints = [...new Set(nonAdjacentJoints)]
+		
+		console.log('  🔍 Non-serial Mediation Filter:', { 
+			targetSide, 
+			targetAxis,
+			targetGroup: targetGroup.length,
+			jointGroups: Object.keys(jointGroups).length,
+			nonAdjacentCount: uniqueNonAdjacentJoints.length,
+			sampleNonAdjacent: uniqueNonAdjacentJoints.slice(0, 3)
+		})
+		
+		return uniqueNonAdjacentJoints
+	}
+	
+	/**
+	 * Helper method to extract base joint name without side prefix and axis suffix
+	 */
+	private extractBaseJointName(jointName: string, side: string): string {
+		// Remove side prefix (e.g., "Left", "Right")
+		let baseName = jointName.replace(new RegExp(`^${side}`, 'i'), '')
+		
+		// Remove axis suffix (e.g., "_Xrotation", "_Yrotation")
+		// Find the last underscore and remove everything after it
+		const lastUnderscoreIndex = baseName.lastIndexOf('_')
+		if (lastUnderscoreIndex !== -1) {
+			baseName = baseName.substring(0, lastUnderscoreIndex)
+		}
+		
+		return baseName
+	}
+
+	/**
 	 * Main function to select variables based on assumption
 	 */
 	selectVariablesByAssumption(jointNames: string[], assumptionIndex: number, targetJoint?: string): string[] {
@@ -273,6 +387,9 @@ export class GOMVariableSelector {
 			case 5: // Serial Intra-limb Mediation → neighboring joints in same hierarchy
 				result = this.applySerialMediation(joints, jointNames, targetJoint)
 				break
+			case 6: // Non-serial Intra-limb Mediation → non-adjacent joints on same side
+				result = this.applyNonSerialMediation(joints, jointNames, targetJoint)
+				break
 			default:
 				result = jointNames
 		}
@@ -299,7 +416,8 @@ export class GOMVariableSelector {
 			'Transitioning (Temporal Dependencies)',
 			'Intra-joint Association (X-Y Coordination)',
 			'Inter-limb Synergies (Opposite Side)',
-			'Serial Intra-limb Mediation (Neighboring Joints)'
+			'Serial Intra-limb Mediation (Neighboring Joints)',
+			'Non-serial Intra-limb Mediation (Non-adjacent Joints)'
 		]
 		
 		return {
