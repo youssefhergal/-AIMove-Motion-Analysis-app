@@ -829,7 +829,7 @@ const KFGOMAnalysis = () => {
 									}}
 									title="Retrain model using only the checked variables"
 								>
-									Retrain with Selected
+									Retrain 
 								</button>
 								{/* Show selected variables count */}
 								{(window as any).selectedJoints && (window as any).selectedJoints().size > 0 ? (

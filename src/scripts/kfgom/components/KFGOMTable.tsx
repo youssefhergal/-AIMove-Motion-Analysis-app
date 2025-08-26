@@ -15,6 +15,7 @@ import { gomSelector } from '../utils/gomVariableSelector'
  * - GOM assumption filtering with significance filtering
  * - Real-time selection state tracking
  * - Integration with retraining functionality
+ * - 🆕 PERSISTENT SELECTION: Maintains selections across different assumptions
  * 
  * @author youssef hergal
  */
@@ -23,6 +24,13 @@ export default function KFGOMTable() {
     const [filteredData, setFilteredData] = createSignal([])
     const [gridApi, setGridApi] = createSignal(null)
     const [selectedJoints, setSelectedJoints] = createSignal(new Set())
+
+    // 🆕 PERSISTENT SELECTION: Map of assumption index -> array of selected variables
+    // This gives us fast array lookups (your idea) + clear structure
+    const [assumptionSelections, setAssumptionSelections] = createSignal(new Map())
+    
+    // 🆕 TRACK: Current assumption index for selection management
+    const [currentAssumptionIndex, setCurrentAssumptionIndex] = createSignal(selectedAssumptionsIndex())
 
     // Filter data based on GOM assumptions first, then significance
     const filterDataByGOMAssumption = (data, assumptionIndex) => {
@@ -62,13 +70,6 @@ export default function KFGOMTable() {
         const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
         
-        console.log('🔍 GOM Filter Applied:', {
-            assumption: assumptionIndex,
-            target: targetCombined,
-            original: data.length,
-            filtered: gomFiltered.length
-        })
-        
         return gomFiltered
     }
 
@@ -87,19 +88,140 @@ export default function KFGOMTable() {
             return true
         })
         
-        console.log('🔍 Significance Filter Applied:', {
-            filter: significanceFilter,
-            original: data.length,
-            filtered: filtered.length
+        return filtered
+    }
+
+    // 🆕 PERSISTENT SELECTION: Save current selections for current assumption
+    const saveCurrentSelections = (assumptionIndex: number) => {
+        const api = gridApi()
+        if (!api) return
+        
+        const selectedRows = api.getSelectedRows()
+        // 🎯 NEW: Save ROW IDs instead of joint names for universal compatibility
+        const selectedRowIds = selectedRows.map(row => row.id) // Use row.id (1, 2, 3, 4...)
+        
+        // Only save if there are actual selections
+        if (selectedRowIds.length > 0) {
+            const currentSelections = new Map(assumptionSelections())
+            currentSelections.set(assumptionIndex, selectedRowIds)
+            setAssumptionSelections(currentSelections)
+        }
+    }
+
+    // 🆕 PERSISTENT SELECTION: Restore selections for a specific assumption
+    const restoreAssumptionSelections = (assumptionIndex: number) => {
+        const api = gridApi()
+        if (!api) return
+        
+        const savedSelections = assumptionSelections().get(assumptionIndex)
+        if (!savedSelections || savedSelections.length === 0) {
+            // No saved selections for this assumption, clear all
+            api.deselectAll()
+            setSelectedJoints(new Set())
+            return
+        }
+        
+        // 🎯 FAST ARRAY LOOKUP (your idea!) - O(1) array operations
+        const allRows = api.getRenderedNodes()
+        let restoredCount = 0
+        
+        allRows.forEach(node => {
+            if (savedSelections.includes(node.data.id)) { // 🔥 Array.includes() - super fast!
+                node.setSelected(true)
+                restoredCount++
+            } else {
+                node.setSelected(false)
+            }
         })
         
-        return filtered
+        // Force grid to update selection state
+        api.refreshCells({ force: true })
+        
+        setSelectedJoints(new Set(savedSelections))
+    }
+
+    // 🆕 PERSISTENT SELECTION: Get combined selections from all assumptions
+    const getCombinedAssumptionSelections = () => {
+        const allSelections = new Set<number>() // 🎯 NEW: Use numbers for row IDs
+        const currentSelections = assumptionSelections()
+        
+        currentSelections.forEach((selections, assumptionIndex) => {
+            // 🎯 ARRAY ITERATION (your idea!) - fast and simple
+            selections.forEach(rowId => allSelections.add(rowId))
+        })
+        
+        return allSelections
+    }
+
+    // 🆕 PERSISTENT SELECTION: Apply combined selections for "All Assumptions" view
+    const applyCombinedSelections = () => {
+        const api = gridApi()
+        if (!api) return
+        
+        const combinedSelections = getCombinedAssumptionSelections()
+        
+        if (combinedSelections.size === 0) {
+            // No combined selections, clear all
+            api.deselectAll()
+            setSelectedJoints(new Set())
+            return
+        }
+        
+        // Apply combined selections
+        const allRows = api.getRenderedNodes()
+        let appliedCount = 0
+        
+        allRows.forEach(node => {
+            if (combinedSelections.has(node.data.id)) { // Use node.data.id for exact match
+                node.setSelected(true)
+                appliedCount++
+            } else {
+                node.setSelected(false)
+            }
+        })
+        
+        // Force grid to update selection state
+        api.refreshCells({ force: true })
+        
+        setSelectedJoints(combinedSelections)
+    }
+
+    // 🆕 PERSISTENT SELECTION: Get selection summary for display
+    const getSelectionSummary = () => {
+        const summary = []
+        const assumptionNames = [
+            'GOM Overview',
+            'Transitioning',
+            'Intra-joint Association',
+            'Inter-limb Synergy',
+            'Serial Intra-limb Mediation',
+            'Non-serial Intra-limb Mediation',
+            'All Assumptions Statistics'
+        ]
+        
+        assumptionSelections().forEach((selections, assumptionIndex) => {
+            if (selections.length > 0) { // 🎯 ARRAY LENGTH (your idea!)
+                const name = assumptionNames[Math.floor(assumptionIndex / 2)] || `Assumption ${assumptionIndex}`
+                summary.push(`${name}: ${selections.length} joints`)
+            }
+        })
+        
+        return summary
+    }
+
+    // 🆕 PERSISTENT SELECTION: Clear all saved selections
+    const clearAllSelections = () => {
+        setAssumptionSelections(new Map())
+        const api = gridApi()
+        if (api) {
+            api.deselectAll()
+            setSelectedJoints(new Set())
+        }
     }
 
     // Convert SARIMAX results to table data format
     const convertSARIMAXToTableData = (results) => {
         if (!results || !results.modelSummary || !results.modelSummary.variables) {
-            console.warn('⚠️ No model summary variables found')
             return []
         }
 
@@ -198,11 +320,6 @@ export default function KFGOMTable() {
                     
                     // Update global selectedJoints for retraining
                     ;(window as any).selectedJoints = () => selectedJointIds
-                    
-                    console.log('🔍 AG-Grid Selection Changed:', {
-                        selectedCount: selectedJointIds.size,
-                        totalRows: params.api.getDisplayedRowCount()
-                    })
                 })
             }
         }
@@ -230,22 +347,24 @@ export default function KFGOMTable() {
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
             setKfgomData(tableData)
-            console.log('📊 SARIMAX Results Loaded:', {
-                target: `${results.targetJoint}_${results.targetAxis}`,
-                variables: tableData.length
-            })
         } else {
             setKfgomData([])
         }
     })
 
-    // Apply GOM assumption and significance filters when data, filters, or assumption changes
+    // 🆕 PERSISTENT SELECTION: Handle assumption changes and selection persistence
     createEffect(() => {
+        const assumptionIndex = selectedAssumptionsIndex()
         const data = kfgomData()
         const filters = kfgomFilters()
-        const assumptionIndex = selectedAssumptionsIndex()
         
         if (data && data.length > 0) {
+            // Save selections for previous assumption before switching
+            if (currentAssumptionIndex() !== assumptionIndex) {
+                saveCurrentSelections(currentAssumptionIndex())
+                setCurrentAssumptionIndex(assumptionIndex)
+            }
+            
             const gomFilteredData = filterDataByGOMAssumption(data, assumptionIndex)
             
             let finalFilteredData
@@ -260,18 +379,20 @@ export default function KFGOMTable() {
             }
             
             setFilteredData(finalFilteredData)
-            setSelectedJoints(selectedJointIds)
             
             const api = gridApi()
             if (api) {
                 api.setGridOption('rowData', finalFilteredData)
-                console.log('🔄 Table Updated:', {
-                    assumption: assumptionIndex,
-                    significance: filters.significance,
-                    total: data.length,
-                    filtered: finalFilteredData.length,
-                    selected: selectedJointIds.size
-                })
+                
+                // 🆕 PERSISTENT SELECTION: Restore or apply selections based on assumption
+                
+                if (assumptionIndex === 11) { // 🎯 FIXED: "All Assumptions" is index 11, not 12
+                    // "All Assumptions" view - show combined selections
+                    setTimeout(() => applyCombinedSelections(), 100) // Small delay to ensure grid is ready
+                } else {
+                    // Specific assumption view - restore saved selections
+                    setTimeout(() => restoreAssumptionSelections(assumptionIndex), 100) // Small delay to ensure grid is ready
+                }
             }
         }
     })
@@ -335,7 +456,8 @@ export default function KFGOMTable() {
                             })()}
                         </div>
                         <div>
-                            Use significance filter to show specific variables. Click "Retrain" to use selected variables.
+                            🎯 <strong>Selection Persistence Active:</strong> Your selections are automatically saved and restored when switching between assumptions.
+                            {currentAssumptionIndex() === 11 && ' Viewing combined selections from all assumptions.'}
                         </div>
                     </div>
                 )}
