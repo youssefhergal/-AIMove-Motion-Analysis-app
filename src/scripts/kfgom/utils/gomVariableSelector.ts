@@ -1,7 +1,7 @@
 /**
  * GOM Variable Selector - Connected to GOM Tabs
  * Filters joint variables based on GOM assumptions.
- */
+ 	*/
 
 export interface JointInfo {
 	name: string
@@ -77,8 +77,6 @@ export class GOMVariableSelector {
 			return true
 		})
 		
-		console.log('  🔍 Intra-joint Filter:', { baseJoint, excludedAxis: targetAxis, count: relevantVariables.length })
-		
 		return relevantVariables
 	}
 
@@ -131,14 +129,6 @@ export class GOMVariableSelector {
 			return name.toLowerCase().includes(axis.toLowerCase())
 		})
 		
-		console.log('  🔍 Inter-limb Filter:', { 
-			targetSide, 
-			baseJoint, 
-			axis, 
-			oppositeSide, 
-			count: oppositeSideJoints.length 
-		})
-		
 		return oppositeSideJoints
 	}
 
@@ -178,8 +168,6 @@ export class GOMVariableSelector {
 			// Check if this joint name contains the same axis
 			return jointName.includes(axis)
 		}).map(joint => joint.name)
-		
-		console.log('  🔍 Transitioning Filter:', { baseJoint, axis, count: relevantJoints.length })
 		
 		return relevantJoints
 	}
@@ -231,14 +219,6 @@ export class GOMVariableSelector {
 		// Find neighboring joints (all joints in the same side + axis group, excluding the target)
 		const neighboringJoints = targetGroup.filter(name => name !== targetJoint)
 		
-		console.log('  🔍 Serial Mediation Filter:', { 
-			targetSide, 
-			targetAxis, 
-			targetGroup: targetGroup.length,
-			neighbors: neighboringJoints.length,
-			sampleNeighbors: neighboringJoints.slice(0, 3)
-		})
-		
 		return neighboringJoints
 	}
 
@@ -254,11 +234,6 @@ export class GOMVariableSelector {
 		// Detect the side of the target joint
 		const targetSide = this.detectJointSide(targetJoint)
 		
-		if (targetSide === 'center') {
-			// If target is center (like Hips, Spine), no intra-limb mediation possible
-			return []
-		}
-		
 		// Extract the base joint name and axis from the target
 		const targetParts = targetJoint.split('_')
 		if (targetParts.length < 2) return jointNames
@@ -266,27 +241,60 @@ export class GOMVariableSelector {
 		// Get the target axis (last part after underscore)
 		const targetAxis = targetParts[targetParts.length - 1]
 		
-		// Generic pattern-based approach for non-adjacent joint detection
-		// Instead of hardcoded names, use pattern matching and distance analysis
+		// Step 1: Find all joints on the same side with the same axis
+		let sameSideAxisJoints: string[] = []
 		
-		// Generic approach: Find all joints on the same side with the same axis
-		const sameSideAxisJoints = jointNames.filter(name => {
-			const side = this.detectJointSide(name)
-			const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
-			return side === targetSide && hasAxis && name !== targetJoint
-		})
+		if (targetSide === 'center') {
+			// If target is center, try to find left/right variants of the same joint type
+			const baseJoint = targetParts.slice(0, -1).join('_')
+			
+			// Find left and right variants of the same joint type
+			const leftVariants = jointNames.filter(name => {
+				const side = this.detectJointSide(name)
+				const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
+				const isSameType = name.toLowerCase().includes(baseJoint.toLowerCase()) || 
+								 baseJoint.toLowerCase().includes(name.toLowerCase())
+				return side === 'left' && hasAxis && isSameType
+			})
+			
+			const rightVariants = jointNames.filter(name => {
+				const side = this.detectJointSide(name)
+				const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
+				const isSameType = name.toLowerCase().includes(baseJoint.toLowerCase()) || 
+								 baseJoint.toLowerCase().includes(name.toLowerCase())
+				return side === 'right' && hasAxis && isSameType
+			})
+			
+			// Use the side with more variants, or both if they have similar counts
+			if (leftVariants.length > rightVariants.length) {
+				sameSideAxisJoints = leftVariants
+			} else if (rightVariants.length > leftVariants.length) {
+				sameSideAxisJoints = rightVariants
+			} else if (leftVariants.length > 0) {
+				// If both sides have similar counts, use left side
+				sameSideAxisJoints = leftVariants
+			} else {
+				return []
+			}
+		} else {
+			// Normal case: target has a side
+			sameSideAxisJoints = jointNames.filter(name => {
+				const side = this.detectJointSide(name)
+				const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
+				return side === targetSide && hasAxis && name !== targetJoint
+			})
+		}
 		
-		if (sameSideAxisJoints.length <= 1) {
-			// No other joints on same side with same axis
+		if (sameSideAxisJoints.length === 0) {
 			return []
 		}
 		
-		// Group joints by their base name (without side prefix) to identify potential hierarchies
+		// Step 2: Group joints by their base name to identify potential hierarchies
 		const jointGroups: Record<string, string[]> = {}
 		
 		sameSideAxisJoints.forEach(jointName => {
 			// Extract base joint name (remove side prefix and axis suffix)
-			const baseName = this.extractBaseJointName(jointName, targetSide)
+			const baseName = this.extractBaseJointName(jointName, targetSide === 'center' ? 'left' : targetSide)
 			if (!jointGroups[baseName]) {
 				jointGroups[baseName] = []
 			}
@@ -294,7 +302,7 @@ export class GOMVariableSelector {
 		})
 		
 		// Find the target joint's group
-		const targetBaseName = this.extractBaseJointName(targetJoint, targetSide)
+		const targetBaseName = this.extractBaseJointName(targetJoint, targetSide === 'center' ? 'left' : targetSide)
 		const targetGroup = jointGroups[targetBaseName] || []
 		
 		// Find non-adjacent joints within the same group
@@ -326,15 +334,6 @@ export class GOMVariableSelector {
 		
 		// Remove duplicates
 		const uniqueNonAdjacentJoints = [...new Set(nonAdjacentJoints)]
-		
-		console.log('  🔍 Non-serial Mediation Filter:', { 
-			targetSide, 
-			targetAxis,
-			targetGroup: targetGroup.length,
-			jointGroups: Object.keys(jointGroups).length,
-			nonAdjacentCount: uniqueNonAdjacentJoints.length,
-			sampleNonAdjacent: uniqueNonAdjacentJoints.slice(0, 3)
-		})
 		
 		return uniqueNonAdjacentJoints
 	}
@@ -394,13 +393,6 @@ export class GOMVariableSelector {
 				result = jointNames
 		}
 		
-		console.log('🔍 GOM Assumption Applied:', {
-			assumption: assumptionIndex,
-			target: targetJoint || 'None',
-			input: jointNames.length,
-			output: result.length
-		})
-		
 		return result
 	}
 
@@ -433,3 +425,4 @@ export class GOMVariableSelector {
 // Create and export instance
 export const gomSelector = new GOMVariableSelector()
 export default GOMVariableSelector
+
