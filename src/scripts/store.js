@@ -84,6 +84,14 @@ const [kfgomFilters, setKfgomFilters] = createSignal({ // added by youssef herga
 	significance: "all"
 })
 
+// Forecasting state // added by youssef hergal
+const [forecastConfig, setForecastConfig] = createSignal({
+	steps: "none", // Default to "none" to avoid confusion with significant filter
+	includeConfidence: true,
+	confidenceLevel: 95 // Fixed at 95%
+})
+const [forecastResults, setForecastResults] = createSignal(null)
+
 const [rawSkeletenBones, setRawSkeletenBones] = createSignal([])
 
 // KF-GOM Train/Test file selection state
@@ -244,6 +252,10 @@ export {
 	setKfgomData,
 	kfgomFilters,
 	setKfgomFilters,
+	forecastConfig,
+	setForecastConfig,
+	forecastResults,
+	setForecastResults,
 	sarimaxAnalyzer,
 	setSarimaxAnalyzer,
 	sarimaxResults,

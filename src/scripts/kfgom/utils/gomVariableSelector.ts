@@ -92,8 +92,32 @@ export class GOMVariableSelector {
 		const targetSide = this.detectJointSide(targetJoint)
 		
 		if (targetSide === 'center') {
-			// If target is center (like Hips, Spine), no intra-limb synergy possible
-			return []
+			// For center joints (like Hips, Spine), find left/right variants of the same joint type
+			const targetParts = targetJoint.split('_')
+			if (targetParts.length < 2) return []
+			
+			const baseJoint = targetParts.slice(0, -1).join('_')
+			const axis = targetParts[targetParts.length - 1]
+			
+			// Find left and right variants of the same joint type with same axis
+			const leftVariants = jointNames.filter(name => {
+				const side = this.detectJointSide(name)
+				const hasAxis = name.toLowerCase().includes(axis.toLowerCase())
+				const isSameType = name.toLowerCase().includes(baseJoint.toLowerCase()) || 
+								 baseJoint.toLowerCase().includes(name.toLowerCase())
+				return side === 'left' && hasAxis && isSameType
+			})
+			
+			const rightVariants = jointNames.filter(name => {
+				const side = this.detectJointSide(name)
+				const hasAxis = name.toLowerCase().includes(axis.toLowerCase())
+				const isSameType = name.toLowerCase().includes(baseJoint.toLowerCase()) || 
+								 baseJoint.toLowerCase().includes(name.toLowerCase())
+				return side === 'right' && hasAxis && isSameType
+			})
+			
+			// Return both left and right variants for center joints
+			return [...leftVariants, ...rightVariants]
 		}
 		
 		// Extract the base joint name and axis from the target
@@ -390,8 +414,18 @@ export class GOMVariableSelector {
 				result = this.applyNonSerialMediation(joints, jointNames, targetJoint)
 				break
 			default:
+				console.warn(`⚠️ Unknown assumption index: ${assumptionIndex}, returning all joints`)
 				result = jointNames
 		}
+		
+		console.log(`🔍 GOM Selector Debug - Assumption ${assumptionIndex}:`, {
+			targetJoint,
+			inputJoints: jointNames.length,
+			outputJoints: result.length,
+			assumptionName: ['All', 'Unknown', 'Transitioning', 'Intra-joint', 'Inter-limb', 'Serial', 'Non-serial'][assumptionIndex] || 'Unknown',
+			sampleJoints: jointNames.slice(0, 10),
+			sampleResults: result.slice(0, 5)
+		})
 		
 		return result
 	}

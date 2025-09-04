@@ -20,6 +20,7 @@ import {
 	selectedJoint,
 	axisSelected,
 	sarimaxResults,
+	forecastResults,
 } from "./store"
 import { TabContent, Tabs } from "@ark-ui/solid"
 import { pred_ang_coef } from "./tensorflowGOM"
@@ -176,7 +177,18 @@ function TabsGOM_main(props: { valueButton: string }) {
 		})
 
 		// Calculate min/max for better y-axis scaling
-		const allData = [...actual, ...predicted, ...retrained]
+		let allData = [...actual, ...predicted, ...retrained]
+		
+		// Include forecast data in scaling if available
+		const forecastForScaling = forecastResults()
+		if (forecastForScaling && forecastForScaling.predStatic && forecastForScaling.predStatic.length > 0) {
+			allData = [...allData, ...forecastForScaling.predStatic]
+			// Include confidence bounds if available
+			if (forecastForScaling.confidence && forecastForScaling.confidence.lower && forecastForScaling.confidence.upper) {
+				allData = [...allData, ...forecastForScaling.confidence.lower, ...forecastForScaling.confidence.upper]
+			}
+		}
+		
 		const yMin = Math.min(...allData)
 		const yMax = Math.max(...allData)
 
@@ -243,6 +255,76 @@ function TabsGOM_main(props: { valueButton: string }) {
 				itemStyle: {
 					color: "#DBA21C"
 				}
+			})
+		}
+
+		// Add forecast data if available
+		const forecast = forecastResults()
+		if (forecast && forecast.predStatic && forecast.predStatic.length > 0) {
+			// Create forecast time indices (starting from the end of actual data)
+			const forecastTimeIndices = Array.from(
+				{ length: forecast.predStatic.length }, 
+				(_, i) => actual.length + i
+			)
+			
+			// Add forecast line
+			series.push({
+				name: `Forecast (${forecast.config.steps} steps)`,
+				type: "line",
+				data: forecast.predStatic,
+				smooth: false,
+				lineStyle: {
+					color: "#8B5CF6",
+					type: "solid",
+					width: 3
+				},
+				itemStyle: {
+					color: "#8B5CF6"
+				}
+			})
+
+			// Add confidence intervals if available
+			if (forecast.confidence && forecast.confidence.lower && forecast.confidence.upper) {
+				// Lower confidence bound
+				series.push({
+					name: `Confidence Lower (${forecast.confidence.level}%)`,
+					type: "line",
+					data: forecast.confidence.lower,
+					smooth: false,
+					lineStyle: {
+						color: "rgba(139, 92, 246, 0.5)",
+						type: "dashed",
+						width: 1
+					},
+					itemStyle: {
+						color: "rgba(139, 92, 246, 0.5)"
+					}
+				})
+
+				// Upper confidence bound
+				series.push({
+					name: `Confidence Upper (${forecast.confidence.level}%)`,
+					type: "line",
+					data: forecast.confidence.upper,
+					smooth: false,
+					lineStyle: {
+						color: "rgba(139, 92, 246, 0.5)",
+						type: "dashed",
+						width: 1
+					},
+					itemStyle: {
+						color: "rgba(139, 92, 246, 0.5)"
+					}
+				})
+
+				// Note: Confidence band visualization removed due to TypeScript compatibility
+				// The upper and lower bounds provide sufficient visualization
+			}
+
+			console.log("🔮 Added forecast visualization:", {
+				forecastPoints: forecast.predStatic.length,
+				hasConfidence: !!forecast.confidence,
+				confidenceLevel: forecast.confidence?.level
 			})
 		}
 
@@ -364,6 +446,22 @@ function TabsGOM_main(props: { valueButton: string }) {
 			isGeneratedMovement: selectedTab() === "Generated Movement"
 		})
 		if (retrainedData && selectedTab() === "Generated Movement") {
+			setTimeout(() => {
+				createPredictionChart()
+			}, 100)
+		}
+	})
+
+	// Effect to update chart when forecast results change
+	createEffect(() => {
+		const forecast = forecastResults()
+		console.log("🔄 Effect triggered - Forecast results changed:", {
+			hasForecast: !!forecast,
+			forecastPoints: forecast?.predStatic?.length,
+			selectedTab: selectedTab(),
+			isGeneratedMovement: selectedTab() === "Generated Movement"
+		})
+		if (forecast && selectedTab() === "Generated Movement") {
 			setTimeout(() => {
 				createPredictionChart()
 			}, 100)

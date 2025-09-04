@@ -167,9 +167,9 @@ export default function KFGOMFileSelector() {
 					</div>
 					<div style={{ color: "#666" }}>
 						{trainFileBones().length > 0 && testFileBones().length > 0 ? 
-							"✅ Ready for analysis" : 
+							"✅ Ready for analysis (train + test files)" : 
 							trainFileBones().length > 0 ? 
-								"⏳ Select testing file" : 
+								"⏳ Select testing file to start analysis" : 
 								"⏳ Select training file"
 						}
 					</div>

@@ -27,6 +27,9 @@ export default function KFGOMTable() {
 
     // Map to store selected variables (Joint Name -> true)
     const [selectedVariablesMap, setSelectedVariablesMap] = createSignal(new Map())
+    
+    // Flag to prevent selection events during data updates
+    const [isUpdatingData, setIsUpdatingData] = createSignal(false)
 
     // Save selected variables by joint name
     const saveSelectedVariables = () => {
@@ -51,7 +54,16 @@ export default function KFGOMTable() {
         const currentMap = selectedVariablesMap()
         const totalRows = api.getDisplayedRowCount()
         
+        console.log('🎯 Applying selections:', {
+            totalRows,
+            savedSelections: currentMap.size,
+            savedJointNames: Array.from(currentMap.keys())
+        })
+        
         api.deselectAll()
+        
+        // Track which joints are actually selected in the current filtered view
+        const actuallySelectedJoints = new Set()
         
         for (let i = 0; i < totalRows; i++) {
             const rowNode = api.getDisplayedRowAtIndex(i)
@@ -59,12 +71,22 @@ export default function KFGOMTable() {
                 const jointName = rowNode.data.jointId
                 if (currentMap.has(jointName)) {
                     rowNode.setSelected(true)
+                    actuallySelectedJoints.add(jointName)
+                    console.log(`✅ Selected row ${i}: ${jointName}`)
                 }
+            } else {
+                console.log(`❌ Row ${i} not found or no data`)
             }
         }
         
+        console.log('✅ Applied selections:', {
+            actuallySelected: actuallySelectedJoints.size,
+            actuallySelectedJoints: Array.from(actuallySelectedJoints)
+        })
+        
         api.refreshCells({ force: true })
-        setSelectedJoints(new Set(currentMap.keys()))
+        // Update selectedJoints to only show joints that are actually selected in current view
+        setSelectedJoints(actuallySelectedJoints)
     }
 
     // Get total selected count
@@ -111,6 +133,14 @@ export default function KFGOMTable() {
         const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
         
+        console.log(`🔍 GOM Filter Debug - Tab ${assumptionIndex} (Assumption ${actualAssumptionIndex}):`, {
+            targetJoint: targetCombined,
+            totalJoints: jointNames.length,
+            selectedJoints: selectedJointNames.length,
+            filteredData: gomFiltered.length,
+            sampleSelected: selectedJointNames.slice(0, 5)
+        })
+        
         return gomFiltered
     }
 
@@ -120,11 +150,13 @@ export default function KFGOMTable() {
             return data
         }
         
+
+        
         const filtered = data.filter(item => {
             if (significanceFilter === 'significant') {
                 return item.significance === '***' || item.significance === '**' || item.significance === '*'
             } else if (significanceFilter === 'non-significant') {
-                return item.significance === '.' || item.significance === '~'
+                return item.significance === '.' || item.significance === '~' || item.significance === ''
             }
             return true
         })
@@ -169,7 +201,7 @@ export default function KFGOMTable() {
         return `<span style="color: ${color}; font-weight: bold; background-color: ${backgroundColor}; padding: 2px 6px; border-radius: 3px;">${params.value}</span>`
     }
 
-    // Cell renderer for joint ID (simplified - no custom checkboxes)
+    // Cell renderer for joint ID with built-in checkbox selection
     const jointIdCellRenderer = (params) => {
         return `<span>${params.value}</span>`
     }
@@ -233,10 +265,7 @@ export default function KFGOMTable() {
         let filteredData = filterDataByGOMAssumption(data, assumptionIndex)
         
         if (filters.significance !== 'all') {
-            // 🎯 FIX: Don't apply significance filter in "All Assumptions" tab
-            if (assumptionIndex !== 11) {
-                filteredData = filterDataBySignificance(filteredData, filters.significance)
-            }
+            filteredData = filterDataBySignificance(filteredData, filters.significance)
         }
         
         // Update the grid
@@ -244,12 +273,19 @@ export default function KFGOMTable() {
         
         const api = gridApi()
         if (api) {
+            // Set flag to prevent selection events during update
+            setIsUpdatingData(true)
+            
             api.setGridOption('rowData', filteredData)
             
             // Wait for grid to update, then apply selections
             setTimeout(() => {
+                console.log('🔄 Reapplying selections after filter change')
                 applySelectionsFromMap()
-            }, 200) // Increased timeout to ensure grid updates
+                
+                // Re-enable selection events
+                setIsUpdatingData(false)
+            }, 200) // Increased timeout to ensure grid is fully updated
         }
     })
 
@@ -259,7 +295,19 @@ export default function KFGOMTable() {
         const api = gridApi()
         
         if (api && data) {
-            api.setRowData(data)
+            // Set flag to prevent selection events during update
+            setIsUpdatingData(true)
+            
+            api.setGridOption('rowData', data)
+            
+            // Wait for grid to update, then apply selections
+            setTimeout(() => {
+                console.log('🔄 Reapplying selections after data change')
+                applySelectionsFromMap()
+                
+                // Re-enable selection events
+                setIsUpdatingData(false)
+            }, 200)
         }
     })
 
@@ -297,8 +345,7 @@ export default function KFGOMTable() {
                     filter: true,
                     cellRenderer: jointIdCellRenderer,
                     checkboxSelection: true,
-                    headerCheckboxSelection: true,
-                    headerCheckboxSelectionFilteredOnly: true
+                    headerCheckboxSelection: true
                 },
                 { field: 'jointName', headerName: 'Joint Name', width: 200, sortable: true, filter: true },
                 { field: 'coefficient', headerName: 'Coefficient', width: 150, sortable: true, filter: true },
@@ -315,8 +362,6 @@ export default function KFGOMTable() {
             rowSelection: 'multiple' as const,
             rowMultiSelectWithClick: true,
             suppressRowClickSelection: true,
-            headerCheckboxSelection: true,
-            headerCheckboxSelectionFilteredOnly: true,
             rowData: filteredData(),
             defaultColDef: {
                 resizable: true,
@@ -333,6 +378,12 @@ export default function KFGOMTable() {
                 setGridApi(params.api)
                 
                 params.api.addEventListener('selectionChanged', () => {
+                    // Don't process selection changes during data updates
+                    if (isUpdatingData()) {
+                        console.log('⏸️ Skipping selection change during data update')
+                        return
+                    }
+                    
                     const selectedRows = params.api.getSelectedRows()
                     const selectedJointIds = new Set(selectedRows.map(row => row.jointId))
                     setSelectedJoints(selectedJointIds)
@@ -378,6 +429,11 @@ export default function KFGOMTable() {
                         <span>
                             <strong>Total Selected:</strong> {getTotalSelectedCount()}
                         </span>
+                        {selectedJoints().size !== getTotalSelectedCount() && (
+                            <span style={{ color: "#666", "font-size": "12px" }}>
+                                ({getTotalSelectedCount() - selectedJoints().size} hidden by filter)
+                            </span>
+                        )}
                     </div>
                 </div>
                 {filteredData().length > 0 && (

@@ -50,6 +50,10 @@ import {
 	axisSelected, 
 	kfgomFilters, 
 	setKfgomFilters,
+	forecastConfig,
+	setForecastConfig,
+	forecastResults,
+	setForecastResults,
 	rawSkeletenBones,
 	trainFileBones,
 	testFileBones
@@ -196,205 +200,291 @@ const KFGOMAnalysis = () => {
 	}
 
 	/**
-	 * STEP 3: Main Analysis Pipeline
-	 * ===============================
+	 * UNIFIED ANALYSIS FUNCTION
+	 * =========================
 	 * 
-	 * Orchestrates the complete KF-GOM analysis workflow:
+	 * Handles all analysis scenarios:
+	 * - Initial analysis (file selection)
+	 * - Method change (OLS, MLE, Ridge)
+	 * - Lags change
+	 * - Retraining with selected variables
+	 * - Forecasting generation
 	 * 
-	 * 1. Data Validation & Loading
-	 *    - Validates training and test data availability
-	 *    - Converts BVH data to SARIMAX format
-	 *    - Handles both single-file and train/test scenarios
-	 * 
-	 * 2. Model Configuration
-	 *    - Sets target joint and axis from UI selections
-	 *    - Configures SARIMAX parameters (lags, method)
-	 *    - Prepares analysis configuration
-	 * 
-	 * 3. Analysis Execution
-	 *    - Runs SARIMAX analysis with progress tracking
-	 *    - Handles errors and provides user feedback
-	 *    - Updates results state for UI display
-	 * 
-	 * 4. Results Processing
-	 *    - Stores analysis results in global state
-	 *    - Triggers UI updates for metrics and table
-	 *    - Enables interactive exploration of results
-	 * 
+	 * @param {Object} options - Analysis configuration
+	 * @param {Array} options.selectedVariables - Variables to include (optional)
+	 * @param {boolean} options.includeForecasting - Whether to generate forecasts
 	 * @async
-	 * @throws {Error} If data validation fails or analysis errors occur
 	 */
-	const runAnalysis = async () => {
+	const runUnifiedAnalysis = async (options: { selectedVariables?: string[] | null, includeForecasting?: boolean } = {}) => {
+		const { selectedVariables = null, includeForecasting = true } = options
+		
 		try {
 			setIsAnalyzing(true)
-			setAnalysisProgress(0)
+			setAnalysisProgress({ percentage: 0, message: 'Starting analysis...' })
 
-			// Check if train data is available
-			const trainBones = trainFileBones()
-			const testBones = testFileBones()
-			
-			if (!trainBones || trainBones.length === 0) {
-				throw new Error("No training file loaded. Please select a training file first.")
-			}
-
-			// Convert training data to SARIMAX format
-			const trainData = convertExistingBVHData(trainBones)
-			if (!trainData) {
-				throw new Error("Failed to convert training data")
-			}
-
-
-			
-			const testData = convertExistingBVHData(testBones)
-			if (!testData) {
-				throw new Error("Failed to convert test data")
-			}
-			
-			// ✅ OPTIMIZATION: Store parsed data for reuse during retraining
-			setParsedTrainData(trainData)
-			setParsedTestData(testData)
-
-			// Validate converted data
-			if (!trainData.motionData || !trainData.channels) {
-				throw new Error("Invalid training data structure.")
-			}
-
-			// Set data for training and testing
-			analyzer().setData(trainData, testData)
-
-			// Get current configuration parameters
-			const currentConfig = sarimaxConfig()
+			// Get current configuration
+			const config = sarimaxConfig()
 			const targetJoint = selectedJoint()
 			const targetAxis = `${axisSelected()}rotation`
-			const lags = currentConfig.lags || 2
-			const method = currentConfig.method || 'ols'
+			const lags = config.lags || 2
+			const method = config.method || 'ols'
 			
-			console.log('🎯 Using selected joint and axis:', { 
-				joint: targetJoint,
-				axis: axisSelected(),
-				targetAngle: `${targetJoint}_${targetAxis}`
+			console.log('🎯 Analysis configuration:', { 
+				targetJoint,
+				targetAxis,
+				lags,
+				method,
+				selectedVariables: selectedVariables?.length || 'all',
+				includeForecasting
 			})
 
-					// Run analysis with individual parameters and progress callback
-		console.log('🔍 Debug parameters being passed to analyze:', {
-			targetJoint,
-			targetAxis,
-			lags,
-			method,
-			targetAxisType: typeof targetAxis,
-			targetAxisValue: targetAxis
-		})
-		
-		const result = await analyzer().analyze(
-			targetJoint, 
-			targetAxis, 
-			lags, 
-			method, 
-			(progress, message) => {
-				setAnalysisProgress(progress)
-				console.log(`Progress: ${progress}% - ${message}`)
+			// Get or prepare data
+			let trainData = parsedTrainData()
+			let testData = parsedTestData()
+			
+			if (!trainData || !testData) {
+				setAnalysisProgress({ percentage: 10, message: 'Loading BVH data...' })
+				
+				const trainBones = trainFileBones()
+				const testBones = testFileBones()
+				
+				if (!trainBones || trainBones.length === 0) {
+					throw new Error("No training file loaded. Please select a training file first.")
+				}
+
+				if (!testBones || testBones.length === 0) {
+					console.warn("⚠️ No test file selected. Please select a test file for proper analysis.")
+					throw new Error("No test file loaded. Please select a test file.")
+				}
+				
+				trainData = convertExistingBVHData(trainBones)
+				testData = convertExistingBVHData(testBones)
+				
+				if (!trainData || !testData) {
+					throw new Error("Failed to convert BVH data")
+				}
+				
+				// Store for future use
+				setParsedTrainData(trainData)
+				setParsedTestData(testData)
 			}
-		)
+
+			// Filter data if specific variables are selected
+			if (selectedVariables && selectedVariables.length > 0) {
+				setAnalysisProgress({ percentage: 20, message: 'Filtering selected variables...' })
+				const targetVariable = `${targetJoint}_${targetAxis}`
+				trainData = filterDataForSelectedVariables(trainData, selectedVariables, targetVariable)
+				testData = filterDataForSelectedVariables(testData, selectedVariables, targetVariable)
+			}
+
+			// Set data for analysis
+			analyzer().setData(trainData, testData)
+
+			// Run SARIMAX analysis
+			setAnalysisProgress({ percentage: 30, message: 'Running SARIMAX analysis...' })
+			
+			const result = await analyzer().analyze(
+				targetJoint, 
+				targetAxis, 
+				lags, 
+				method, 
+				(progress, message) => {
+					setAnalysisProgress({ percentage: 30 + (progress * 0.5), message })
+				}
+			)
 
 			if (result.success) {
 				setSarimaxResults(result.results)
 				
-				// Clear retrained data when new analysis is run
+				// Clear previous prediction data
 				;(window as any).retrainedPredictionData = null
 				;(window as any).initialPredictionData = null
+				
 				console.log("✅ SARIMAX analysis completed successfully")
+
+				// Generate forecasts if requested
+				if (includeForecasting) {
+					await generateForecasts(targetJoint, targetAxis)
+				}
 			} else {
 				console.error("❌ SARIMAX analysis failed:", result.error)
+				throw new Error(result.error)
 			}
 
 		} catch (error) {
-			console.error("❌ Error running SARIMAX analysis:", error)
+			console.error("❌ Analysis failed:", error)
+			// Removed alert - errors are logged to console only
 		} finally {
 			setIsAnalyzing(false)
 		}
 	}
 
 	/**
-	 * STEP 4: Reactive Analysis Triggers
-	 * ===================================
+	 * FORECASTING FUNCTION
+	 * ====================
 	 * 
-	 * Manages automatic analysis execution based on data availability:
+	 * Generates multi-step forecasts using the trained model
+	 */
+	const generateForecasts = async (targetJoint, targetAxis) => {
+		try {
+			// Check if forecasting is disabled (steps = "none")
+			const config = forecastConfig()
+			if (config.steps === "none") {
+				console.log('🔮 Forecasting disabled (steps = "none")')
+				setForecastResults(null)
+				return
+			}
+
+			setAnalysisProgress({ percentage: 80, message: 'Generating forecasts...' })
+
+			// Get test data for forecasting
+			const testBones = testFileBones()
+			if (!testBones || testBones.length === 0) {
+				console.warn('⚠️ No test file selected. Cannot generate forecasts without test data.')
+				return
+			}
+			
+			const testBvhData = convertExistingBVHData(testBones)
+			if (!testBvhData || !testBvhData.channels || !testBvhData.motionData) {
+				console.warn('⚠️ Failed to convert test data for forecasting')
+				return
+			}
+
+			// Prepare data for forecasting using the same approach as the analyzer
+			const { getAllBVHAngles, prepareForSARIMAX } = await import('./kfgom/utils/bvhParser.js')
+			const targetAngle = `${targetJoint}_${targetAxis}`
+			const exogAngles = getAllBVHAngles(testBvhData).filter(angle => angle !== targetAngle)
+			const normalizedTestData = prepareForSARIMAX(testBvhData, targetAngle, exogAngles)
+			const targetIndex = 0
+			const exogIndices = Array.from({length: normalizedTestData.exog.length}, (_, i) => i + 1)
+
+			// Import forecasting function
+			const { staticForecasting } = await import('./kfgom/utils/forecasting.js')
+
+			// Run forecasting with current config
+			const forecastConfigData = forecastConfig()
+			const forecastOptions = {
+				includeConfidence: forecastConfigData.includeConfidence,
+				confidenceLevel: forecastConfigData.confidenceLevel
+			}
+
+			// Convert steps to number (should not be "none" at this point due to early return)
+			const stepsNumber = parseInt(forecastConfigData.steps) || 5
+
+			console.log('🔍 Forecasting parameters:', {
+				hasModel: !!analyzer().model,
+				hasTestData: !!normalizedTestData,
+				targetIndex,
+				exogIndicesLength: exogIndices.length,
+				hasScaler: !!analyzer().endogScaler,
+				steps: forecastConfigData.steps,
+				stepsNumber,
+				options: forecastOptions
+			})
+			
+			const forecastData = staticForecasting(
+				analyzer().model,
+				normalizedTestData,
+				targetIndex,
+				exogIndices,
+				analyzer().endogScaler,
+				0,
+				stepsNumber,
+				forecastOptions
+			)
+
+			console.log('🔍 Forecast data result:', {
+				hasPredStatic: !!forecastData.predStatic,
+				predStaticLength: forecastData.predStatic?.length || 0,
+				hasPredDynamic: !!forecastData.predDynamic,
+				predDynamicLength: forecastData.predDynamic?.length || 0
+			})
+
+			// Store forecast results
+			const forecastResults = {
+				...forecastData,
+				config: config,
+				targetJoint: targetJoint,
+				targetAxis: targetAxis,
+				timestamp: new Date().toISOString()
+			}
+
+			setForecastResults(forecastResults)
+			console.log('✅ Forecasting completed successfully')
+			console.log(`📊 Generated ${forecastData.predStatic.length} forecast points`)
+
+		} catch (error) {
+			console.error('❌ Forecasting failed:', error)
+			// Don't fail the entire analysis if forecasting fails
+		}
+	}
+
+	// Flag to prevent duplicate analysis runs
+	const [isAnalysisRunning, setIsAnalysisRunning] = createSignal(false)
+
+	/**
+	 * UNIFIED ANALYSIS TRIGGER
+	 * =========================
 	 * 
-	 * 1. Initial Analysis Trigger
-	 *    - Monitors training data availability
-	 *    - Automatically runs analysis when data becomes available
-	 *    - Prevents unnecessary re-analysis when results exist
-	 * 
-	 * 2. Data State Monitoring
-	 *    - Tracks BVH data loading status
-	 *    - Validates analyzer initialization
-	 *    - Provides user feedback for missing data
-	 * 
-	 * 3. Smart Analysis Logic
-	 *    - Only runs analysis when no results exist
-	 *    - Ensures analyzer is properly initialized
-	 *    - Handles edge cases and error states
+	 * Single effect that handles all analysis triggers:
+	 * 1. Initial analysis when files are selected
+	 * 2. Re-analysis when joint/axis parameters change
+	 * 3. Prevents duplicate runs and unnecessary analysis
 	 */
 	createEffect(() => {
 		const results = sarimaxResults()
 		const hasTrainData = trainFileBones() && trainFileBones().length > 0
+		const hasTestData = testFileBones() && testFileBones().length > 0
 		const currentJoint = selectedJoint()
 		const currentAxis = axisSelected()
 		
 		console.log("🔍 KFGOM Analysis Effect Check:", {
 			hasResults: !!results,
 			hasTrainData,
+			hasTestData,
 			trainBonesLength: trainFileBones()?.length || 0,
 			hasAnalyzer: !!analyzer(),
 			currentJoint,
-			currentAxis
+			currentAxis,
+			isRunning: isAnalysisRunning()
 		})
 		
-		if (!results && hasTrainData && analyzer()) {
-			console.log("🚀 Auto-running KF-GOM analysis...")
-			runAnalysis()
+		// Prevent duplicate runs
+		if (isAnalysisRunning()) {
+			console.log("⏸️ Analysis already running, skipping...")
+			return
+		}
+		
+		// Check if we need to run analysis
+		const shouldRunAnalysis = hasTrainData && hasTestData && analyzer()
+		
+		if (shouldRunAnalysis) {
+			// Case 1: No results yet - run initial analysis
+			if (!results) {
+				console.log("🚀 Auto-running initial KF-GOM analysis...")
+				setIsAnalysisRunning(true)
+				runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+					setIsAnalysisRunning(false)
+				})
+			}
+			// Case 2: Results exist but joint/axis changed - re-run analysis
+			else {
+				const currentTarget = `${results.targetJoint}_${results.targetAxis}`
+				const newTarget = `${currentJoint}_${currentAxis}rotation`
+				
+				if (currentTarget !== newTarget) {
+					console.log("🔄 Joint/Axis changed, re-running KF-GOM analysis...")
+					console.log("📊 Change:", { from: currentTarget, to: newTarget })
+					setIsAnalysisRunning(true)
+					runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+						setIsAnalysisRunning(false)
+					})
+				}
+			}
 		} else if (!hasTrainData) {
 			console.log("⚠️ No training file loaded. Please select a training file first.")
-		}
-	})
-
-	/**
-	 * STEP 5: Parameter Change Detection
-	 * ===================================
-	 * 
-	 * Monitors changes in analysis parameters and triggers re-analysis:
-	 * 
-	 * 1. Target Parameter Monitoring
-	 *    - Tracks changes in selected joint and axis
-	 *    - Compares current target with previous results
-	 *    - Triggers re-analysis only when parameters actually change
-	 * 
-	 * 2. Smart Re-analysis Logic
-	 *    - Only re-runs when results exist and parameters change
-	 *    - Prevents unnecessary analysis cycles
-	 *    - Provides clear logging of parameter changes
-	 * 
-	 * 3. State Validation
-	 *    - Ensures training data is available
-	 *    - Validates analyzer is initialized
-	 *    - Maintains analysis consistency
-	 */
-	createEffect(() => { // added by youssef hergal
-		const results = sarimaxResults()
-		const hasTrainData = trainFileBones() && trainFileBones().length > 0
-		const currentJoint = selectedJoint()
-		const currentAxis = axisSelected()
-		
-		// Only re-run if we have results and the joint/axis has changed
-		if (results && hasTrainData && analyzer()) {
-			const currentTarget = `${results.targetJoint}_${results.targetAxis}`
-			const newTarget = `${currentJoint}_${currentAxis}rotation`
-			
-			if (currentTarget !== newTarget) {
-				console.log("🔄 Joint/Axis changed, re-running KF-GOM analysis...") // added by youssef hergal
-				console.log("📊 Change:", { from: currentTarget, to: newTarget }) // added by youssef hergal
-				runAnalysis()
-			}
+		} else if (!hasTestData) {
+			console.log("⚠️ No test file loaded. Please select a test file.")
 		}
 	})
 
@@ -445,182 +535,87 @@ const KFGOMAnalysis = () => {
 	const handleSignificanceFilterChange = (event) => {
 		const newFilter = event.target.value
 		setKfgomFilters({ ...kfgomFilters(), significance: newFilter })
-		console.log('🔍 Significance filter changed to:', newFilter)
 	}
 
 
 
-	// Handle method change - auto retrain
+	// CLEAN HANDLERS - All use unified analysis function
 	const handleMethodChange = (event) => {
 		const newMethod = event.target.value
 		setSarimaxConfig({ ...sarimaxConfig(), method: newMethod })
 		console.log('🔧 Method changed to:', newMethod)
 		
-		// Auto retrain with new method
-		if (sarimaxResults() && analyzer()) {
-			console.log('🔄 Auto-retraining with new method...')
-			runAnalysis()
+		// Auto retrain with new method (only if not already running)
+		if (sarimaxResults() && analyzer() && !isAnalysisRunning()) {
+			setIsAnalysisRunning(true)
+			runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+				setIsAnalysisRunning(false)
+			})
 		}
 	}
 
-	// Handle lag change - auto retrain
 	const handleLagChange = (event) => {
 		const newLags = parseInt(event.target.value) || 2
-		// Ensure minimum value of 2
 		const validatedLags = Math.max(2, newLags)
 		setSarimaxConfig({ ...sarimaxConfig(), lags: validatedLags })
 		console.log('🔧 Lags changed to:', validatedLags)
 		
-		// Auto retrain with new lags
-		if (sarimaxResults() && analyzer()) {
-			console.log('🔄 Auto-retraining with new lags...')
-			runAnalysis()
+		// Auto retrain with new lags (only if not already running)
+		if (sarimaxResults() && analyzer() && !isAnalysisRunning()) {
+			setIsAnalysisRunning(true)
+			runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+				setIsAnalysisRunning(false)
+			})
 		}
 	}
 
-	// Retrain model with selected variables
-	const retrainWithSelectedVariables = async () => {
-		try {
-			console.log('🔄 Retraining model with selected variables...')
-			
-			// Get selected joints from the table
-			const selectedJoints = (window as any).selectedJoints
-			const selectedJointArray = selectedJoints ? Array.from(selectedJoints()) : []
-			
-			if (selectedJointArray.length === 0) {
-				console.warn('⚠️ No variables selected for retraining')
-				// Show user-friendly message instead of just returning
-				alert('No variables are currently selected. Please:\n\n1. Use the significance filter to show specific variables\n2. Check the variables you want to include\n3. Then click "Retrain with Selected"')
-				return
-			}
-			
-			console.log('📊 Retraining with variables:', selectedJointArray.length)
-			
-			// Check if we have existing data and analyzer
-			if (!analyzer()) {
-				throw new Error("Please run initial analysis first before retraining")
-			}
-			
-			// ✅ OPTIMIZATION: Reuse already parsed data instead of re-parsing BVH files
-			const existingTrainData = parsedTrainData()
-			const existingTestData = parsedTestData()
-			
-			// Get current configuration parameters (moved before conditional logic)
-			const currentConfig = sarimaxConfig()
-			const targetJoint = selectedJoint()
-			const targetAxis = `${axisSelected()}rotation`
-			const lags = currentConfig.lags || 2
-			const method = currentConfig.method || 'ols'
-			
-			// Get target variable name
-			const targetVariable = `${targetJoint}_${targetAxis}`
-			
-			// Store the initial prediction data before retraining
-			const currentResults = sarimaxResults()
-			if (currentResults && currentResults.predicted) {
-				;(window as any).initialPredictionData = currentResults.predicted
-				console.log("📊 Initial prediction data preserved for chart comparison")
-			}
-			
-			if (!existingTrainData || !existingTestData) {
-				// Fallback: re-parse data if stored data is not available
-				console.log('⚠️ Stored parsed data not available, falling back to re-parsing...')
-				const trainBones = trainFileBones()
-				const testBones = testFileBones()
-				
-				if (!trainBones || !testBones || trainBones.length === 0 || testBones.length === 0) {
-					throw new Error("No BVH data available. Please run initial analysis first.")
-				}
-				
-				const fallbackTrainData = convertExistingBVHData(trainBones)
-				const fallbackTestData = convertExistingBVHData(testBones)
-				
-				// Store the fallback data for future use
-				setParsedTrainData(fallbackTrainData)
-				setParsedTestData(fallbackTestData)
-				
-				// Use fallback data
-				const filteredTrainData = filterDataForSelectedVariables(fallbackTrainData, selectedJointArray, targetVariable)
-				const filteredTestData = filterDataForSelectedVariables(fallbackTestData, selectedJointArray, targetVariable)
-				
-				console.log('🔄 Fallback: Re-parsed BVH data for retraining')
-				
-				// Continue with fallback data
-				analyzer().setData(filteredTrainData, filteredTestData)
-			} else {
-				// ✅ OPTIMIZATION: Filter existing parsed data (no re-parsing needed)
-				// This avoids re-parsing BVH files every time we retrain, making retraining ~75% faster
-				const filteredTrainData = filterDataForSelectedVariables(existingTrainData, selectedJointArray, targetVariable)
-				const filteredTestData = filterDataForSelectedVariables(existingTestData, selectedJointArray, targetVariable)
-				
-				console.log('🚀 Performance: Using cached parsed data (no BVH re-parsing needed)')
-				console.log('📊 Data filtering:', {
-					originalChannels: existingTrainData.channels.length,
-					filteredChannels: filteredTrainData.channels.length,
-					selectedVariables: selectedJointArray.length,
-					optimization: 'Cached data reuse'
-				})
-				
-				// Set filtered data for analysis
-				analyzer().setData(filteredTrainData, filteredTestData)
-			}
-			
-			console.log('🎯 Retraining with selected variables:', {
-				selectedVariables: selectedJointArray.length,
-				targetJoint,
-				targetAxis,
-				method,
-				lags
-			})
-			
-			// 🎯 REUSE the existing analyze method with filtered data
-			const result = await analyzer().analyze(
-				targetJoint, 
-				targetAxis, 
-				lags, 
-				method, 
-				(progress, message) => {
-					setAnalysisProgress(progress)
-					console.log(`🔄 Retraining Progress: ${progress}% - ${message}`)
-				}
-			)
-			
-			if (result.success) {
-				// Update results with retrained model
-				setSarimaxResults(result.results)
-				
-				// Store retrained prediction data for the chart
-				if (result.results.original && result.results.predicted) {
-					;(window as any).retrainedPredictionData = result.results.predicted
-					console.log("✅ Model retrained successfully with selected variables")
-					console.log("📊 Retrained prediction data stored for chart comparison")
-					
-					// Compare initial vs retrained predictions
-					if ((window as any).initialPredictionData) {
-						const initial = (window as any).initialPredictionData
-						const retrained = result.results.predicted
-						const actual = result.results.original
-						const minLength = Math.min(initial.length, retrained.length)
-						
-						console.log("🔍 Comparing initial vs retrained predictions (first 5):")
-						for (let i = 0; i < Math.min(5, minLength); i++) {
-							const diff = Math.abs(initial[i] - retrained[i])
-							console.log(`  Step ${i + 1}: Original=${actual[i].toFixed(4)}, Initial=${initial[i].toFixed(4)}, Retrained=${retrained[i].toFixed(4)}, Diff=${diff.toFixed(4)}`)
-						}
-					}
-					
-					// Show success message with comparison info
-					const initialMSE = currentResults?.metrics?.mse || 'N/A'
-					const retrainedMSE = result.results.metrics?.mse || 'N/A'
-					
+	const handleForecastStepsChange = (event) => {
+		const newSteps = event.target.value
+		setForecastConfig({ ...forecastConfig(), steps: newSteps })
+		console.log('🔮 Forecast steps changed to:', newSteps)
+	}
 
-				}
-			} else {
-				console.error("❌ Retraining failed:", result.error)
+
+
+	// CLEAN RETRAIN FUNCTION - Uses unified analysis
+	const retrainWithSelectedVariables = async () => {
+		// Get selected joints from the table
+		const selectedJoints = (window as any).selectedJoints
+		const selectedJointArray = selectedJoints ? Array.from(selectedJoints()) : []
+		
+		if (selectedJointArray.length === 0) {
+			console.warn('⚠️ No variables are currently selected. Please:\n\n1. Use the significance filter to show specific variables\n2. Check the variables you want to include\n3. Then click "Retrain"')
+			return
+		}
+		
+		console.log('🔄 Retraining with selected variables:', selectedJointArray.length)
+		
+		// Store initial prediction data for comparison
+		const currentResults = sarimaxResults()
+		if (currentResults && currentResults.predicted) {
+			;(window as any).initialPredictionData = currentResults.predicted
+		}
+		
+		// Use unified analysis with selected variables (only if not already running)
+		if (!isAnalysisRunning()) {
+			setIsAnalysisRunning(true)
+			try {
+				await runUnifiedAnalysis({ 
+					selectedVariables: selectedJointArray as string[],
+					includeForecasting: true 
+				})
+			} finally {
+				setIsAnalysisRunning(false)
 			}
-			
-		} catch (error) {
-			console.error("❌ Model retraining failed:", error)
+		} else {
+			console.warn('⚠️ Analysis already running, skipping retrain request')
+		}
+		
+		// Store retrained prediction data for chart comparison
+		const newResults = sarimaxResults()
+		if (newResults && newResults.predicted) {
+			;(window as any).retrainedPredictionData = newResults.predicted
+			console.log("✅ Model retrained successfully with selected variables")
 		}
 	}
 
@@ -772,23 +767,55 @@ const KFGOMAnalysis = () => {
 							</div>
 							<div>
 								<strong>Lags:</strong> 
-								<input 
-									type="number"
-									min="2"
+								<select 
 									value={sarimaxConfig().lags}
 									onChange={handleLagChange}
-
 									style={{
 										"margin-left": "5px",
 										padding: "2px 6px",
 										"border": "1px solid #ccc",
 										"border-radius": "3px",
 										"background-color": "white",
-										"font-size": "11px",
-										width: "60px"
+										"font-size": "11px"
 									}}
-								/>
-
+								>
+									<option value="2">2</option>
+									<option value="3">3</option>
+									<option value="4">4</option>
+									<option value="5">5</option>
+									<option value="6">6</option>
+									<option value="7">7</option>
+									<option value="8">8</option>
+									<option value="9">9</option>
+									<option value="10">10</option>
+								</select>
+							</div>
+							<div>
+								<strong>Steps:</strong> 
+								<select 
+									value={forecastConfig().steps}
+									onChange={handleForecastStepsChange}
+									style={{
+										"margin-left": "5px",
+										padding: "2px 6px",
+										"border": "1px solid #ccc",
+										"border-radius": "3px",
+										"background-color": "white",
+										"font-size": "11px"
+									}}
+								>
+									<option value="none">None</option>
+									<option value="3">3</option>
+									<option value="4">4</option>
+									<option value="5">5</option>
+									<option value="6">6</option>
+									<option value="7">7</option>
+									<option value="8">8</option>
+									<option value="9">9</option>
+									<option value="10">10</option>
+									<option value="15">15</option>
+									<option value="20">20</option>
+								</select>
 							</div>
 						
 							<div>
@@ -832,29 +859,13 @@ const KFGOMAnalysis = () => {
 									Retrain 
 								</button>
 								{/* Show selected variables count */}
-								{(window as any).selectedJoints && (window as any).selectedJoints().size > 0 ? (
-									<span style={{
-										"margin-left": "8px",
-										"font-size": "10px",
-										color: "#666",
-										"font-style": "italic"
-									}}>
-										({(window as any).selectedJoints().size} checked)
-									</span>
-								) : (
-									<span style={{
-										"margin-left": "8px",
-										"font-size": "10px",
-										color: "#999",
-										"font-style": "italic"
-									}}>
-										(no variables checked)
-									</span>
-								)}
+
 							</div>
 						</div>
 					</div>
 				)}
+
+
 
 				{/* Metric Cards */}
 				{sarimaxResults() && (
