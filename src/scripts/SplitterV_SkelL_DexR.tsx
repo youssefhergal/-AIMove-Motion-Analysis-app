@@ -13,13 +13,24 @@ import { ResizeEverything } from "./ResizeEverything"
 import { Separator } from "@kobalte/core/separator"
 import { ToggleGroup } from "@kobalte/core/toggle-group"
 import { AxisSelector } from "./AxisSelector"
-import { createSignal, onMount } from "solid-js"
+import { createSignal, onMount, createEffect } from "solid-js"
 import KFGOMFileSelector from "./kfgom/components/KFGOMFileSelector"
 
 const SplitterV_SkelL_DexR = () => {
 	function thisOnChange() {
 		ResizeEverything()
 	}
+	
+	// Force re-render when sizes change
+	createEffect(() => {
+		const leftSize = splitterSizeL()
+		const rightSize = splitterSizeR()
+		
+		// Force resize after size change
+		setTimeout(() => {
+			ResizeEverything()
+		}, 10)
+	})
 	const mystyle = {
 		width: "100% ",
 		height: "100%",
@@ -31,6 +42,7 @@ const SplitterV_SkelL_DexR = () => {
 
 	return (
 		<Splitter.Root
+			key={`splitter-${splitterSizeL()}-${splitterSizeR()}`}
 			size={[
 				{ id: "main-panel", size: splitterSizeL() },
 				{ id: "dex_analysis-panel", size: splitterSizeR() },

@@ -66,6 +66,14 @@ div#myStatsContainer {
 
 #threePanel {
 	position: relative !important;
+	background: linear-gradient(
+		to bottom,
+		rgb(211, 211, 211),
+		rgb(243, 243, 243),
+		rgb(255, 255, 255),
+		rgb(255, 255, 255)
+	);
+	/* background: linear-gradient(to top, #797979 0%, #d1d1d1 100%); */
 }
 
 /* #helperElement {
@@ -1537,4 +1545,565 @@ p {
 	margin-top: 8px;
 	font-size: 12px;
 	color: #666;
+}
+
+/* Added by Youssef Hergal - File management card styles - 2025-01-27 */
+.file-management-card {
+	background: #1e293b;
+	border: 1px solid #334155;
+	border-radius: 12px;
+	padding: 20px;
+	margin-bottom: 20px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Added by Youssef Hergal - Spacing between cards - 2025-01-27 */
+.file-management-card + .file-management-card {
+	margin-top: 16px;
+}
+
+.card-header {
+	margin-bottom: 20px;
+}
+
+.card-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: #e2e8f0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.upload-icon {
+	font-size: 20px;
+}
+
+.card-content {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.upload-section, .default-files-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.upload-label, .default-label {
+	color: #e2e8f0;
+	font-size: 14px;
+	font-weight: 500;
+	text-align: left;
+}
+
+.file-input-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	border: 1px solid #64748b;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #475569;
+}
+
+.file-input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.file-input-button {
+	background: #3b82f6;
+	color: white;
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border: none;
+	border-radius: 0;
+	white-space: nowrap;
+}
+
+.file-input-button:hover {
+	background: #2563eb;
+}
+
+.file-input-text {
+	flex: 1;
+	padding: 10px 12px;
+	color: #94a3b8;
+	font-size: 14px;
+	background: transparent;
+	border: none;
+}
+
+.default-select {
+	background: #475569;
+	border: 1px solid #64748b;
+	color: white;
+	padding: 10px 12px;
+	border-radius: 6px;
+	font-size: 14px;
+	transition: all 0.2s ease;
+}
+
+.default-select:hover {
+	border-color: #93c5fd;
+}
+
+.default-select:focus {
+	outline: none;
+	border-color: #3b82f6;
+	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.divider {
+	color: #94a3b8;
+	text-align: center;
+	font-size: 14px;
+	font-weight: 500;
+	position: relative;
+}
+
+.divider::before, .divider::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	width: 30%;
+	height: 1px;
+	background: #64748b;
+}
+
+.divider::before {
+	left: 0;
+}
+
+.divider::after {
+	right: 0;
+}
+
+.files-list-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.files-label {
+	color: #e2e8f0;
+	font-size: 14px;
+	font-weight: 500;
+	text-align: left;
+}
+
+.files-list {
+	max-height: 160px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.file-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background: #475569;
+	padding: 10px 12px;
+	border-radius: 6px;
+	border: 1px solid #64748b;
+	transition: all 0.2s ease;
+}
+
+.file-item:hover {
+	background: #526480;
+	border-color: #93c5fd;
+}
+
+.file-checkbox {
+	width: 16px;
+	height: 16px;
+	accent-color: #3b82f6;
+	cursor: pointer;
+}
+
+.file-name {
+	flex: 1;
+	color: white;
+	font-size: 14px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Added by Youssef Hergal - Styles for hidden/disabled files - 2025-01-27 */
+.file-item.hidden {
+	opacity: 0.6;
+	background: #374151;
+	border-color: #4b5563;
+}
+
+.file-item.hidden .file-name {
+	color: #9ca3af;
+	text-decoration: line-through;
+}
+
+.file-item.hidden .file-checkbox {
+	opacity: 0.7;
+}
+
+.remove-button {
+	background: none;
+	border: none;
+	color: #f87171;
+	font-size: 18px;
+	font-weight: bold;
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.remove-button:hover:not(:disabled) {
+	color: #ef4444;
+	background: rgba(239, 68, 68, 0.1);
+}
+
+.remove-button:disabled {
+	color: #6b7280;
+	cursor: not-allowed;
+	opacity: 0.5;
+}
+
+/* Added by Youssef Hergal - Simple visualization controls card styles - 2025-01-27 */
+.control-section {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 0px;
+}
+
+.control-label {
+	color: #e2e8f0;
+	font-size: 14px;
+	font-weight: 500;
+	text-align: left;
+}
+
+.animation-controls {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+	width: 100%;
+	flex-wrap: wrap;
+}
+
+.control-button {
+	background: #1e293b;
+	border: 1px solid #3b82f6;
+	color: #3b82f6;
+	padding: 8px 12px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 44px;
+	flex: 1;
+	max-width: 60px;
+}
+
+.control-button:hover {
+	background: #3b82f6;
+	color: #ffffff;
+	border-color: #3b82f6;
+}
+
+.control-button .material-symbols-outlined {
+	font-size: 18px;
+}
+
+.plot-parameters {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.parameter-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px;
+	background: #374151;
+	border-radius: 6px;
+	border: 1px solid #4b5563;
+}
+
+.parameter-label {
+	color: #e2e8f0;
+	font-size: 14px;
+	font-weight: 500;
+	min-width: 80px;
+}
+
+.parameter-controls {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex: 1;
+}
+
+.parameter-text {
+	color: #9ca3af;
+	font-size: 12px;
+}
+
+/* Switch and Checkbox styles for the visualization controls */
+.switch {
+	--switch-track-color: #4b5563;
+	--switch-track-color-hover: #6b7280;
+	--switch-track-color-active: #3b82f6;
+	--switch-track-color-disabled: #374151;
+	--switch-thumb-color: #e2e8f0;
+	--switch-thumb-color-disabled: #6b7280;
+}
+
+.checkbox {
+	--checkbox-background: #4b5563;
+	--checkbox-background-hover: #6b7280;
+	--checkbox-background-active: #3b82f6;
+	--checkbox-background-disabled: #374151;
+	--checkbox-border-color: #64748b;
+	--checkbox-border-color-hover: #93c5fd;
+	--checkbox-border-color-active: #3b82f6;
+	--checkbox-border-color-disabled: #4b5563;
+	--checkbox-indicator-color: #ffffff;
+	--checkbox-indicator-color-disabled: #6b7280;
+	--checkbox-size: 16px;
+}
+
+.checkbox__control {
+	width: 16px;
+	height: 16px;
+}
+
+.switch__control {
+	width: 32px;
+	height: 18px;
+}
+
+.switch__thumb {
+	width: 14px;
+	height: 14px;
+}
+
+/* Added by Youssef Hergal - Dexterity Analysis simple component styles - 2025-01-27 */
+.dexterity-analysis-simple {
+	padding: 12px;
+	background: #1e293b;
+	border-radius: 6px;
+	margin: 8px 0;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+}
+
+.checkbox__label {
+	color: #e2e8f0;
+	font-size: 14px;
+	margin-left: 8px;
+	cursor: pointer;
+}
+
+.select__trigger {
+	background: #475569;
+	border: 1px solid #64748b;
+	color: #e2e8f0;
+	padding: 8px 12px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.select__trigger:hover {
+	background: #526480;
+	border-color: #93c5fd;
+}
+
+.select__content {
+	background: #374151;
+	border: 1px solid #4b5563;
+	border-radius: 6px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.select__listbox {
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.select__item {
+	padding: 8px 12px;
+	cursor: pointer;
+	color: #e2e8f0;
+	transition: background-color 0.2s ease;
+}
+
+.select__item:hover {
+	background: #4b5563;
+}
+
+.select__item[data-highlighted] {
+	background: #3b82f6;
+}
+
+.select__item-indicator {
+	color: #3b82f6;
+}
+
+/* Added by Youssef Hergal - Frame slider styles - 2025-01-27 */
+.frame-slider-container {
+	margin-top: -10px;
+}
+
+.slider-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.frame-slider {
+	width: 100%;
+	height: 6px;
+	border-radius: 3px;
+	background: #374151;
+	outline: none;
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.frame-slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: #3b82f6;
+	cursor: pointer;
+	border: 2px solid #1e293b;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.frame-slider::-moz-range-thumb {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: #3b82f6;
+	cursor: pointer;
+	border: 2px solid #1e293b;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.frame-slider::-webkit-slider-track {
+	background: #374151;
+	border-radius: 3px;
+	height: 6px;
+}
+
+.frame-slider::-moz-range-track {
+	background: #374151;
+	border-radius: 3px;
+	height: 6px;
+	border: none;
+}
+
+.frame-slider:hover::-webkit-slider-thumb {
+	background: #2563eb;
+	transform: scale(1.1);
+}
+
+.frame-slider:hover::-moz-range-thumb {
+	background: #2563eb;
+	transform: scale(1.1);
+}
+
+.slider-info {
+	display: flex;
+	justify-content: space-between;
+	font-size: 12px;
+	color: #9ca3af;
+}
+
+.current-frame {
+	color: #3b82f6;
+	font-weight: 500;
+}
+
+.total-frames {
+	color: #6b7280;
+}
+
+/* Added by Youssef Hergal - SliderBasic component styles - 2025-01-27 */
+.SliderRoot {
+	width: calc(100% - 20px);
+	margin: 0 auto;
+}
+
+.SliderLabel {
+	color: #3b82f6;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 35px;
+}
+
+.SliderLabel span {
+	color: #3b82f6;
+	font-weight: 600;
+}
+
+/* Loading animation styles */
+.loadingScreen {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 9999;
+	background: rgba(180, 180, 180, 0.25);
+	box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.loading-spinner {
+	width: 40px;
+	height: 40px;
+	border: 4px solid #f3f3f3;
+	border-top: 4px solid #3b82f6;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+	color: #3b82f6;
+	font-size: 16px;
+	font-weight: 500;
+	margin-top: 16px;
 }

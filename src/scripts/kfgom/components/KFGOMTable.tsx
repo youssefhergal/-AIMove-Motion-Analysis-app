@@ -1,7 +1,9 @@
 import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
-import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex } from '../../store.js'
+import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex } from '../../stores/store.js'
 import { gomSelector } from '../utils/gomVariableSelector'
+import { eventBus, EVENTS, emitSelectionChanged } from '../../utils/eventBus.js'
+import { logUI, logUIError } from '../../utils/logger.js'
 
 /**
  * KFGOM Table Component
@@ -30,6 +32,9 @@ export default function KFGOMTable() {
     
     // Flag to prevent selection events during data updates
     const [isUpdatingData, setIsUpdatingData] = createSignal(false)
+    
+    // Flag to prevent infinite loop in auto-checking
+    const [isAutoChecking, setIsAutoChecking] = createSignal(false)
 
     // Save selected variables by joint name
     const saveSelectedVariables = () => {
@@ -54,11 +59,7 @@ export default function KFGOMTable() {
         const currentMap = selectedVariablesMap()
         const totalRows = api.getDisplayedRowCount()
         
-        console.log('🎯 Applying selections:', {
-            totalRows,
-            savedSelections: currentMap.size,
-            savedJointNames: Array.from(currentMap.keys())
-        })
+        // Apply selections silently
         
         api.deselectAll()
         
@@ -72,24 +73,18 @@ export default function KFGOMTable() {
                 if (currentMap.has(jointName)) {
                     rowNode.setSelected(true)
                     actuallySelectedJoints.add(jointName)
-                    console.log(`✅ Selected row ${i}: ${jointName}`)
                 }
-            } else {
-                console.log(`❌ Row ${i} not found or no data`)
             }
         }
         
-        console.log('✅ Applied selections:', {
-            actuallySelected: actuallySelectedJoints.size,
-            actuallySelectedJoints: Array.from(actuallySelectedJoints)
-        })
+        // Selections applied
         
         api.refreshCells({ force: true })
         // Update selectedJoints to only show joints that are actually selected in current view
         setSelectedJoints(actuallySelectedJoints)
     }
 
-    // Get total selected count
+    // Get total selected count (reactive)
     const getTotalSelectedCount = () => {
         return selectedVariablesMap().size
     }
@@ -133,13 +128,7 @@ export default function KFGOMTable() {
         const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
         
-        console.log(`🔍 GOM Filter Debug - Tab ${assumptionIndex} (Assumption ${actualAssumptionIndex}):`, {
-            targetJoint: targetCombined,
-            totalJoints: jointNames.length,
-            selectedJoints: selectedJointNames.length,
-            filteredData: gomFiltered.length,
-            sampleSelected: selectedJointNames.slice(0, 5)
-        })
+        // GOM filter applied
         
         return gomFiltered
     }
@@ -266,6 +255,10 @@ export default function KFGOMTable() {
         
         if (filters.significance !== 'all') {
             filteredData = filterDataBySignificance(filteredData, filters.significance)
+            
+        } else {
+            // When switching to "All", keep existing selections but don't auto-check everything
+            // Switched to "All" filter
         }
         
         // Update the grid
@@ -280,7 +273,7 @@ export default function KFGOMTable() {
             
             // Wait for grid to update, then apply selections
             setTimeout(() => {
-                console.log('🔄 Reapplying selections after filter change')
+                // Reapplying selections after filter change
                 applySelectionsFromMap()
                 
                 // Re-enable selection events
@@ -302,7 +295,7 @@ export default function KFGOMTable() {
             
             // Wait for grid to update, then apply selections
             setTimeout(() => {
-                console.log('🔄 Reapplying selections after data change')
+                // Reapplying selections after data change
                 applySelectionsFromMap()
                 
                 // Re-enable selection events
@@ -322,6 +315,58 @@ export default function KFGOMTable() {
             setKfgomData([])
         }
     })
+
+    // Auto-check variables when significance filter changes (separate effect to avoid loops)
+    createEffect(() => {
+        const filters = kfgomFilters()
+        const data = kfgomData()
+        const assumptionIndex = selectedAssumptionsIndex()
+
+        if (!data || data.length === 0) return
+        
+        // Only auto-check when significance filter is applied (not "all") and not already auto-checking
+        if ((filters.significance === 'significant' || filters.significance === 'non-significant') && !isAutoChecking()) {
+            setIsAutoChecking(true)
+            
+            // Get filtered data for current assumption only
+            let filteredData = filterDataByGOMAssumption(data, assumptionIndex)
+            filteredData = filterDataBySignificance(filteredData, filters.significance)
+            
+            // Get current selections
+            const currentSelections = selectedVariablesMap()
+            const newSelections = new Map(currentSelections)
+            
+            // Add filtered variables to selections
+            filteredData.forEach(item => {
+                const jointName = item.jointId
+                if (jointName) {
+                    newSelections.set(jointName, {
+                        jointName,
+                        assumption: assumptionIndex,
+                        timestamp: Date.now()
+                    })
+                }
+            })
+            
+            // Update selections
+            setSelectedVariablesMap(newSelections)
+            
+            // Update selected joints set
+            const newSelectedJoints = new Set(selectedJoints())
+            filteredData.forEach(item => {
+                if (item.jointId) {
+                    newSelectedJoints.add(item.jointId)
+                }
+            })
+            setSelectedJoints(newSelectedJoints)
+            
+            // Reset auto-checking flag after a short delay
+            setTimeout(() => {
+                setIsAutoChecking(false)
+            }, 100)
+        }
+    })
+
 
     onMount(() => {
         const results = sarimaxResults()
@@ -380,7 +425,6 @@ export default function KFGOMTable() {
                 params.api.addEventListener('selectionChanged', () => {
                     // Don't process selection changes during data updates
                     if (isUpdatingData()) {
-                        console.log('⏸️ Skipping selection change during data update')
                         return
                     }
                     
@@ -390,7 +434,12 @@ export default function KFGOMTable() {
                     
                     saveSelectedVariables()
                     
-                    ;(window as any).selectedJoints = () => selectedJointIds
+                    // Emit selection change event instead of global window pollution
+                    emitSelectionChanged({
+                        selectedJoints: Array.from(selectedJointIds),
+                        totalSelected: getTotalSelectedCount(),
+                        assumptionIndex: selectedAssumptionsIndex()
+                    })
                 })
             }
         }
@@ -404,18 +453,28 @@ export default function KFGOMTable() {
     return (
         <div class="plotTableContainer">
             {/* Table Info */}
-            <div style={{
+                <div style={{
                 padding: "10px",
                 margin: "10px 0",
                 background: "#f8f9fa",
-                border: "1px solid #dee2e6",
+                            border: "1px solid #dee2e6",
                 "border-radius": "4px",
                 "font-size": "14px"
             }}>
                 <div style={{ display: "flex", "justify-content": "space-between", "align-items": "center" }}>
                     <div>
-                        <strong>Table Info:</strong> Variables from SARIMAX Analysis
-                    </div>
+                        <strong>GOM Assumption:</strong> {(() => {
+                            const index = selectedAssumptionsIndex()
+                            if (index === 11) return 'All Assumptions Statistics'
+                            if (index === 0) return 'GOM Overview'
+                            if (index === 2) return 'Transitioning'
+                            if (index === 4) return 'Intra-joint Association'
+                            if (index === 6) return 'Inter-limb Synergy'
+                            if (index === 8) return 'Serial Intra-limb Mediation'
+                            if (index === 10) return 'Non-serial Intra-limb Mediation'
+                            return 'Unknown'
+                        })()}
+                            </div>
                     <div style={{ display: "flex", gap: "15px" }}>
                         <span>
                             <strong>Total Variables:</strong> {kfgomData().length}
@@ -436,37 +495,9 @@ export default function KFGOMTable() {
                         )}
                     </div>
                 </div>
-                {filteredData().length > 0 && (
-                    <div style={{ 
-                        "margin-top": "8px", 
-                        "font-size": "12px", 
-                        color: "#666",
-                        "font-style": "italic"
-                    }}>
-                        <div style={{ "margin-bottom": "4px" }}>
-                            <strong>GOM Assumption:</strong> {(() => {
-                                const index = selectedAssumptionsIndex()
-                                
-                                if (index === 11) return 'All Assumptions Statistics'
-                                if (index === 0) return 'GOM Overview'
-                                if (index === 2) return 'Transitioning'
-                                if (index === 4) return 'Intra-joint Association'
-                                if (index === 6) return 'Inter-limb Synergy'
-                                if (index === 8) return 'Serial Intra-limb Mediation'
-                                if (index === 10) return 'Non-serial Intra-limb Mediation'
-                                return 'Unknown'
-                            })()}
-                        </div>
-                        <div>
-                            🎯 <strong>Selection Persistence Active:</strong> Your selections are automatically saved and restored when switching between assumptions.
-                            {selectedAssumptionsIndex() === 11 && ' Viewing combined selections from all assumptions.'}
-                        </div>
-                    </div>
-                )}
             </div>
 
             <div id="kfgom-table" class="ag-theme-quartz" style={{ 
-                height: "500px", 
                 width: "100%"
             }} />
         </div>

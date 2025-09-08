@@ -1,8 +1,6 @@
-import { Collapsible } from "@kobalte/core"
+import { Collapsible } from "@ark-ui/solid"
 import { createSignal } from "solid-js"
-import { BVHSelector } from "./bvhSelector"
-import { uploadOutput } from "./store"
-import { uploadFile } from "./useSceneSetup"
+import NestedPage from "./NestedPage"
 
 function CollapsibleLoadData() {
 	const [arrow1, setArrow1] = createSignal("\u25BC")
@@ -15,44 +13,16 @@ function CollapsibleLoadData() {
 				if (bool) {
 					setArrow1("\u25BC")
 				} else {
-					setArrow1("\u25B2")
+					setArrow1("\u25BC")
 				}
 			}}
 		>
 			<Collapsible.Trigger class="collapsible__trigger">
-				<span>Load MoCap Recording {arrow1()}</span>
+				<span>Load Human Motion Data {arrow1()}</span>
 			</Collapsible.Trigger>
-			<Collapsible.Content class="collapsible__content">
+			<Collapsible.Content class="collapsible__content2">
 				<div class="collapsible__content-text">
-					<div class="toolbarDescription">
-						{" "}
-						Select File from Repository:{" "}
-					</div>
-					<BVHSelector />
-					<div
-						class="toolbarDescription"
-						style={
-							"margin-bottom: 0; margin-top: -20px; padding:0;"
-						}
-					>
-						{" "}
-						or
-					</div>
-
-					<div class="upload-container">
-						<label for="file-upload" class="custom-file-upload">
-							Upload File
-						</label>
-						<input
-							id="file-upload"
-							type="file"
-							onChange={(e) => {
-								console.log(e.target.files[0])
-								uploadFile(e.target.files[0], e.target.value)
-							}}
-						/>
-						<span class="file-info">{uploadOutput()}</span>
-					</div>
+					<NestedPage />
 				</div>
 			</Collapsible.Content>
 		</Collapsible.Root>

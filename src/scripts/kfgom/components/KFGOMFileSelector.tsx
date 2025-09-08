@@ -6,7 +6,7 @@ import {
 	setTrainFileBones,
 	testFileBones,
 	setTestFileBones
-} from "../../store"
+} from "../../stores/store"
 
 export default function KFGOMFileSelector() {
 	const [trainFileName, setTrainFileName] = createSignal("No file selected")

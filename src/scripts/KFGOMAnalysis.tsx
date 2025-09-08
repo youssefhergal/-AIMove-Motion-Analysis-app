@@ -35,6 +35,9 @@ import KFGOMTable from "./kfgom/components/KFGOMTable"
 
 import { SARIMAXAnalyzer } from "./kfgom/SARIMAXAnalyzer.js"
 import { myScene } from "./myScene"
+import { eventBus, EVENTS } from "./utils/eventBus.js"
+import { logAnalysis, logAnalysisError, logDataError } from "./utils/logger.js"
+import { handleAnalysisError, handleDataError } from "./utils/errorHandler.js"
 import {
 	sarimaxAnalyzer,
 	setSarimaxAnalyzer,
@@ -54,10 +57,16 @@ import {
 	setForecastConfig,
 	forecastResults,
 	setForecastResults,
+	retrainHistory,
+	setRetrainHistory,
+	currentRetrainIndex,
+	setCurrentRetrainIndex,
 	rawSkeletenBones,
 	trainFileBones,
-	testFileBones
-} from "./store"
+	testFileBones,
+	selectedJoints,
+	setSelectedJoints
+} from "./stores/store.js"
 
 const KFGOMAnalysis = () => {
 	/**
@@ -92,6 +101,16 @@ const KFGOMAnalysis = () => {
 		const newAnalyzer = new SARIMAXAnalyzer()
 		setAnalyzer(newAnalyzer)
 		setSarimaxAnalyzer(newAnalyzer)
+		
+		// Listen for selection changes from the table
+		const unsubscribeSelection = eventBus.on(EVENTS.SELECTION_CHANGED, (data) => {
+			setSelectedJoints(data.selectedJoints || [])
+		})
+		
+		// Clean up listener on unmount
+		return () => {
+			unsubscribeSelection()
+		}
 	})
 	
 
@@ -312,8 +331,13 @@ const KFGOMAnalysis = () => {
 			}
 
 		} catch (error) {
-			console.error("❌ Analysis failed:", error)
-			// Removed alert - errors are logged to console only
+			const currentConfig = sarimaxConfig()
+			handleAnalysisError(error, 'runUnifiedAnalysis', { 
+				targetJoint: currentConfig.targetJoint, 
+				targetAxis: currentConfig.targetAxis, 
+				lags: currentConfig.lags, 
+				method: currentConfig.method 
+			})
 		} finally {
 			setIsAnalyzing(false)
 		}
@@ -414,7 +438,13 @@ const KFGOMAnalysis = () => {
 			console.log(`📊 Generated ${forecastData.predStatic.length} forecast points`)
 
 		} catch (error) {
-			console.error('❌ Forecasting failed:', error)
+			const currentConfig = sarimaxConfig()
+			const currentForecastConfig = forecastConfig()
+			handleAnalysisError(error, 'generateForecasts', { 
+				targetJoint: currentConfig.targetJoint, 
+				targetAxis: currentConfig.targetAxis,
+				steps: currentForecastConfig.steps
+			})
 			// Don't fail the entire analysis if forecasting fails
 		}
 	}
@@ -438,20 +468,10 @@ const KFGOMAnalysis = () => {
 		const currentJoint = selectedJoint()
 		const currentAxis = axisSelected()
 		
-		console.log("🔍 KFGOM Analysis Effect Check:", {
-			hasResults: !!results,
-			hasTrainData,
-			hasTestData,
-			trainBonesLength: trainFileBones()?.length || 0,
-			hasAnalyzer: !!analyzer(),
-			currentJoint,
-			currentAxis,
-			isRunning: isAnalysisRunning()
-		})
+		// Analysis state check
 		
 		// Prevent duplicate runs
 		if (isAnalysisRunning()) {
-			console.log("⏸️ Analysis already running, skipping...")
 			return
 		}
 		
@@ -461,24 +481,56 @@ const KFGOMAnalysis = () => {
 		if (shouldRunAnalysis) {
 			// Case 1: No results yet - run initial analysis
 			if (!results) {
-				console.log("🚀 Auto-running initial KF-GOM analysis...")
 				setIsAnalysisRunning(true)
-				runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+				runUnifiedAnalysis({ includeForecasting: true }).then(() => {
+					// Store initial analysis result
+					const initialResults = sarimaxResults()
+					const currentConfig = sarimaxConfig()
+					const currentForecastConfig = forecastConfig()
+					const currentFilters = kfgomFilters()
+					
+					if (initialResults) {
+						const initialEntry = {
+							id: Date.now(),
+							timestamp: new Date().toISOString(),
+							parameters: {
+								targetJoint: currentConfig.targetJoint,
+								targetAxis: currentConfig.targetAxis,
+								method: currentConfig.method,
+								lags: currentConfig.lags,
+								selectedVariables: 'all', // Initial analysis uses all variables
+								significanceFilter: currentFilters.significance,
+								forecastSteps: currentForecastConfig.steps,
+								forecastConfidence: currentForecastConfig.confidenceLevel
+							},
+							results: {
+								...initialResults,
+								selectedVariablesCount: initialResults.modelSummary?.variables?.length || 0,
+								totalVariables: initialResults.modelSummary?.variables?.length || 0
+							}
+						}
+						
+						// Store as initial entry
+						setRetrainHistory([initialEntry])
+						setCurrentRetrainIndex(0)
+						
+						console.log('📊 Stored initial analysis result:', {
+							entryId: initialEntry.id,
+							parameters: initialEntry.parameters
+						})
+					}
+				}).finally(() => {
 					setIsAnalysisRunning(false)
 				})
 			}
-			// Case 2: Results exist but joint/axis changed - re-run analysis
+			// Case 2: Results exist but joint/axis changed - notify user
 			else {
 				const currentTarget = `${results.targetJoint}_${results.targetAxis}`
 				const newTarget = `${currentJoint}_${currentAxis}rotation`
 				
 				if (currentTarget !== newTarget) {
-					console.log("🔄 Joint/Axis changed, re-running KF-GOM analysis...")
+					console.log("🔄 Joint/Axis changed, please click Retrain to update analysis")
 					console.log("📊 Change:", { from: currentTarget, to: newTarget })
-					setIsAnalysisRunning(true)
-					runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
-						setIsAnalysisRunning(false)
-					})
 				}
 			}
 		} else if (!hasTrainData) {
@@ -539,19 +591,10 @@ const KFGOMAnalysis = () => {
 
 
 
-	// CLEAN HANDLERS - All use unified analysis function
 	const handleMethodChange = (event) => {
 		const newMethod = event.target.value
 		setSarimaxConfig({ ...sarimaxConfig(), method: newMethod })
 		console.log('🔧 Method changed to:', newMethod)
-		
-		// Auto retrain with new method (only if not already running)
-		if (sarimaxResults() && analyzer() && !isAnalysisRunning()) {
-			setIsAnalysisRunning(true)
-			runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
-				setIsAnalysisRunning(false)
-			})
-		}
 	}
 
 	const handleLagChange = (event) => {
@@ -559,36 +602,27 @@ const KFGOMAnalysis = () => {
 		const validatedLags = Math.max(2, newLags)
 		setSarimaxConfig({ ...sarimaxConfig(), lags: validatedLags })
 		console.log('🔧 Lags changed to:', validatedLags)
-		
-		// Auto retrain with new lags (only if not already running)
-		if (sarimaxResults() && analyzer() && !isAnalysisRunning()) {
-			setIsAnalysisRunning(true)
-			runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
-				setIsAnalysisRunning(false)
-			})
-		}
 	}
 
 	const handleForecastStepsChange = (event) => {
 		const newSteps = event.target.value
 		setForecastConfig({ ...forecastConfig(), steps: newSteps })
-		console.log('🔮 Forecast steps changed to:', newSteps)
+		// Forecast steps changed
 	}
 
 
 
-	// CLEAN RETRAIN FUNCTION - Uses unified analysis
 	const retrainWithSelectedVariables = async () => {
-		// Get selected joints from the table
-		const selectedJoints = (window as any).selectedJoints
-		const selectedJointArray = selectedJoints ? Array.from(selectedJoints()) : []
+		// Get selected joints from the current selection state
+		// This is updated by the table component via event bus
+		const selectedJointArray = selectedJoints()
 		
 		if (selectedJointArray.length === 0) {
 			console.warn('⚠️ No variables are currently selected. Please:\n\n1. Use the significance filter to show specific variables\n2. Check the variables you want to include\n3. Then click "Retrain"')
 			return
 		}
 		
-		console.log('🔄 Retraining with selected variables:', selectedJointArray.length)
+		// Retraining with selected variables
 		
 		// Store initial prediction data for comparison
 		const currentResults = sarimaxResults()
@@ -604,6 +638,48 @@ const KFGOMAnalysis = () => {
 					selectedVariables: selectedJointArray as string[],
 					includeForecasting: true 
 				})
+				
+				// Store retraining result and parameters
+				const newResults = sarimaxResults()
+				const currentConfig = sarimaxConfig()
+				const currentForecastConfig = forecastConfig()
+				const currentFilters = kfgomFilters()
+				
+				if (newResults) {
+					const retrainEntry = {
+						id: Date.now(), // Unique ID
+						timestamp: new Date().toISOString(),
+						parameters: {
+							targetJoint: currentConfig.targetJoint,
+							targetAxis: currentConfig.targetAxis,
+							method: currentConfig.method,
+							lags: currentConfig.lags,
+							selectedVariables: selectedJointArray,
+							significanceFilter: currentFilters.significance,
+							forecastSteps: currentForecastConfig.steps,
+							forecastConfidence: currentForecastConfig.confidenceLevel
+						},
+						results: {
+							...newResults,
+							// Store additional metadata
+							selectedVariablesCount: selectedJointArray.length,
+							totalVariables: newResults.modelSummary?.variables?.length || 0
+						}
+					}
+					
+					// Add to retrain history
+					const currentHistory = retrainHistory()
+					const newHistory = [...currentHistory, retrainEntry]
+					setRetrainHistory(newHistory)
+					setCurrentRetrainIndex(newHistory.length - 1)
+					
+					console.log('📊 Stored retraining result:', {
+						entryId: retrainEntry.id,
+						parameters: retrainEntry.parameters,
+						historyLength: newHistory.length
+					})
+				}
+				
 			} finally {
 				setIsAnalysisRunning(false)
 			}
@@ -975,50 +1051,52 @@ const KFGOMAnalysis = () => {
 							</div>
 
 							{/* Right side - Action Buttons */}
-							<div style={{ 
-								display: 'flex', 
-								gap: '8px', 
-								"align-items": "center"
-							}}>
-								<button
-									onClick={() => console.log("KF-GOM Analysis")}
-									style={{
-										padding: "4px 8px",
-										"background-color": "#28a745",
-										color: "white",
-										border: "none",
-										"border-radius": "3px",
-										cursor: "pointer",
-										"font-size": "11px",
-										"font-weight": "bold"
-									}}
-									title="Run KF-GOM Analysis"
-								>
-									Analyze
-								</button>
-								<button
-									onClick={() => console.log("Download KF-GOM Results")}
-									style={{
-										padding: "4px 8px",
-										"background-color": "#007bff",
-										color: "white",
-										border: "none",
-										"border-radius": "3px",
-										cursor: "pointer",
-										"font-size": "11px",
-										"font-weight": "bold"
-									}}
-									title="Download Analysis Results"
-								>
-									Download Results
-								</button>
-							</div>
 						</div>
 					</div>
 				)}
 
 				<KFGOMTable />
 			</div>
+			
+			{/* Retrain History Display */}
+			{retrainHistory().length > 0 && (
+				<div style={{
+					"margin-top": "10px",
+					padding: "10px",
+					"border": "1px solid #ddd",
+					"border-radius": "5px",
+					"background-color": "#f8f9fa"
+				}}>
+					<h4 style={{ "margin": "0 0 10px 0", "font-size": "14px", color: "#333" }}>
+						Retrain History ({retrainHistory().length} entries)
+					</h4>
+					<div style={{ "max-height": "200px", "overflow-y": "auto" }}>
+						{retrainHistory().map((entry, index) => (
+							<div style={{
+								padding: "8px",
+								"margin-bottom": "5px",
+								"border": "1px solid #e0e0e0",
+								"border-radius": "3px",
+								"background-color": index === currentRetrainIndex() ? "#e3f2fd" : "white",
+								"font-size": "11px"
+							}}>
+								<div style={{ "font-weight": "bold", color: "#1976d2" }}>
+									Entry #{index + 1} - {new Date(entry.timestamp).toLocaleTimeString()}
+								</div>
+								<div style={{ "margin-top": "4px" }}>
+									<strong>Method:</strong> {entry.parameters.method} | 
+									<strong> Lags:</strong> {entry.parameters.lags} | 
+									<strong> Variables:</strong> {entry.parameters.selectedVariablesCount}/{entry.parameters.totalVariables}
+								</div>
+								<div style={{ "margin-top": "2px", color: "#666" }}>
+									<strong>Filter:</strong> {entry.parameters.significanceFilter} | 
+									<strong> Forecast:</strong> {entry.parameters.forecastSteps} steps
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

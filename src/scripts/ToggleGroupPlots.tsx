@@ -1,7 +1,7 @@
 import { ToggleButton } from "@kobalte/core"
 import { createPlot2D } from "./plots"
 import { createSignal } from "solid-js"
-import { currentAnimationTime, setToggleValue } from "./store"
+import { currentAnimationTime, setToggleValue } from "./stores/store"
 import { TableAndPlotsUpdate } from "./CheckboxDexAnalysis"
 
 //import { currentAnimationTime, setToggleValue, isXPressed, isYPressed, isZPressed, setXPressed,setYPressed,setZPressed, } from "./store"

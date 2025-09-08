@@ -21,29 +21,60 @@ import {
 	axisSelected,
 	sarimaxResults,
 	forecastResults,
-} from "./store"
+} from "./stores/store"
 import { TabContent, Tabs } from "@ark-ui/solid"
 import { pred_ang_coef } from "./tensorflowGOM"
 import { createPlot2D_Predict } from "./plots"
 import * as aq from "arquero"
 import { get_mathjax_svg } from "./InitMathJax"
 import * as echarts from "echarts"
+import { displayTableSwitcher } from "./CheckboxDexAnalysis"
 
 async function GenerateMovement() {
+	console.log("🚀 Starting GenerateMovement function")
 	setAppIsLoaded(false)
 
-	const { df_pred_mod: newDfPred_mod } = await pred_ang_coef(
-		inputGOM(),
-		df_coef_mod()
-	)
+	try {
+		console.log("📊 Input data for prediction:", {
+			inputGOMLength: inputGOM()?.length,
+			df_coef_modLength: df_coef_mod()?.length,
+			inputGOMData: inputGOM(),
+			df_coef_modData: df_coef_mod()
+		})
 
-	console.log(newDfPred_mod)
-	await set_df_pred_sampled(newDfPred_mod)
-	// await pred_ang_coef(inputGOM(), df_coef_mod())
+		if (!inputGOM() || inputGOM().length === 0) {
+			console.error("❌ inputGOM is empty or undefined")
+			return
+		}
+		
+		if (!df_coef_mod() || df_coef_mod().length === 0) {
+			console.error("❌ df_coef_mod is empty or undefined")
+			return
+		}
 
-	await createPlot2D_Predict()
-	setAppIsLoaded(true)
-	// setSelectedTab("Generated Movement")
+		console.log("🔄 Calling pred_ang_coef...")
+		const { df_pred_mod: newDfPred_mod } = await pred_ang_coef(
+			inputGOM(),
+			df_coef_mod()
+		)
+
+		console.log("📊 Prediction results:", {
+			hasResults: !!newDfPred_mod,
+			length: newDfPred_mod?.length,
+			data: newDfPred_mod
+		})
+		await set_df_pred_sampled(newDfPred_mod)
+		
+		console.log("🔄 Creating prediction plot")
+		await createPlot2D_Predict()
+		
+		setAppIsLoaded(true)
+		console.log("✅ GenerateMovement completed successfully")
+		// setSelectedTab("Generated Movement")
+	} catch (error) {
+		console.error("❌ Error in GenerateMovement:", error)
+		setAppIsLoaded(true)
+	}
 }
 
 async function DownloadCSV() {
@@ -107,9 +138,45 @@ function TabsGOM_main(props: { valueButton: string }) {
 		}
 	})
 
+	// Auto-generate movement when inputGOM data changes
+	createEffect(() => {
+		const gomData = inputGOM()
+		const coefData = df_coef_mod()
+		const predData = df_pred_mod()
+		console.log("🔍 ATT-RGOM data check:", { 
+			inputGOM: {
+				hasData: !!gomData, 
+				length: gomData?.length,
+				isArray: Array.isArray(gomData)
+			},
+			df_coef_mod: {
+				hasData: !!coefData,
+				length: coefData?.length,
+				isArray: Array.isArray(coefData)
+			},
+			df_pred_mod: {
+				hasData: !!predData,
+				length: predData?.length,
+				isArray: Array.isArray(predData)
+			}
+		})
+		if (gomData && gomData.length > 0) {
+			console.log("🔄 inputGOM data changed, auto-generating movement")
+			GenerateMovement()
+		} else {
+			console.log("⚠️ No inputGOM data available for movement generation")
+		}
+	})
+	
 	// Manual trigger to create chart when component mounts
 	onMount(() => {
-		console.log("🚀 Component mounted")
+		console.log("🚀 Component mounted - checking inputGOM data")
+		const gomData = inputGOM()
+		if (gomData && gomData.length > 0) {
+			console.log("🔄 Found existing inputGOM data on mount, generating movement")
+			GenerateMovement()
+		}
+		
 		if (selectedTab() === "Generated Movement") {
 			setTimeout(() => {
 				createPredictionChart()
@@ -448,6 +515,24 @@ function TabsGOM_main(props: { valueButton: string }) {
 		if (retrainedData && selectedTab() === "Generated Movement") {
 			setTimeout(() => {
 				createPredictionChart()
+			}, 100)
+		}
+	})
+
+	// Effect to update table when assumption index changes
+	createEffect(() => {
+		const assumptionIndex = selectedAssumptionsIndex()
+		console.log("🔄 Effect triggered - Assumption index changed:", {
+			assumptionIndex,
+			selectedTab: selectedTab()
+		})
+		if (selectedTab() === "Assumptions") {
+			setTimeout(async () => {
+				const currentIndex = selectedAssumptionsIndex()
+				console.log("🔄 Calling displayTableSwitcher due to assumption change...")
+				console.log("🔍 Current assumption index before displayTableSwitcher:", currentIndex)
+				await displayTableSwitcher(currentIndex)
+				console.log("✅ displayTableSwitcher completed after assumption change")
 			}, 100)
 		}
 	})

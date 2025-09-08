@@ -418,14 +418,7 @@ export class GOMVariableSelector {
 				result = jointNames
 		}
 		
-		console.log(`🔍 GOM Selector Debug - Assumption ${assumptionIndex}:`, {
-			targetJoint,
-			inputJoints: jointNames.length,
-			outputJoints: result.length,
-			assumptionName: ['All', 'Unknown', 'Transitioning', 'Intra-joint', 'Inter-limb', 'Serial', 'Non-serial'][assumptionIndex] || 'Unknown',
-			sampleJoints: jointNames.slice(0, 10),
-			sampleResults: result.slice(0, 5)
-		})
+		// GOM selector applied
 		
 		return result
 	}

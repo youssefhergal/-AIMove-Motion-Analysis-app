@@ -19,7 +19,7 @@ import {
 	toggleValue,
 	setName2DPlot,
 	setName3DPlot,
-} from "./store"
+} from "./stores/store"
 import { CheckboxDexAnalysis } from "./CheckboxDexAnalysis"
 
 function CollapsibleVisControls() {

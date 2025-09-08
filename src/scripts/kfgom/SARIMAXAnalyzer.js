@@ -13,18 +13,13 @@ export class SARIMAXAnalyzer {
         this.scaler = null
         this.results = null
         this.originalResults = null // Store original results for comparison
-        console.log('🔧 SARIMAXAnalyzer constructor called - ENHANCED VERSION')
+        // SARIMAXAnalyzer initialized
     }
 
     setData(trainData, testData) {
         this.trainData = trainData
         this.testData = testData
-        console.log('📊 Data set in analyzer:', {
-            trainFrames: trainData?.frameCount,
-            testFrames: testData?.frameCount,
-            trainChannels: trainData?.channels?.length,
-            testChannels: testData?.channels?.length
-        })
+        // Data set in analyzer
     }
 
     // Store original results for comparison
@@ -39,12 +34,7 @@ export class SARIMAXAnalyzer {
 
     async analyze(targetJoint, targetAxis, lags = 2, method = 'ridge', progressCallback = null) {
         try {
-            console.log('🚀 Starting ENHANCED SARIMAX analysis with parameters:', {
-                targetJoint,
-                targetAxis,
-                lags,
-                method
-            })
+            // Starting SARIMAX analysis
             
             if (!this.trainData || !this.testData) {
                 throw new Error('No data set. Call setData() first.')

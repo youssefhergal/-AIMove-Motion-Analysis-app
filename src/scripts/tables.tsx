@@ -39,6 +39,7 @@ import {
 	selectedRow,
 	setSelectedRow,
 	df_coef_mod,
+	skeletonViewersSig,
 } from "./store"
 
 import * as aq from "arquero"
@@ -183,13 +184,26 @@ async function createPlotSeries() {
 		return
 	}
 
-	let dataSeriesUnmodified = await df_coef().array(selectedRow())
+	let dataSeriesUnmodified = await df_coef()?.array(selectedRow())
 
-	let dataSeriesModified = await df_coef_mod().array(selectedRow())
+	let dataSeriesModified = await df_coef_mod()?.array(selectedRow())
 	await createVectorPLot(dataSeriesUnmodified, dataSeriesModified)
 }
 
 async function displayTable(df) {
+	console.log("🔄 Starting displayTable function")
+	console.log("📊 Table data:", {
+		hasData: !!df,
+		length: df?.length,
+		type: typeof df,
+		isArray: Array.isArray(df)
+	})
+	
+	if (!df) {
+		console.error("❌ No data provided to displayTable")
+		return
+	}
+	
 	// function transformNumber(params: ValueFormatterParams) {
 	// 	if (
 	// 		typeof params.value === "number" &&
@@ -203,7 +217,9 @@ async function displayTable(df) {
 	// 	}
 	// }
 
+	console.log("🔄 Getting column names...")
 	const columns = df.columnNames()
+	console.log("📊 Columns:", columns)
 	const transformedColumns = columns.map((column) => {
 		if (column === "Index") {
 			return {
@@ -219,7 +235,13 @@ async function displayTable(df) {
 			}
 		}
 	})
+	console.log("🔄 Converting data to objects...")
 	const data = df.objects()
+	console.log("📊 Table data objects:", {
+		length: data?.length,
+		firstRow: data?.[0],
+		sample: data?.slice(0, 3)
+	})
 
 	const gridOptions: GridOptions = {
 		columnDefs: transformedColumns,
@@ -238,19 +260,37 @@ async function displayTable(df) {
 		onSelectionChanged: onSelectionChangedTable,
 		domLayout: "normal",
 	}
+	
+	console.log("🔄 Looking for table container...")
 	// const gridDiv = document.querySelector("#plotTable")
 	const gridDiv = document.querySelector<HTMLElement>("#plotTable")!
+	console.log("📊 Table container:", {
+		exists: !!gridDiv,
+		visible: gridDiv?.offsetWidth > 0,
+		element: gridDiv
+	})
+	
+	if (!gridDiv) {
+		console.error("❌ Table container #plotTable not found!")
+		return
+	}
 
 	// Create the grid only if it doesn't already exist
 	if (!gridApi) {
+		console.log("🔄 Creating new grid...")
 		gridApi = createGrid(gridDiv, gridOptions)
+		console.log("✅ Grid created successfully")
 	} else {
+		console.log("🔄 Updating existing grid...")
 		// Update the existing grid's data
 		gridApi.setGridOption("rowData", data)
 		gridApi.setGridOption("columnDefs", transformedColumns)
+		console.log("✅ Grid updated successfully")
 	}
 
+	console.log("🔄 Selecting first row...")
 	gridApi.getRowNode(0).setSelected(true, false)
+	console.log("✅ Table display completed")
 }
 
 async function CreateTableJoint(df_coef, df_pred) {
@@ -360,8 +400,16 @@ async function CreateTableA3(df_coef_sub) {
 async function CreateTableA4(df_coef_sub) {
 	let listA41
 
-	const index = myScene.jointIndex[selectedJoint()]
-	const bone = myScene.globalResult.skeleton.bones[index]
+	// Use multi-skeleton system instead of myScene
+	const viewers = skeletonViewersSig()
+	if (!viewers || viewers.length === 0) {
+		console.warn("No skeleton viewers available for CreateTableA4")
+		return null
+	}
+
+	const firstViewer = viewers[0]
+	const index = firstViewer.jointIndex[selectedJoint()]
+	const bone = firstViewer.globalResult.skeleton.bones[index]
 
 	if (!bone.children || bone.children.length === 0) {
 		listA41 = bone.parent ? [bone.parent.name] : null

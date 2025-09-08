@@ -80,42 +80,103 @@ import * as aq from "arquero"
 import { op } from "arquero"
 
 async function TableAndPlotsUpdate() {
+	console.log("🔄 Starting TableAndPlotsUpdate function")
+	
+	console.log("📊 Data for table creation:", {
+		df_coef: {
+			hasData: !!df_coef(),
+			length: df_coef()?.length
+		},
+		df_pred: {
+			hasData: !!df_pred(),
+			length: df_pred()?.length
+		}
+	})
+	
 	// const eGridDiv = document.querySelector(
 	// 	".tabs__content"
 	// ) as HTMLElement | null
 	// eGridDiv.style.height = `${(1 / scaleX()) * 45}vh`
+	
+	console.log("🔄 Creating table joint...")
 	await set_df_coef_sub(await CreateTableJoint(df_coef(), df_pred()))
+	console.log("✅ Table joint created")
 
-	set_df_A1(await CreateTableA1(df_coef_sub()))
-	set_df_A2(await CreateTableA2(df_coef_sub()))
-	set_df_A3(await CreateTableA3(df_coef_sub()))
-	set_df_A4(await CreateTableA4(df_coef_sub()))
-	set_df_A5(await CreateTableA5(df_coef_sub()))
-	set_df_A6(await CreateTableA6(df_coef_sub()))
+	console.log("🔄 Creating assumption tables...")
+	const df_coef_sub_data = await df_coef_sub()
+	const tableA1 = await CreateTableA1(df_coef_sub_data)
+	console.log("📊 Created table A1:", {isDataFrame: !!tableA1.columnNames, type: typeof tableA1})
+	set_df_A1(tableA1)
+	const tableA2 = await CreateTableA2(df_coef_sub_data)
+	set_df_A2(tableA2)
+	const tableA3 = await CreateTableA3(df_coef_sub_data)
+	set_df_A3(tableA3)
+	const tableA4 = await CreateTableA4(df_coef_sub_data)
+	set_df_A4(tableA4)
+	const tableA5 = await CreateTableA5(df_coef_sub_data)
+	set_df_A5(tableA5)
+	const tableA6 = await CreateTableA6(df_coef_sub_data)
+	set_df_A6(tableA6)
+	console.log("✅ All assumption tables created")
 
 	console.log("update ola")
 	setAppIsLoaded(true)
+	console.log("✅ TableAndPlotsUpdate completed")
 }
 
 async function DoGOM_init() {
+	console.log("🚀 Starting DoGOM_init function")
 	setAppIsLoaded(false)
+	
+	console.log("📊 Input data for do_gom:", {
+		inputGOM: inputGOM(),
+		length: inputGOM()?.length,
+		isArray: Array.isArray(inputGOM())
+	})
+	
 	const {
 		df_coef: newDfCoef,
 		df_pred: newDfPred,
 		df_pred_sampled: newDfPredSampled,
 	} = await do_gom(inputGOM())
+	
+	console.log("📊 do_gom results:", {
+		df_coef: {
+			hasData: !!newDfCoef,
+			length: newDfCoef?.length,
+			type: typeof newDfCoef
+		},
+		df_pred: {
+			hasData: !!newDfPred,
+			length: newDfPred?.length,
+			type: typeof newDfPred
+		},
+		df_pred_sampled: {
+			hasData: !!newDfPredSampled,
+			length: newDfPredSampled?.length,
+			type: typeof newDfPredSampled
+		}
+	})
+	
 	set_df_coef(newDfCoef.reify())
 	set_df_pred(newDfPred)
 	set_df_coef_mod(newDfCoef.reify())
 	set_df_pred_mod(newDfPred)
 	set_df_pred_sampled(newDfPredSampled)
-
+	
+	console.log("✅ Data set in store successfully")
+	console.log("🔄 Calling TableAndPlotsUpdate...")
 	TableAndPlotsUpdate()
 	setCheckboxFistClick(true)
+	console.log("✅ DoGOM_init completed successfully")
 }
 
-async function displayTableSwitcher() {
-	if (selectedAssumptionsIndex() === 11) {
+export async function displayTableSwitcher(forceIndex = null) {
+	console.log("🔄 Starting displayTableSwitcher function")
+	const assumptionIndex = forceIndex !== null ? forceIndex : selectedAssumptionsIndex()
+	console.log("📊 Current assumption index:", assumptionIndex)
+	
+	if (assumptionIndex === 11) {
 		setSplitterVtable(100)
 		setSplitterVplotVector(0)
 		// const appContainer = document.getElementById("plotTable")
@@ -123,32 +184,44 @@ async function displayTableSwitcher() {
 		setSplitterVtable(33)
 		setSplitterVplotVector(67)
 	}
-	switch (selectedAssumptionsIndex() + 1) {
+	
+	const tableIndex = assumptionIndex + 1
+	console.log("📊 Table index to display:", tableIndex)
+	
+	switch (tableIndex) {
 		case 3:
-			displayTable(await df_A1())
-
+			console.log("🔄 Displaying table A1...")
+			const tableA1Data = await df_A1()
+			console.log("📊 Retrieved table A1:", {isDataFrame: !!tableA1Data?.columnNames, type: typeof tableA1Data, length: tableA1Data?.length})
+			displayTable(tableA1Data)
 			break
 		case 5:
+			console.log("🔄 Displaying table A2...")
 			displayTable(await df_A2())
 			break
 		case 7:
+			console.log("🔄 Displaying table A3...")
 			displayTable(await df_A3())
 			break
 		case 9:
+			console.log("🔄 Displaying table A4...")
 			displayTable(await df_A4())
 			break
 		case 11:
+			console.log("🔄 Displaying table A5...")
 			displayTable(await df_A5())
 			break
 		case 12:
+			console.log("🔄 Displaying table A6...")
 			displayTable(await df_A6())
 			break
 
 		default:
+			console.log("🔄 Displaying default table A1...")
 			displayTable(await df_A1())
-
 			break
 	}
+	console.log("✅ displayTableSwitcher completed")
 }
 const CheckboxDexAnalysis = () => {
 	function thisOnChange() {
@@ -166,7 +239,7 @@ const CheckboxDexAnalysis = () => {
 	}
 
 	createEffect(async () => {
-		console.log("mono index")
+		// mono index
 		// selectedAssumptionsTrigger()
 
 		await displayTableSwitcher()
@@ -214,3 +287,4 @@ const CheckboxDexAnalysis = () => {
 }
 
 export { CheckboxDexAnalysis, TableAndPlotsUpdate, DoGOM_init }
+

@@ -807,9 +807,9 @@ let myScene = {
 			const offsetScreenH = document.getElementById("footer")
 			const pos = this.toScreenPosition(mesh)
 			pos.x =
-				(pos.x + offsetScreenW.offsetWidth) * scaleX() * scalingInfo.scaleValue
+				(pos.x + (offsetScreenW?.offsetWidth || 0)) * scaleX() * scalingInfo.scaleValue
 			pos.y =
-				(pos.y + offsetScreenH.offsetHeight + 7) *
+				(pos.y + (offsetScreenH?.offsetHeight || 0) + 7) *
 				scaleX() *
 				scalingInfo.scaleValue
 			const dx = event.clientX - pos.x

@@ -1,6 +1,6 @@
 // import { SplitterMain } from "./SplitterMain"
 import { onMount, createEffect, createSignal } from "solid-js"
-import { initialize, preparePlotsData } from "./useSceneSetup"
+import { initialize, initializeWhenLoaded } from "./useSceneSetup"
 import {
 	toggleValue,
 	selectedJoint,
@@ -29,21 +29,8 @@ function MainPage() {
 	createEffect(async () => {
 		selectedJoint()
 		if (mainPageLoaded) {
-			// myScene.mixer.timeScale = 1
 			console.log("PreparePLotsData!!!!!!!!!!!!!!!!!!!!!!!!MAINPAGE")
-			// Check if timeScale is initially 0 to know if it needs to be reset later
-			const shouldResetTimeScale = myScene.mixer.timeScale === 0
-
-			// Conditionally set timeScale to 1 if it was 0
-			if (shouldResetTimeScale) {
-				myScene.mixer.timeScale = 1
-			}
-			await preparePlotsData()
-			await createPlot2D(currentAnimationTime(), toggleValue())
-			await createPlot3D(currentAnimationTime())
-			if (shouldResetTimeScale) {
-				myScene.mixer.timeScale = 0
-			}
+			await initializeWhenLoaded(true)
 		} else {
 			setMainPageLoaded(true)
 		}
@@ -63,11 +50,11 @@ function MainPage() {
 
 	return (
 		<div id="mainContainer">
-			{!appIsLoaded() && <LoadingApp />}
+			{/* {!appIsLoaded() && <LoadingApp />} */}
 			<div style={mystyle} class="mainPage">
 				<SplitterMainV_LMenu />
 			</div>
-			<footer class="footer">
+			{/*<footer class="footer">
 				<div class="footer-content" id="footer">
 					<p>
 						© 2024 Dimitris Makrygiannis | MINES PARIS - PSL, Centre
@@ -75,7 +62,7 @@ function MainPage() {
 					</p>
 					<p>All rights reserved.</p>
 				</div>
-			</footer>
+			</footer>*/}
 		</div>
 	)
 }

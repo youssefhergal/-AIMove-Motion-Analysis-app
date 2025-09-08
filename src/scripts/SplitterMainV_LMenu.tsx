@@ -1,14 +1,18 @@
-import { Collapsible, Splitter } from "@ark-ui/solid"
-import { myScene } from "./myScene"
-import { resizePlots } from "./plots"
+import { Splitter } from "@ark-ui/solid"
+import { createEffect } from "solid-js"
+
 import { CollapsibleLoadData } from "./CollapsibleLoadData"
 import { CollapsibleVisControls } from "./CollapsibleVisControls"
+import { CollapsibleDexterityAnalysis } from "./CollapsibleAnalysis"
+
 import { ResizeEverything } from "./ResizeEverything"
 
 import "ag-grid-community/styles/ag-grid.css"
 import "ag-grid-community/styles/ag-theme-quartz.css"
+
+import { SplitterH_Skel_Plots } from "./SplitterH_Skel_Plots"
 import { SplitterV_SkelL_DexR } from "./SplitterV_SkelL_DexR"
-import { CollapsibleAnalysis } from "./CollapsibleAnalysis"
+import { checkboxValue } from "./store"
 
 // import danfojs from "https://cdn.jsdelivr.net/npm/danfojs@1.1.2/+esm"
 
@@ -20,12 +24,10 @@ const SplitterMainV_LMenu = () => {
 	return (
 		<Splitter.Root
 			size={[
-				{ id: "viewer-panel", size: 14 },
-				{ id: "control-panel", size: 86 },
+				{ id: "viewer-panel", size: 18 },
+				{ id: "control-panel", size: 82 },
 			]}
 			onSizeChangeEnd={async (e) => {
-				// await setSplitterSizeL(50)
-				// await setSplitterSizeR(50)
 				thisOnChange()
 				console.log(e.size[0].size)
 			}}
@@ -37,7 +39,7 @@ const SplitterMainV_LMenu = () => {
 				>
 					<CollapsibleLoadData />
 					<CollapsibleVisControls />
-					<CollapsibleAnalysis />
+					<CollapsibleDexterityAnalysis />
 				</div>
 			</Splitter.Panel>
 			<Splitter.ResizeTrigger
@@ -45,7 +47,9 @@ const SplitterMainV_LMenu = () => {
 				class="mainVericalSplitter"
 			/>
 			<Splitter.Panel id="control-panel">
-				<SplitterV_SkelL_DexR />
+				<div style={{ width: "100%", height: "100%", flex: 1, overflow: "auto" }}>
+					{checkboxValue() ? <SplitterV_SkelL_DexR /> : <SplitterH_Skel_Plots />}
+				</div>
 			</Splitter.Panel>
 		</Splitter.Root>
 	)

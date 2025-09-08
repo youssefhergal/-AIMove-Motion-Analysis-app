@@ -26,10 +26,20 @@ import {
 	df_pred,
 	df_pred_sampled,
 	scaleX,
+	skeletonViewersSig,
 } from "./store"
 import * as aq from "arquero"
 
 import { createSignal, createEffect } from "solid-js"
+
+const colors = [
+	"#145e9f", // navy blue
+	"#dba21c", // golden yellow
+	"#659d98", // muted teal
+	"#a6d5ff", // light sky blue
+	"#887456", // bronze
+	"#983c58", // burgundy
+]
 
 // Function to calculate the mean of an array
 function mean(data) {
@@ -533,42 +543,74 @@ function percentageToPixels(percentage, parentElement) {
 
 const createPlot2D = (currentTime, axis = "x") => {
 	const container = document.getElementById("plotPanel_2D")
+
 	if (!chart2D()) {
 		const myChart = echarts.init(container)
 		setChart2D(myChart) // Store the chart instance the first time
 	}
 
-	const myChart = chart2D()
-	const currentPointIndex = Math.round(currentTime * 90)
-	let positions =
-		axis === "x"
-			? positionsX_2D()
-			: axis === "y"
-			? positionsY_2D()
-			: positionsZ_2D()
-
-	const yMin = Math.min(...positions)
-	const yMax = Math.max(...positions)
-
-	// 2D Position Trajectory of Knee Joint on X-Axis
-
-	// Example usage:
-	const parentElement = container // Replace with the actual parent element's ID
-	const percentageSize = 2 // 20%
-
-	function minPlot2D() {
-		const yMinValue = Number(yMin)
-		const yMaxValue = Number(yMax)
-		const value = (yMinValue - (yMaxValue - yMinValue)).toFixed(0)
-		return parseFloat(value) // Convert back to number if needed elsewhere
+	// Helper to select axis data
+	const getAxisPositions = () => {
+		if (axis === "x") return positionsX_2D()
+		if (axis === "y") return positionsY_2D()
+		return positionsZ_2D()
 	}
 
-	function maxPlot2D() {
-		const yMinValue = Number(yMin)
-		const yMaxValue = Number(yMax)
-		const value = (yMaxValue + (yMaxValue - yMinValue)).toFixed(0)
-		return parseFloat(value) // Convert back to number if needed elsewhere
+	const axisData = getAxisPositions()
+	
+	// Safety check for empty data
+	if (!axisData || axisData.length === 0) {
+		console.warn("No axis data available for 2D plot")
+		return
 	}
+	
+	const maxLength = Math.max(...axisData.map((p) => p.length))
+	const xAxisData = Array.from({ length: maxLength }, (_, i) => i)
+
+	const paddedPositions = axisData.map((arr) => [...arr]) // Optionally pad with nulls here if needed
+
+	const allPositions = paddedPositions.flat()
+	
+	// Safety check for empty positions
+	if (allPositions.length === 0) {
+		console.warn("No position data available for 2D plot")
+		return
+	}
+	
+	const yMin = Math.min(...allPositions)
+	const yMax = Math.max(...allPositions)
+
+	const paddedLimits = (() => {
+		const range = yMax - yMin
+		return {
+			min: parseFloat((yMin - range).toFixed(0)),
+			max: parseFloat((yMax + range).toFixed(0)),
+		}
+	})()
+
+	function getPositionSeries() {
+		return skeletonViewersSig().map((viewer, index) => {
+			const label = viewer.plotLabel || `Viewer ${index + 1}`
+			const color = colors[index % colors.length]
+			const data = paddedPositions[index]
+
+			// Skip this viewer if data is missing
+			if (!data) {
+				return null
+			}
+
+			return {
+				name: `${label}`,
+				type: "line",
+				data: data,
+				smooth: false,
+				lineStyle: { color },
+				itemStyle: { color },
+			}
+		}).filter(Boolean)
+	}
+
+	const series = getPositionSeries()
 
 	const option = {
 		tooltip: {
@@ -580,9 +622,6 @@ const createPlot2D = (currentTime, axis = "x") => {
 					backgroundColor: "#ccc",
 					borderColor: "#aaa",
 					borderWidth: 1,
-					shadowBlur: 0,
-					shadowOffsetX: 0,
-					shadowOffsetY: 0,
 					color: "#222",
 				},
 			},
@@ -593,110 +632,85 @@ const createPlot2D = (currentTime, axis = "x") => {
 			},
 			right: "65px",
 		},
-
 		legend: {
-			data: [LineTitle2D(), ScatterTitle2D()], // Names of the series to show in the legend
-			orient: "vertical", // Orientation of the legend: 'vertical' or 'horizontal'
-			left: "20px", // Position of the legend: 'left', 'right', 'top', 'bottom'
-			top: "0px", // Vertical alignment when left/right is used
+			data: series.map((s) => s.name),
+			orient: "vertical",
+			left: "20px",
+			top: "0px",
 		},
-		// grid: { left: "10%", right: "10%", bottom: "43%", top: "20%" },
 		grid: { left: "50px", right: "65px", bottom: "170px", top: "90px" },
-
 		dataZoom: [
 			{ type: "inside", xAxisIndex: 0 },
-
 			{
 				type: "slider",
 				xAxisIndex: 0,
 				filterMode: "none",
-				// bottom: "25%",
 				bottom: "105px",
-				height: 30 * scaleX(),
+				height: 20 * scaleX(),
 			},
-			{ type: "inside", yAxisIndex: 0, filterMode: "none" }, // Inside zoom for yAxis
+			{ type: "inside", yAxisIndex: 0, filterMode: "none" },
 			{
 				type: "slider",
 				yAxisIndex: 0,
 				filterMode: "none",
 				right: "15px",
-				width: 30 * scaleX(),
+				width: 20 * scaleX(),
 			},
 		],
 		xAxis: {
 			type: "category",
-			data: positions.map((_, index) => index),
+			data: xAxisData,
 			axisLine: {
-				onZero: false, // This is important, so x axis can start from non-zero number
+				onZero: false,
 			},
 		},
 		yAxis: {
 			type: "value",
 			name: name2DPlot(),
-			min: minPlot2D(),
-			max: maxPlot2D(),
+			min: paddedLimits.min,
+			max: paddedLimits.max,
 		},
-		series: [
-			{
-				name: LineTitle2D(),
-				type: "line",
-				data: positions,
-				smooth: false,
-				lineStyle: {
-					color: "#145e9f",
-				},
-				itemStyle: {
-					color: "#145e9f",
-				},
-			},
-
-			{
-				name: ScatterTitle2D(),
-				type: "scatter",
-				data: [[currentPointIndex, positions[currentPointIndex]]],
-				symbolSize: 15,
-				itemStyle: {
-					color: "red",
-					borderColor: "black",
-					borderWidth: 0,
-				},
-				animation: false,
-				z: 10,
-			},
-		],
+		series: series,
 	}
 
-	myChart.setOption(option)
-	myChart.dispatchAction(
-		{
-			type: "takeGlobalCursor",
-			key: "brush",
-			brushOption: { brushType: "lineX", brushMode: "single" },
-		},
-		true
-	)
+	chart2D().clear()
+
+	chart2D().setOption(option)
+
+	chart2D().dispatchAction({
+		type: "takeGlobalCursor",
+		key: "brush",
+		brushOption: { brushType: "lineX", brushMode: "single" },
+	})
 }
 
-const updatePlot2D = (currentTime, axis = "x") => {
+const updatePlot2D = (currentTime) => {
 	const myChart = chart2D()
 	if (!myChart) return
 
 	const currentPointIndex = Math.round(currentTime * 90)
-	let positions =
-		axis === "x"
-			? positionsX_2D()
-			: axis === "y"
-			? positionsY_2D()
-			: positionsZ_2D()
 
 	myChart.setOption({
 		series: [
 			{
-				name: ScatterTitle2D(),
-				data: [[currentPointIndex, positions[currentPointIndex]]],
+				markLine: {
+					silent: true,
+					data: [
+						{
+							xAxis: currentPointIndex,
+						},
+					],
+					lineStyle: {
+						color: "#999",
+						width: 1,
+						type: "dashed",
+						opacity: 0.6,
+					},
+					symbol: ["none", "none"],
+					animation: false,
+				},
 			},
 		],
-		animation: false,
 	})
 }
 
@@ -709,25 +723,85 @@ function ScatterTitle3D() {
 }
 
 const createPlot3D = (currentTime) => {
-	const myChart = echarts.init(document.getElementById("plotPanel_3D"))
+	const container = document.getElementById("plotPanel_3D")
 
 	if (!chart3D()) {
-		const myChart = echarts.init(document.getElementById("plotPanel_3D"))
+		const myChart = echarts.init(container)
 		setChart3D(myChart) // Store the chart instance the first time
 	}
 
 	const currentPointIndex = Math.round(currentTime * 90)
-	const xPositions = positionsZ_3D()
-	const yPositions = positionsX_3D()
-	const zPositions = positionsY_3D()
 
-	// Calculate min and max for each axis
-	const xMin = Math.min(...xPositions)
-	const xMax = Math.max(...xPositions)
-	const yMin = Math.min(...yPositions)
-	const yMax = Math.max(...yPositions)
-	const zMin = Math.min(...zPositions)
-	const zMax = Math.max(...zPositions)
+	// Prepare data for all viewers
+	const series = skeletonViewersSig().map((viewer, index) => {
+		const label = viewer.plotLabel || `Viewer ${index + 1}`
+		const xPositions = positionsZ_3D()[index] // Z-axis
+		const yPositions = positionsX_3D()[index] // X-axis
+		const zPositions = positionsY_3D()[index] // Y-axis
+		const color = colors[index % colors.length]
+
+		// Skip this viewer if data is missing
+		if (!xPositions || !yPositions || !zPositions) {
+			return null
+		}
+
+		// Line3D series for each viewer
+		const lineSeries = {
+			name: `${label} Line`,
+			type: "line3D",
+			data: xPositions.map((x, i) => [x, yPositions[i], zPositions[i]]),
+			lineStyle: {
+				width: 2,
+				color: color,
+			},
+		}
+
+		// Scatter3D series for each viewer's current point
+		const scatterSeries = {
+			name: `${label} Point`,
+			type: "scatter3D",
+			data: [
+				[
+					xPositions[currentPointIndex],
+					yPositions[currentPointIndex],
+					zPositions[currentPointIndex],
+				],
+			],
+			symbolSize: 8,
+			itemStyle: {
+				color: color,
+			},
+		}
+
+		return [lineSeries, scatterSeries]
+	})
+
+	// Flatten series for the chart and filter out null values
+	const flatSeries = series.filter(Boolean).flat()
+
+	// Find global min and max across all viewers for each axis
+	const allXPositions = skeletonViewersSig().flatMap(
+		(_, index) => positionsZ_3D()[index] || []
+	)
+	const allYPositions = skeletonViewersSig().flatMap(
+		(_, index) => positionsX_3D()[index] || []
+	)
+	const allZPositions = skeletonViewersSig().flatMap(
+		(_, index) => positionsY_3D()[index] || []
+	)
+
+	// Safety check for empty arrays
+	if (allXPositions.length === 0 || allYPositions.length === 0 || allZPositions.length === 0) {
+		console.warn("No position data available for 3D plot")
+		return
+	}
+
+	const xMin = Math.min(...allXPositions)
+	const xMax = Math.max(...allXPositions)
+	const yMin = Math.min(...allYPositions)
+	const yMax = Math.max(...allYPositions)
+	const zMin = Math.min(...allZPositions)
+	const zMax = Math.max(...allZPositions)
 
 	// Calculate the range of each axis
 	const xRange = xMax - xMin
@@ -763,11 +837,9 @@ const createPlot3D = (currentTime) => {
 			max: Math.round(zMax),
 			name: "Y",
 		},
-
 		axisLabel: {
-			fontSize: 10, // Adjust the font size of the axis labels
+			fontSize: 10,
 		},
-
 		grid3D: {
 			boxWidth: normalizedXRange,
 			boxHeight: normalizedYRange,
@@ -778,108 +850,113 @@ const createPlot3D = (currentTime) => {
 			top: "0%",
 			viewControl: {
 				distance: 170,
-				alpha: 30, // A small tilt from the vertical top-down view
+				alpha: 30,
 				beta: -70,
 			},
 		},
 		legend: {
-			data: [
-				{
-					name: LineTitle3D(),
-					icon: "line",
-				},
-				{
-					name: ScatterTitle3D(),
-				},
-			],
-
-			orient: "vertical", // Orientation of the legend: 'vertical' or 'horizontal'
-			left: "20px", // Position of the legend: 'left', 'right', 'top', 'bottom'
-			top: "101px", // Vertical alignment when left/right is used
+			data: flatSeries.map((s) => s.name),
+			orient: "vertical",
+			left: "20px",
+			top: "101px",
 		},
-		series: [
-			{
-				name: LineTitle3D(),
-				type: "line3D",
-				data: xPositions.map((x, i) => [
-					x,
-					yPositions[i],
-					zPositions[i],
-				]),
-				lineStyle: {
-					width: 2,
-					color: "#145e9f",
-				},
-			},
-			{
-				name: ScatterTitle3D(),
-				type: "scatter3D",
-				data: [
-					[
-						xPositions[currentPointIndex],
-						yPositions[currentPointIndex],
-						zPositions[currentPointIndex],
-					],
-				],
-				symbolSize: 8,
-				itemStyle: {
-					color: "red",
-				},
-			},
-		],
+		series: flatSeries,
 		animation: false,
 	}
 
-	myChart.setOption(option, false)
+	chart3D().clear()
+	chart3D().setOption(option, false)
 }
 
 const updatePlot3D = (currentTime) => {
 	const myChart = chart3D()
+	if (!myChart) return
 
 	const currentPointIndex = Math.round(currentTime * 90)
-	const xPositions = positionsZ_3D()
-	const yPositions = positionsX_3D()
-	const zPositions = positionsY_3D()
 
-	myChart.setOption({
-		series: [
-			{
-				type: "line3D",
-				data: xPositions.map((x, i) => [
-					x,
-					yPositions[i],
-					zPositions[i],
-				]),
-			},
-			{
-				// Assuming the scatter is the second series
-				type: "scatter3D",
-				data: [
-					[
-						xPositions[currentPointIndex],
-						yPositions[currentPointIndex],
-						zPositions[currentPointIndex],
-					],
+	// Update scatter points for all viewers
+	const scatterSeries = skeletonViewersSig().map((viewer, index) => {
+		const label = viewer.plotLabel || `Viewer ${index + 1}`
+		const xPositions = positionsZ_3D()[index]
+		const yPositions = positionsX_3D()[index]
+		const zPositions = positionsY_3D()[index]
+		const color = colors[index % colors.length]
+
+		if (!xPositions || !yPositions || !zPositions) {
+			return null
+		}
+
+		return {
+			name: `${label} Point`,
+			type: "scatter3D",
+			data: [
+				[
+					xPositions[currentPointIndex],
+					yPositions[currentPointIndex],
+					zPositions[currentPointIndex],
 				],
+			],
+			symbolSize: 8,
+			itemStyle: {
+				color: color,
 			},
-		],
+		}
+	}).filter(Boolean)
+
+	// Update only the scatter series (points)
+	myChart.setOption({
+		series: scatterSeries.map((s, index) => ({
+			...s,
+			seriesIndex: index * 2 + 1, // Scatter series are at odd indices
+		})),
 	})
 }
 
 const createPlot2D_Predict = async () => {
+	console.log("🔄 Starting createPlot2D_Predict function")
 	const columnName = `${selectedJoint()}_${axisSelected()}rotation`
+	console.log("📊 Plot parameters:", {
+		columnName,
+		selectedJoint: selectedJoint(),
+		axisSelected: axisSelected()
+	})
 
 	const container = document.getElementById("plotPredict_2D")
+	console.log("📊 Plot container:", {
+		exists: !!container,
+		visible: container?.offsetWidth > 0
+	})
+	
+	if (!container) {
+		console.error("❌ plotPredict_2D container not found")
+		return
+	}
+	
 	if (!chart2D_predict()) {
 		const myChart = echarts.init(container)
 		setChart2D_predict(myChart) // Store the chart instance the first time
 	}
 
 	const myChart = chart2D_predict()
+	
+	console.log("📊 Data sources:", {
+		df_pred: {
+			hasData: !!df_pred(),
+			length: df_pred()?.length
+		},
+		df_pred_sampled: {
+			hasData: !!df_pred_sampled(),
+			length: df_pred_sampled()?.length
+		}
+	})
+	
 	let positions = await df_pred().array(columnName)
 	let positions2 = await df_pred_sampled().array(columnName)
-	console.log("positions: ", positions.length)
-	console.log("positions2: ", positions2.length)
+	console.log("📊 Plot data:", {
+		positions: positions.length,
+		positions2: positions2.length,
+		columnName
+	})
 
 	const yMin = Math.min(...positions2)
 	const yMax = Math.max(...positions2)
@@ -1010,14 +1087,21 @@ const createPlot2D_Predict = async () => {
 const resizePlots = () => {
 	//console.log('jhjkhjkjkhkj')
 
-	chart2D().resize()
-	chart3D().resize()
-
 	try {
-		chartVector().resize()
-		chart2D_predict().resize()
+		if (chart2D()) {
+			chart2D().resize()
+		}
+		if (chart3D()) {
+			chart3D().resize()
+		}
+		if (chartVector()) {
+			chartVector().resize()
+		}
+		if (chart2D_predict()) {
+			chart2D_predict().resize()
+		}
 	} catch (error) {
-		console.error(error)
+		console.error("Error resizing plots:", error)
 	}
 }
 

@@ -14,7 +14,7 @@ import {
 	setAppIsLoaded,
 	selectedValue,
 	setSelectedValue,
-} from "./store"
+} from "./stores/store"
 
 function cleanBoneHierarchy(boneHierarchy) {
 	if (typeof boneHierarchy !== "string") {

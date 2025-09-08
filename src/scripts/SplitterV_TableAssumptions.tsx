@@ -9,7 +9,7 @@ import {
 	selectedRow,
 	set_df_coef_mod,
 	df_coef,
-} from "./store"
+} from "./stores/store"
 import { ResizeEverything } from "./ResizeEverything"
 import { Button } from "@kobalte/core/button"
 import { AxisSelector } from "./AxisSelector"

@@ -6,7 +6,7 @@ import {
 	currentAnimationTime,
 	setCurrentAnimationTime,
 	toggleValue,
-} from "./store"
+} from "./stores/store"
 import { updatePlot2D, updatePlot3D } from "./plots"
 
 const SliderBasic = () => {

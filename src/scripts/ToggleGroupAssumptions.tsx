@@ -1,6 +1,6 @@
 import { ToggleGroup } from "@kobalte/core/toggle-group"
 import { createSignal, onMount } from "solid-js"
-import { selectedAssumptionsIndex, setSelectedAssumptionsIndex } from "./store"
+import { selectedAssumptionsIndex, setSelectedAssumptionsIndex } from "./stores/store"
 
 function ToggleGroupAssumptions() {
 	const [indicatorStyle, setIndicatorStyle] = createSignal({

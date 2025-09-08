@@ -6,7 +6,7 @@ import {
 	setAxisSelected,
 	set_df_coef_mod,
 	df_coef_mod,
-} from "./store"
+} from "./stores/store"
 import * as aq from "arquero"
 
 function AxisSelector() {

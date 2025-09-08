@@ -11,6 +11,9 @@ const [positionsX_3D, setPositionsX_3D] = createSignal([])
 const [positionsY_3D, setPositionsY_3D] = createSignal([])
 const [positionsZ_3D, setPositionsZ_3D] = createSignal([])
 
+const [velocities, setVelocities] = createSignal([])
+const [accelerations, setAccelerations] = createSignal([])
+
 const [mode2DPlot, setMode2DPlot] = createSignal(false)
 const [mode3DPlot, setMode3DPlot] = createSignal(false)
 
@@ -21,13 +24,17 @@ const [chart2D, setChart2D] = createSignal(null) // Signal to store the 2D EChar
 const [chart3D, setChart3D] = createSignal(null) // Signal to store the 2D ECharts instance
 const [chart2D_predict, setChart2D_predict] = createSignal(null) // Signal to store the 2D ECharts instance
 
+const [chartVelocity, setChartVelocity] = createSignal(null)
+const [chartAcceleration, setChartAcceleration] = createSignal(null)
+const [chartMetrics, setChartMetrics] = createSignal(null)
+
 const [toggleValue, setToggleValue] = createSignal("x")
 const [bonesList, setBonesList] = createSignal([])
 const [selectedJoint, setSelectedJoint] = createSignal("Hips")
 const [selectedValue, setSelectedValue] = createSignal("Hips")
 
 const [loadingDone, setLoadingDone] = createSignal(false)
-const [uploadOutput, setUploadOutput] = createSignal("No file uploaded")
+const [uploadOutput, setUploadOutput] = createSignal({})
 
 const [splitterSizeL, setSplitterSizeL] = createSignal(100)
 const [splitterSizeR, setSplitterSizeR] = createSignal(0)
@@ -37,6 +44,12 @@ const [splitterSizePlotR, setSplitterSizePlotR] = createSignal(50)
 
 const [splitterSizeSkelUp, setSplitterSizeSkelUp] = createSignal(50)
 const [splitterSizeSkelDown, setSplitterSizeSkelDown] = createSignal(50)
+
+const [splitterSizePlotsRow1, setSplitterSizePlotsRow1] = createSignal(50)
+const [splitterSizePlotsRow2, setSplitterSizePlotsRow2] = createSignal(50)
+const [splitterSizePlotRow2Col1, setsplitterSizePlotRow2Col1] = createSignal(33)
+const [splitterSizePlotRow2Col2, setsplitterSizePlotRow2Col2] = createSignal(34)
+const [splitterSizePlotRow2Col3, setsplitterSizePlotRow2Col3] = createSignal(33)
 
 const [mainPageLoaded, setMainPageLoaded] = createSignal(false)
 const [inputGOM, setInputGOM] = createSignal([])
@@ -77,40 +90,75 @@ const [mouseJointHover, setMouseJointHover] = createSignal(null) // Signal to st
 
 const [selectedTab, setSelectedTab] = createSignal("Assumptions")
 
-// KF-GOM specific state // added by youssef hergal
-const [kfgomData, setKfgomData] = createSignal([]) // added by youssef hergal
-const [kfgomFilters, setKfgomFilters] = createSignal({ // added by youssef hergal
-	jointName: "",
-	significance: "all"
-})
+const [selectedBVH, setSelectedBVH] = createSignal("MCEAS02G01R03.bvh")
 
-// Forecasting state // added by youssef hergal
-const [forecastConfig, setForecastConfig] = createSignal({
-	steps: "none", // Default to "none" to avoid confusion with significant filter
-	includeConfidence: true,
-	confidenceLevel: 95 // Fixed at 95%
-})
-const [forecastResults, setForecastResults] = createSignal(null)
+// Added by Youssef Hergal - Multiple BVH management signals - 2025-01-27
+const [selectedBVHList, setSelectedBVHList] = createSignal(["MCEAS02G01R03.bvh"])
 
-const [rawSkeletenBones, setRawSkeletenBones] = createSignal([])
+// Added by Youssef Hergal - BVH visibility management - 2025-01-27
+const [bvHVisibilityMap, setBVHVisibilityMap] = createSignal({})
 
-// KF-GOM Train/Test file selection state
-const [trainFile, setTrainFile] = createSignal(null)
-const [testFile, setTestFile] = createSignal(null)
-const [trainFileBones, setTrainFileBones] = createSignal([])
-const [testFileBones, setTestFileBones] = createSignal([])
+// Added by Youssef Hergal - Helper function to get current active BVH - 2025-01-27
+function getCurrentActiveBVH() {
+	const list = selectedBVHList()
+	return list.length > 0 ? list[0] : "MCEAS02G01R03.bvh"
+}
 
-// SARIMAX specific state // added by youssef hergal
-const [sarimaxAnalyzer, setSarimaxAnalyzer] = createSignal(null) // added by youssef hergal
-const [sarimaxResults, setSarimaxResults] = createSignal(null) // added by youssef hergal
-const [sarimaxConfig, setSarimaxConfig] = createSignal({ // added by youssef hergal
-	targetJoint: "Hips",
-	targetAxis: "Xrotation", 
-	lags: 2,
-	method: "ridge"
-})
-const [isAnalyzing, setIsAnalyzing] = createSignal(false) // added by youssef hergal
-const [analysisProgress, setAnalysisProgress] = createSignal(0) // added by youssef hergal
+// Added by Youssef Hergal - Helper function to get visible BVH files - 2025-01-27
+// FUNCTIONALITY: Returns only BVH files that are currently visible (not hidden)
+// WHY: Needed for UI components that should only show visible files
+// PERFORMANCE: Simple filter operation on existing data
+function getVisibleBVHFiles() {
+	const list = selectedBVHList()
+	const visibilityMap = bvHVisibilityMap()
+	
+	return list.filter(fileName => visibilityMap[fileName] !== false)
+}
+
+// Added by Youssef Hergal - Helper function to get visible skeletons - 2025-01-27
+// FUNCTIONALITY: Returns only skeleton objects that are currently visible
+// WHY: Used by 3D scene to only render visible skeletons, improving performance
+// PERFORMANCE: Filter operation that prevents unnecessary 3D rendering
+function getVisibleSkeletons() {
+	const skeletons = skeletonsArray()
+	const visibilityMap = bvHVisibilityMap()
+	
+	return skeletons.filter(skeleton => {
+		const fileName = skeleton.fileName.replace('bvh2/', '')
+		return visibilityMap[fileName] !== false
+	})
+}
+
+// Added by Youssef Hergal - Initialize skeleton array with default BVH - 2025-01-27
+function initializeSkeletonArray() {
+	const currentSkeletons = skeletonsArray()
+	if (currentSkeletons.length === 0) {
+		// Initialize with the default BVH as a proper skeleton object
+		const defaultSkeleton = {
+			label: "Skeleton 1",
+			fileName: "bvh2/MCEAS02G01R03.bvh" // Added by Youssef Hergal - Ensure proper path format - 2025-01-27
+		}
+		setSkeletonsArray([defaultSkeleton])
+	}
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////
+const [baseScene, setBaseScene] = createSignal([])
+const [skeletons, setSkeletons] = createSignal([])
+const [skeletonsArray, setSkeletonsArray] = createSignal([])
+
+const [skeletonViewersSig, setSkeletonViewersSig] = createSignal([])
+const [playPressed, setPlayPressed] = createSignal(false)
+const [toolTipVisibility, setToolTipVisibility] = createSignal([])
+const [isBVHdefault, setIsBVHdefault] = createSignal(true)
+
+const [metrics, setMetrics] = createSignal([])
+const [metricName, setMetricName] = createSignal("GV")
+const [worldFramesBones, setWorldFramesBones] = createSignal([])
+const [currentImportMode, setCurrentImportMode] = createSignal("repo")
+const [openAlert, setOpenAlert] = createSignal(false)
 
 // const [isXPressed, setXPressed] = createSignal(true);
 // const [isYPressed, setYPressed] = createSignal(false);
@@ -137,6 +185,10 @@ export {
 	setPositionsY_3D,
 	positionsZ_3D,
 	setPositionsZ_3D,
+	velocities,
+	setVelocities,
+	accelerations,
+	setAccelerations,
 	chart2D,
 	setChart2D,
 	chart3D,
@@ -238,6 +290,67 @@ export {
 	setSplitterSizeSkelUp,
 	splitterSizeSkelDown,
 	setSplitterSizeSkelDown,
+	baseScene,
+	setBaseScene,
+	skeletons,
+	setSkeletons,
+	setSelectedBVH,
+	selectedBVH,
+	skeletonsArray,
+	setSkeletonsArray,
+	skeletonViewersSig,
+	setSkeletonViewersSig,
+	playPressed,
+	setPlayPressed,
+	toolTipVisibility,
+	setToolTipVisibility,
+	isBVHdefault,
+	setIsBVHdefault,
+	splitterSizePlotsRow1,
+	setSplitterSizePlotsRow1,
+	splitterSizePlotsRow2,
+	setSplitterSizePlotsRow2,
+	splitterSizePlotRow2Col1,
+	setsplitterSizePlotRow2Col1,
+	splitterSizePlotRow2Col2,
+	setsplitterSizePlotRow2Col2,
+	splitterSizePlotRow2Col3,
+	setsplitterSizePlotRow2Col3,
+	chartVelocity,
+	setChartVelocity,
+	chartAcceleration,
+	setChartAcceleration,
+	metrics,
+	setMetrics,
+	chartMetrics,
+	setChartMetrics,
+	metricName,
+	setMetricName,
+	worldFramesBones,
+	setWorldFramesBones,
+	currentImportMode,
+	setCurrentImportMode,
+	openAlert,
+	setOpenAlert,
+	// Added by Youssef Hergal - Export new signals and functions - 2025-01-27
+	selectedBVHList,
+	setSelectedBVHList,
+	bvHVisibilityMap,
+	setBVHVisibilityMap,
+	getCurrentActiveBVH,
+	getVisibleBVHFiles,
+	getVisibleSkeletons,
+	initializeSkeletonArray,
+	// isXPressed,
+	// isYPressed,
+	// isZPressed,
+	// setXPressed,
+	// setYPressed,
+	// setZPressed
+}
+
+// Re-export from dataStore for backward compatibility
+export {
 	rawSkeletenBones,
 	setRawSkeletenBones,
 	trainFile,
@@ -247,29 +360,12 @@ export {
 	trainFileBones,
 	setTrainFileBones,
 	testFileBones,
-	setTestFileBones,
-	kfgomData,
-	setKfgomData,
-	kfgomFilters,
-	setKfgomFilters,
-	forecastConfig,
-	setForecastConfig,
-	forecastResults,
-	setForecastResults,
-	sarimaxAnalyzer,
-	setSarimaxAnalyzer,
-	sarimaxResults,
-	setSarimaxResults,
-	sarimaxConfig,
-	setSarimaxConfig,
-	isAnalyzing,
-	setIsAnalyzing,
-	analysisProgress,
-	setAnalysisProgress,
-	// isXPressed,
-	// isYPressed,
-	// isZPressed,
-	// setXPressed,
-	// setYPressed,
-	// setZPressed
-}
+	setTestFileBones
+} from './stores/dataStore.js'
+
+// Re-export from analysisStore for backward compatibility
+export {
+	selectedJoints,
+	setSelectedJoints
+} from './stores/analysisStore.js'
+
