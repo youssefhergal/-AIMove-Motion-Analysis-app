@@ -43,7 +43,7 @@ function AxisSelector() {
 					</Select.Value>
 					<Select.Icon class="select__icon"></Select.Icon>
 				</Select.Trigger>
-				<Select.Description id="jointSelectLabel">
+				<Select.Description id="jointSelectLabel" class="select-label-small">
 					Select Joint Angle Axis:
 				</Select.Description>
 				<Select.Portal>

@@ -42,6 +42,17 @@ const [scrollBarWidth, setScrollBarWidth] = createSignal(0)
 // Bones and data
 const [bonesList, setBonesList] = createSignal([])
 
+// Additional splitter configurations
+const [splitterSizePlotsRow1, setSplitterSizePlotsRow1] = createSignal(50)
+const [splitterSizePlotsRow2, setSplitterSizePlotsRow2] = createSignal(50)
+const [splitterSizePlotRow2Col1, setsplitterSizePlotRow2Col1] = createSignal(33)
+const [splitterSizePlotRow2Col2, setsplitterSizePlotRow2Col2] = createSignal(34)
+const [splitterSizePlotRow2Col3, setsplitterSizePlotRow2Col3] = createSignal(33)
+
+// Additional UI states
+const [currentImportMode, setCurrentImportMode] = createSignal("repo")
+const [openAlert, setOpenAlert] = createSignal(false)
+
 export {
     // Layout
     splitterSizeL, setSplitterSizeL,
@@ -73,5 +84,16 @@ export {
     scrollBarWidth, setScrollBarWidth,
     
     // Data
-    bonesList, setBonesList
+    bonesList, setBonesList,
+    
+    // Additional splitters
+    splitterSizePlotsRow1, setSplitterSizePlotsRow1,
+    splitterSizePlotsRow2, setSplitterSizePlotsRow2,
+    splitterSizePlotRow2Col1, setsplitterSizePlotRow2Col1,
+    splitterSizePlotRow2Col2, setsplitterSizePlotRow2Col2,
+    splitterSizePlotRow2Col3, setsplitterSizePlotRow2Col3,
+    
+    // Additional UI states
+    currentImportMode, setCurrentImportMode,
+    openAlert, setOpenAlert
 }

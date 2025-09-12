@@ -1,5 +1,5 @@
 import { Vector2, Vector3, Matrix4 } from "three"
-import { scaleX } from "./store"
+import { scaleX } from "./stores/store"
 
 class OrbitControlsGizmo {
 	constructor(orbitControls, options) {

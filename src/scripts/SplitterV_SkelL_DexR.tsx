@@ -7,7 +7,7 @@ import {
 	splitterSizeR,
 	selectedAssumptionsIndex,
 	selectedTab,
-} from "./store"
+} from "./stores/store"
 import { SplitterH_Skel_Plots } from "./SplitterH_Skel_Plots"
 import { ResizeEverything } from "./ResizeEverything"
 import { Separator } from "@kobalte/core/separator"
@@ -32,17 +32,42 @@ const SplitterV_SkelL_DexR = () => {
 		}, 10)
 	})
 	const mystyle = {
-		width: "100% ",
+		width: "100%",
 		height: "100%",
-		flex: 1,
-		overflow: "auto",
+		overflow: "hidden",
 	}
 
 	const [valueButton, setValueButton] = createSignal("ATT-RGOM")
 
+	// Effect to handle tab changes and refresh data
+	createEffect(() => {
+		const currentValue = valueButton()
+		console.log("🔄 Tab changed to:", currentValue)
+		
+		// When switching back to ATT-RGOM, refresh the data
+		if (currentValue === "ATT-RGOM") {
+			setTimeout(async () => {
+				console.log("🔄 Refreshing ATT-RGOM data...")
+				// Import and call the necessary functions to refresh data
+				const { displayTableSwitcher } = await import("./CheckboxDexAnalysis")
+				await displayTableSwitcher()
+				console.log("✅ ATT-RGOM data refreshed")
+			}, 100)
+		}
+		
+		// When switching to KF-GOM, ensure data is available
+		if (currentValue === "KF-GOM") {
+			setTimeout(() => {
+				console.log("🔄 KF-GOM tab activated")
+				// Force resize to ensure proper display
+				ResizeEverything()
+			}, 100)
+		}
+	})
+
 	return (
 		<Splitter.Root
-			key={`splitter-${splitterSizeL()}-${splitterSizeR()}`}
+			style={{ width: "100%", height: "100%" }}
 			size={[
 				{ id: "main-panel", size: splitterSizeL() },
 				{ id: "dex_analysis-panel", size: splitterSizeR() },
@@ -166,7 +191,9 @@ const SplitterV_SkelL_DexR = () => {
 						</div>
 					)}
 
-					<TabsGOM_main valueButton={valueButton()} />
+					<div style={{ flex: 1, overflow: "hidden" }}>
+						<TabsGOM_main valueButton={valueButton()} />
+					</div>
 				</div>
 			</Splitter.Panel>
 		</Splitter.Root>

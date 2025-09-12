@@ -15,7 +15,7 @@ import {
 	setScaleY,
 	translateFixerGlobal,
 	setTranslateFixerGlobal,
-} from "./store"
+} from "./stores/store"
 import { createPlot2D, createPlot3D } from "./plots"
 import { myScene } from "./myScene"
 import { SplitterMainV_LMenu } from "./SplitterMainV_LMenu"
@@ -42,10 +42,9 @@ function MainPage() {
 	})
 
 	const mystyle = {
-		width: "100% ",
-		height: "100%",
-		flex: 1,
-		overflow: "auto",
+		width: "100vw",
+		height: "100vh",
+		overflow: "hidden",
 	}
 
 	return (
@@ -71,58 +70,19 @@ export { MainPage }
 
 const scaleApp = () => {
 	const appContainer = document.getElementById("mainContainer")
-	// const parentElement = appContainer.parentElement
-	// const parentElement2 = parentElement.parentElement
-	// console.log(parentElement2)
-	// const scaleX = appContainer.clientWidth / 1920
-	// const scaleY = appContainer.clientHeight / 953
-
-	// console.log("window diastaseis: ", window.innerWidth, window.innerHeight)
-
-	// if (1920 / 953 >= parentElement.clientWidth / parentElement.clientHeight) {
-
-	if (2.014 >= window.innerWidth / window.innerHeight) {
-		setScaleX(window.innerWidth / 1920)
-		const widthFixer = (1 / scaleX()) * 100
-		const translateFixer = (100 - widthFixer) / 2
-		setTranslateFixerGlobal(translateFixer)
-
-		if (scaleX() > 1) {
-			appContainer.style.transform = `scale(${scaleX()}) translate(${translateFixer}%,${0}%)`
-		} else {
-			appContainer.style.transform = `scale(${scaleX()}) translate(${translateFixer}%,${translateFixer}%)`
-		}
-		appContainer.style.width = `${widthFixer}vw`
-		appContainer.style.height = `${widthFixer}vh`
-
-		console.log("mikrotero")
-	} else {
-		function calculateWidth(height) {
-			const aspectRatio = 1920 / 953
-			const width = height * aspectRatio
-			return width
-		}
-
-		function widthInVw(height) {
-			const width = calculateWidth(height)
-			const viewportWidth = window.innerWidth
-			const widthVw = (width / viewportWidth) * 100
-			return widthVw
-		}
-		setScaleX(calculateWidth(window.innerHeight) / 1920)
-
-		// const widthFixer = (1 / scaleX) * widthInVw(window.innerHeight)
-		const widthFixer = (1 / scaleX()) * 100
-		const translateFixer = (100 - widthFixer) / 2
-		setTranslateFixerGlobal(translateFixer)
-
-		appContainer.style.transform = `scale(${scaleX()}) translate(${translateFixer}%,${translateFixer}%)`
-		appContainer.style.width = `${widthFixer}vw`
-
-		appContainer.style.height = `${widthFixer}vh`
-
-		console.log("megalyetero", calculateWidth(appContainer.clientHeight))
-	}
+	
+	// Set container to full viewport size
+	appContainer.style.width = "100vw"
+	appContainer.style.height = "100vh"
+	appContainer.style.transform = "none"
+	appContainer.style.overflow = "hidden"
+	
+	// Set scale to 1 for full viewport usage
+	setScaleX(1)
+	setScaleY(1)
+	setTranslateFixerGlobal(0)
+	
+	console.log("App scaled to full viewport:", window.innerWidth, "x", window.innerHeight)
 }
 
 export { scaleApp }

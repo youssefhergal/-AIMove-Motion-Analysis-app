@@ -12,7 +12,7 @@ import "ag-grid-community/styles/ag-theme-quartz.css"
 
 import { SplitterH_Skel_Plots } from "./SplitterH_Skel_Plots"
 import { SplitterV_SkelL_DexR } from "./SplitterV_SkelL_DexR"
-import { checkboxValue } from "./store"
+import { checkboxValue } from "./stores/store"
 
 // import danfojs from "https://cdn.jsdelivr.net/npm/danfojs@1.1.2/+esm"
 
@@ -21,10 +21,21 @@ const SplitterMainV_LMenu = () => {
 		ResizeEverything()
 	}
 
+	// Force re-render when checkboxValue changes
+	createEffect(() => {
+		const value = checkboxValue()
+		console.log("🔄 checkboxValue changed:", value)
+		// Force a small delay to ensure layout updates
+		setTimeout(() => {
+			ResizeEverything()
+		}, 50)
+	})
+
 	return (
 		<Splitter.Root
+			style={{ width: "100vw", height: "100vh" }}
 			size={[
-				{ id: "viewer-panel", size: 18 },
+				{ id: "viewer-panel", size: 15 },
 				{ id: "control-panel", size: 82 },
 			]}
 			onSizeChangeEnd={async (e) => {
@@ -47,7 +58,7 @@ const SplitterMainV_LMenu = () => {
 				class="mainVericalSplitter"
 			/>
 			<Splitter.Panel id="control-panel">
-				<div style={{ width: "100%", height: "100%", flex: 1, overflow: "auto" }}>
+				<div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
 					{checkboxValue() ? <SplitterV_SkelL_DexR /> : <SplitterH_Skel_Plots />}
 				</div>
 			</Splitter.Panel>

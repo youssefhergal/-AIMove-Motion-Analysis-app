@@ -47,6 +47,20 @@ const [mouseJointHover, setMouseJointHover] = createSignal(null)
 // Sampling and data processing
 const [samplingFactor, setSamplingFactor] = createSignal(30)
 
+// Additional chart instances
+const [chartVelocity, setChartVelocity] = createSignal(null)
+const [chartAcceleration, setChartAcceleration] = createSignal(null)
+const [chartMetrics, setChartMetrics] = createSignal(null)
+
+// Velocities and accelerations
+const [velocities, setVelocities] = createSignal([])
+const [accelerations, setAccelerations] = createSignal([])
+
+// Metrics
+const [metrics, setMetrics] = createSignal([])
+const [metricName, setMetricName] = createSignal("GV")
+const [worldFramesBones, setWorldFramesBones] = createSignal([])
+
 // Utility function
 function time_to_frame(time) {
     return Math.round(time * 90)
@@ -89,5 +103,19 @@ export {
     mouseJointHover, setMouseJointHover,
     
     // Data processing
-    samplingFactor, setSamplingFactor
+    samplingFactor, setSamplingFactor,
+    
+    // Additional charts
+    chartVelocity, setChartVelocity,
+    chartAcceleration, setChartAcceleration,
+    chartMetrics, setChartMetrics,
+    
+    // Velocities and accelerations
+    velocities, setVelocities,
+    accelerations, setAccelerations,
+    
+    // Metrics
+    metrics, setMetrics,
+    metricName, setMetricName,
+    worldFramesBones, setWorldFramesBones
 }

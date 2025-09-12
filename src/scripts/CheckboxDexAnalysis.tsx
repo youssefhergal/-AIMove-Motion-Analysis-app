@@ -62,7 +62,7 @@ import {
 	set_df_pred_sampled,
 	bonesList,
 	setBonesList,
-} from "./store"
+} from "./stores/store"
 
 import {
 	ColDef,
@@ -172,9 +172,9 @@ async function DoGOM_init() {
 }
 
 export async function displayTableSwitcher(forceIndex = null) {
-	console.log("🔄 Starting displayTableSwitcher function")
+	// Starting displayTableSwitcher function
 	const assumptionIndex = forceIndex !== null ? forceIndex : selectedAssumptionsIndex()
-	console.log("📊 Current assumption index:", assumptionIndex)
+	// Current assumption index: assumptionIndex
 	
 	if (assumptionIndex === 11) {
 		setSplitterVtable(100)

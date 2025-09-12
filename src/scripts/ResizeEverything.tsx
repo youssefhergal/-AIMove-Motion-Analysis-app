@@ -1,5 +1,5 @@
 import { resizePlots } from "./plots"
-import { name2DPlot, name3DPlot, selectedJoint, toggleValue } from "./store"
+import { name2DPlot, name3DPlot, selectedJoint, toggleValue } from "./stores/store"
 import { myScene } from "./myScene"
 
 function ResizeEverything() {

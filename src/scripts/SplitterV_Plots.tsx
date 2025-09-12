@@ -11,7 +11,7 @@ import {
 	setSplitterSizePlotL,
 	splitterSizePlotR,
 	setSplitterSizePlotR,
-} from "./store"
+} from "./stores/store"
 
 import { ResizeEverything } from "./ResizeEverything"
 
@@ -24,6 +24,7 @@ function toggleAxis(axis) {
 // This is your nested splitter component.
 const SplitterV_Plots = () => (
 	<Splitter.Root
+		style={{ width: "100%", height: "100%" }}
 		onSizeChangeEnd={() => {
 			ResizeEverything()
 		}}

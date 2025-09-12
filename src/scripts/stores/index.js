@@ -10,6 +10,7 @@ export * from './visualizationStore.js'
 export * from './uiStore.js'
 export * from './analysisStore.js'
 export * from './dataStore.js'
+export * from './sceneStore.js'
 
 // Store categories for better organization
 export { 
@@ -102,3 +103,21 @@ export {
     trainFileBones, setTrainFileBones,
     testFileBones, setTestFileBones
 } from './dataStore.js'
+
+export {
+    // Scene
+    baseScene, setBaseScene,
+    skeletons, setSkeletons,
+    skeletonsArray, setSkeletonsArray,
+    skeletonViewersSig, setSkeletonViewersSig,
+    playPressed, setPlayPressed,
+    toolTipVisibility, setToolTipVisibility,
+    selectedBVH, setSelectedBVH,
+    selectedBVHList, setSelectedBVHList,
+    bvHVisibilityMap, setBVHVisibilityMap,
+    isBVHdefault, setIsBVHdefault,
+    getCurrentActiveBVH,
+    getVisibleBVHFiles,
+    getVisibleSkeletons,
+    initializeSkeletonArray
+} from './sceneStore.js'

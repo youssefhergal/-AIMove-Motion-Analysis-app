@@ -97,6 +97,21 @@ export { DownloadCSV, GenerateMovement }
 function TabsGOM_main(props: { valueButton: string }) {
 	// Signals for storing prediction data
 	const [originalData, setOriginalData] = createSignal([])
+	
+	// Effect to handle valueButton changes
+	createEffect(() => {
+		const currentValueButton = props.valueButton
+		console.log("🔄 TabsGOM_main valueButton changed to:", currentValueButton)
+		
+		// When switching back to ATT-RGOM, refresh the data
+		if (currentValueButton === "ATT-RGOM") {
+			setTimeout(async () => {
+				console.log("🔄 Refreshing ATT-RGOM data in TabsGOM_main...")
+				await displayTableSwitcher()
+				console.log("✅ ATT-RGOM data refreshed in TabsGOM_main")
+			}, 200)
+		}
+	})
 	const [initialPrediction, setInitialPrediction] = createSignal([])
 	const [retrainedPrediction, setRetrainedPrediction] = createSignal([])
 	const [chartInstance, setChartInstance] = createSignal(null)
@@ -585,9 +600,11 @@ function TabsGOM_main(props: { valueButton: string }) {
 					<Tabs.Indicator class="tabs__indicator" />
 				</Tabs.List>
 				<Tabs.Content class="tabs__content" value="Assumptions">
-					<ToggleGroupAssumptions />
+					{props.valueButton === "ATT-RGOM" && (
+						<>
+							<ToggleGroupAssumptions />
 
-					<div class="plotCoefContainer">
+							<div class="plotCoefContainer">
 						{selectedAssumptionsIndex() === 0 && (
 							<div class="GOM_Info">
 								<h2>Gesture Operational Model (GOM) Summary</h2>
@@ -742,167 +759,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 								</p>
 							</div>
 						)}
-						{props.valueButton === "KF-GOM" ? (
-							<KFGOMAnalysis />
-						) : (
-							<>
-								{selectedAssumptionsIndex() === 0 && (
-									<div class="GOM_Info">
-										<h2>Gesture Operational Model (GOM) Summary</h2>
-										<p>
-											The Gesture Operational Model (<b>GOM</b>)
-											is designed to describe and simulate the
-											complex and coordinated body movements of a
-											skilled individual performing professional
-											gestures. The model considers theoretical
-											knowledge and practical motor skills,
-											emphasizing precision and repeatability. The{" "}
-											<b>GOM</b> captures how body parts move in a
-											multidimensional space over time and
-											represents these movements using
-											mathematical models.
-										</p>
 
-										<h3>Key Concepts:</h3>
-
-										<h3>1. Intrajoint Association:</h3>
-										<ul>
-											<li>
-												Each body part's motion is decomposed
-												into movements on the X-axis and Y-axis.
-											</li>
-											<li>
-												There is a bidirectional relationship
-												between the X and Y movements.
-											</li>
-											<li>
-												<b>Equation:</b>
-											</li>
-										</ul>
-										<div id="equation1" class="mathElement"></div>
-
-										<h3>2. Transitioning:</h3>
-										<ul>
-											<li>
-												Each variable depends on its own history
-												(inertia effect).
-											</li>
-											<li>
-												The current value of each variable is
-												influenced by its past values.
-											</li>
-											<li>
-												<b>Equation:</b>
-											</li>
-										</ul>
-										<div id="equation2" class="mathElement"></div>
-
-										<h3>3. Interlimb Synergies:</h3>
-										<ul>
-											<li>
-												Certain body entities work together to
-												achieve specific motion trajectories.
-											</li>
-											<li>
-												For example, both hands working together
-												when assembling parts.
-											</li>
-										</ul>
-
-										<h3>4. Intralimb Mediation:</h3>
-										<ul>
-											<li>
-												<b>Interjoint Serial Mediation:</b>{" "}
-												Dependencies between neighboring joints
-												(e.g., wrist and elbow).
-											</li>
-											<li>
-												<b>Interjoint Non-Serial Mediation:</b>{" "}
-												Dependencies between non-neighboring
-												joints (e.g., wrist and shoulder).
-											</li>
-										</ul>
-
-										<h2>Example Equations</h2>
-
-										<h3>1. General Equation for an Entity:</h3>
-										<div id="equation3" class="mathElement"></div>
-
-										<h3>2. State Equation for an Entity:</h3>
-										<div id="equation4" class="mathElement"></div>
-
-										<h3>
-											3. Measurement Equation for Right Wrist:
-										</h3>
-										<div id="equation5" class="mathElement"></div>
-
-										<h2>Simultaneous Equation System</h2>
-
-										<p>
-											The system uses first-order differential
-											equations to represent the dynamics of body
-											movements. For each body entity and each
-											dimension (X and Y), the <b>GOM</b>{" "}
-											constructs a set of equations:
-										</p>
-
-										<h3>1. State Equation:</h3>
-										<div id="equation6" class="mathElement"></div>
-										<ul>
-											<li>s_S(t): State vector</li>
-											<li>A: Transition matrix</li>
-											<li>w(t): Gaussian disturbances</li>
-										</ul>
-
-										<h3>2. Measurement Equation:</h3>
-										<div id="equation7" class="mathElement"></div>
-										<ul>
-											<li>y: Output vector</li>
-											<li>C: Output matrix</li>
-											<li>D: Feed-through matrix</li>
-											<li>u: Input vector</li>
-										</ul>
-
-										<h2>Summary of Model Structure</h2>
-
-										<ul>
-											<li>
-												The <b>GOM</b> involves a set of 32
-												equations for a full-body model, each
-												describing the relationship between
-												positions on the X and Y axes.
-											</li>
-											<li>
-												It uses second-order autoregressive (AR)
-												models to predict future behavior based
-												on past behavior.
-											</li>
-											<li>
-												The model effectively combines
-												intrajoint association, transitioning,
-												interlimb synergies, and intralimb
-												mediation to simulate and forecast
-												professional gestures.
-											</li>
-										</ul>
-
-										<h2>Conclusion</h2>
-
-										<p>
-											The <b>GOM</b> provides a comprehensive
-											framework for understanding and modeling the
-											intricate movements of skilled individuals.
-											By using a combination of state-space
-											representation and simultaneous equations,
-											the model captures the dynamic relationships
-											between different body parts and their
-											movements over time.
-										</p>
-									</div>
-								)}
 								<SplitterV_TableAssumptions />
-							</>
-						)}
 						{/* <div class="generateButtons">
 							<div
 								id="grid-container-generateButtons"
@@ -925,6 +783,193 @@ function TabsGOM_main(props: { valueButton: string }) {
 							</div>
 						</div> */}
 					</div>
+						</>
+					)}
+					
+					{props.valueButton === "KF-GOM" && (
+						<>
+							<ToggleGroupAssumptions />
+							<div class="plotCoefContainer">
+						{selectedAssumptionsIndex() === 0 && (
+							<div class="GOM_Info">
+								<h2>Gesture Operational Model (GOM) Summary</h2>
+								<p>
+									The Gesture Operational Model (<b>GOM</b>)
+									is designed to describe and simulate the
+									complex and coordinated body movements of a
+									skilled individual performing professional
+									gestures. The model considers theoretical
+									knowledge and practical motor skills,
+									emphasizing precision and repeatability. The{" "}
+									<b>GOM</b> captures how body parts move in a
+									multidimensional space over time and
+									represents these movements using
+									mathematical models.
+								</p>
+
+								<h3>Key Concepts:</h3>
+
+								<h3>1. Intrajoint Association:</h3>
+								<ul>
+									<li>
+										Each body part's motion is decomposed
+										into movements on the X-axis and Y-axis.
+									</li>
+									<li>
+										There is a bidirectional relationship
+										between the X and Y movements.
+									</li>
+									<li>
+										<b>Equation:</b>
+									</li>
+								</ul>
+								<div id="equation1" class="mathElement"></div>
+
+								<h3>2. Transitioning:</h3>
+								<ul>
+									<li>
+										Each variable depends on its own history
+										(inertia effect).
+									</li>
+									<li>
+										The current value of each variable is
+										influenced by its past values.
+									</li>
+									<li>
+										<b>Equation:</b>
+									</li>
+								</ul>
+								<div id="equation2" class="mathElement"></div>
+
+								<h3>3. Interlimb Synergies:</h3>
+								<ul>
+									<li>
+										Certain body entities work together to
+										achieve specific motion trajectories.
+									</li>
+									<li>
+										For example, both hands working together
+										when assembling parts.
+									</li>
+								</ul>
+
+								<h3>4. Intralimb Mediation:</h3>
+								<ul>
+									<li>
+										<b>Interjoint Serial Mediation:</b>{" "}
+										Dependencies between neighboring joints
+										(e.g., wrist and elbow).
+									</li>
+									<li>
+										<b>Interjoint Non-Serial Mediation:</b>{" "}
+										Dependencies between non-neighboring
+										joints (e.g., wrist and shoulder).
+									</li>
+								</ul>
+
+								<h2>Example Equations</h2>
+
+								<h3>1. General Equation for an Entity:</h3>
+								<div id="equation3" class="mathElement"></div>
+
+								<h3>2. State Equation for an Entity:</h3>
+								<div id="equation4" class="mathElement"></div>
+
+								<h3>
+									3. Measurement Equation for Right Wrist:
+								</h3>
+								<div id="equation5" class="mathElement"></div>
+
+								<h2>Simultaneous Equation System</h2>
+
+								<p>
+									The system uses first-order differential
+									equations to represent the dynamics of body
+									movements. For each body entity and each
+									dimension (X and Y), the <b>GOM</b>{" "}
+									constructs a set of equations:
+								</p>
+
+								<h3>1. State Equation:</h3>
+								<div id="equation6" class="mathElement"></div>
+								<ul>
+									<li>s_S(t): State vector</li>
+									<li>A: Transition matrix</li>
+									<li>w(t): Gaussian disturbances</li>
+								</ul>
+
+								<h3>2. Measurement Equation:</h3>
+								<div id="equation7" class="mathElement"></div>
+								<ul>
+									<li>y: Output vector</li>
+									<li>C: Output matrix</li>
+									<li>D: Feed-through matrix</li>
+									<li>u: Input vector</li>
+								</ul>
+
+								<h2>Summary of Model Structure</h2>
+
+								<ul>
+									<li>
+										The <b>GOM</b> involves a set of 32
+										equations for a full-body model, each
+										describing the relationship between
+										positions on the X and Y axes.
+									</li>
+									<li>
+										It uses second-order autoregressive (AR)
+										models to predict future behavior based
+										on past behavior.
+									</li>
+									<li>
+										The model effectively combines
+										intrajoint association, transitioning,
+										interlimb synergies, and intralimb
+										mediation to simulate and forecast
+										professional gestures.
+									</li>
+								</ul>
+
+								<h2>Conclusion</h2>
+
+								<p>
+									The <b>GOM</b> provides a comprehensive
+									framework for understanding and modeling the
+									intricate movements of skilled individuals.
+									By using a combination of state-space
+									representation and simultaneous equations,
+									the model captures the dynamic relationships
+									between different body parts and their
+									movements over time.
+								</p>
+							</div>
+						)}
+
+								<KFGOMAnalysis />
+						{/* <div class="generateButtons">
+							<div
+								id="grid-container-generateButtons"
+								class="grid-container-buttonCoef"
+							>
+								<button
+									id="generateButton"
+									class="buttonCoef"
+									onclick={GenerateMovement}
+								>
+									Generate
+								</button>
+								<button
+									id="downloadButton"
+									class="buttonCoef"
+									onclick={DownloadCSV}
+								>
+									Download CSV
+								</button>
+							</div>
+						</div> */}
+					</div>
+						</>
+					)}
 				</Tabs.Content>
 				
 				<Tabs.Content
@@ -932,7 +977,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 					class="tabs__content"
 					value="Generated Movement"
 				>
-					<div class="plotCoefContainer">
+					{props.valueButton === "KF-GOM" && selectedTab() === "Generated Movement" && (
+						<div class="plotCoefContainer">
 						<div class="plotTitle" id="plotPredict">
 							Movement Prediction Analysis
 						</div>
@@ -1073,6 +1119,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 							style={{ width: "100%", height: "400px" }}
 						/>
 					</div>
+					)}
+					
 				</Tabs.Content>
 			</Tabs.Root>
 		</>

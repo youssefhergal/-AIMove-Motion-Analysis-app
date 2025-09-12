@@ -23,7 +23,7 @@ import {
 	toolTipVisibility,
 	setToolTipVisibility,
 	worldFramesBones,
-} from "./store.js"
+} from "./stores/store.js"
 
 class SkeletonViewer {
 	constructor(scene, color_joints) {
@@ -82,7 +82,7 @@ class SkeletonViewer {
 		this.left = left
 		this.right = right
 
-		console.log("YOUSSEF: ", bvhBones, this.left, this.right)
+		//console.log("YOUSSEF: ", bvhBones, this.left, this.right)
 
 		setSelectedJoint(this.globalResult.skeleton.bones[0].name)
 		this.animationClip = this.globalResult.clip // Storing the clip in the global scope for later use

@@ -26,7 +26,7 @@ import {
 	bonesList,
 	rawSkeletenBones,
 	setRawSkeletenBones,
-} from "./store.js"
+} from "./stores/store.js"
 
 let myScene = {
 	// Declare properties for storing objects

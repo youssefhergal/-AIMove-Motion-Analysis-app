@@ -10,7 +10,7 @@ import {
 	setSplitterSizeSkelUp,
 	splitterSizeSkelDown,
 	setSplitterSizeSkelDown,
-} from "./store"
+} from "./stores/store"
 
 // This is your nested splitter component.
 const SplitterH_Skel_Plots = () => {
@@ -18,6 +18,7 @@ const SplitterH_Skel_Plots = () => {
 	return (
 		<Splitter.Root
 			orientation="vertical"
+			style={{ width: "100%", height: "100%" }}
 			onSizeChangeEnd={() => {
 				ResizeEverything()
 			}}

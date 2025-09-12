@@ -2,7 +2,7 @@
 import { createSignal } from "solid-js"
 import { Select } from "@kobalte/core"
 import { Switch } from "@kobalte/core"
-import { Checkbox } from "@kobalte/core/checkbox"
+// Removed Checkbox import - using HTML checkboxes instead
 import { Slider } from "@kobalte/core"
 import { initializeWhenLoaded } from "./useSceneSetup"
 import {
@@ -31,7 +31,7 @@ import {
 	animationDuration,
 	playPressed,
 	setPlayPressed,
-} from "./store"
+} from "./stores/store"
 import { ResizeEverything } from "./ResizeEverything"
 import { updatePlot2D, updatePlot3D } from "./plots"
 
@@ -102,15 +102,6 @@ function VisualizationControlsCard() {
 
 	return (
 		<div class="file-management-card">
-			<div class="card-header">
-				<div class="card-title">
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M3 3v18h18"/>
-						<path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
-					</svg>
-					Visualization Controls
-				</div>
-			</div>
 			
 			<div class="card-content">
 				{/* Joint Selection Section */}
@@ -254,20 +245,18 @@ function VisualizationControlsCard() {
 					<label class="control-label">Adjust Plot Parameters</label>
 					<div class="plot-parameters">
 						<div class="parameter-row">
-							<Checkbox
-								class="checkbox"
-								checked={plot2D_active()}
-								onChange={async (e) => {
-									setPlot2D_active(e)
-									await resizePlotWindows()
-								}}
-							>
-								<Checkbox.Input class="checkbox__input" />
-								<Checkbox.Control class="checkbox__control">
-									<Checkbox.Indicator>✔</Checkbox.Indicator>
-								</Checkbox.Control>
-							</Checkbox>
-							<span class="parameter-label">2D Plot:</span>
+							<label class="file-checkbox-label">
+								<input
+									type="checkbox"
+									class="file-checkbox"
+									checked={plot2D_active()}
+									onChange={async (e) => {
+										setPlot2D_active(e.target.checked)
+										await resizePlotWindows()
+									}}
+								/>
+								<span class="parameter-label">2D Plot:</span>
+							</label>
 							<div class="parameter-controls">
 								<Switch.Root
 									class="switch"
@@ -287,25 +276,23 @@ function VisualizationControlsCard() {
 										<Switch.Thumb class="switch__thumb" />
 									</Switch.Control>
 								</Switch.Root>
-								<span class="parameter-text">Positions / Angles</span>
+								<span class="parameter-text">Pos/Ang</span>
 							</div>
 						</div>
 						
 						<div class="parameter-row">
-							<Checkbox
-								class="checkbox"
-								checked={plot3D_active()}
-								onChange={async (e) => {
-									setPlot3D_active(e)
-									await resizePlotWindows()
-								}}
-							>
-								<Checkbox.Input class="checkbox__input" />
-								<Checkbox.Control class="checkbox__control">
-									<Checkbox.Indicator>✔</Checkbox.Indicator>
-								</Checkbox.Control>
-							</Checkbox>
-							<span class="parameter-label">3D Plot:</span>
+							<label class="file-checkbox-label">
+								<input
+									type="checkbox"
+									class="file-checkbox"
+									checked={plot3D_active()}
+									onChange={async (e) => {
+										setPlot3D_active(e.target.checked)
+										await resizePlotWindows()
+									}}
+								/>
+								<span class="parameter-label white">3D Plot:</span>
+							</label>
 							<div class="parameter-controls">
 								<Switch.Root
 									class="switch"
@@ -325,7 +312,7 @@ function VisualizationControlsCard() {
 										<Switch.Thumb class="switch__thumb" />
 									</Switch.Control>
 								</Switch.Root>
-								<span class="parameter-text">Positions / Angles</span>
+								<span class="parameter-text">Pos/Ang</span>
 							</div>
 						</div>
 					</div>

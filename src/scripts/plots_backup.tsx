@@ -830,7 +830,6 @@ const createPlot3D = (currentTime) => {
 		return
 	}
 
-
 	// If container has no dimensions, wait and retry
 	if (container.offsetWidth === 0 || container.offsetHeight === 0) {
 		console.log('⚠️ 3D container has no dimensions, waiting...')
@@ -889,13 +888,10 @@ const createPlot3D = (currentTime) => {
 		const zPositions = positionsY_3D()[index] // Y-axis
 		const color = colors[index % colors.length]
 
-
 		// Skip this viewer if data is missing
 		if (!xPositions || !yPositions || !zPositions) {
-			console.warn(`⚠️ Missing data for viewer ${index}`)
 			return null
 		}
-
 
 		// Line3D series for each viewer
 		const lineSeries = {
@@ -947,7 +943,6 @@ const createPlot3D = (currentTime) => {
 		console.warn("No position data available for 3D plot")
 		return
 	}
-
 
 	const xMin = Math.min(...allXPositions)
 	const xMax = Math.max(...allXPositions)

@@ -40,7 +40,7 @@ import {
 	setSelectedRow,
 	df_coef_mod,
 	skeletonViewersSig,
-} from "./store"
+} from "./stores/store"
 
 import * as aq from "arquero"
 import { op } from "arquero"
@@ -181,6 +181,21 @@ async function createPlotSeries() {
 	// Check if df_coef exists before proceeding
 	if (!df_coef()) {
 		console.warn('⚠️ df_coef is not available, skipping plot creation')
+		return
+	}
+
+	// Check if the tablePlots container is ready
+	const container = document.getElementById("tablePlots")
+	if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
+		console.log("⚠️ TablePlots container not ready, waiting...")
+		setTimeout(() => createPlotSeries(), 1000)
+		return
+	}
+
+	// Additional check to ensure container is fully rendered
+	if (container.offsetParent === null) {
+		console.log("⚠️ TablePlots container not visible, waiting...")
+		setTimeout(() => createPlotSeries(), 1000)
 		return
 	}
 

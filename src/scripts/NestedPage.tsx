@@ -18,7 +18,7 @@ import {
 	bvHVisibilityMap,
 	setBVHVisibilityMap,
 	initializeSkeletonArray,
-} from "./store" // Import shared state
+} from "./stores/store" // Import shared state
 
 // Added by Youssef Hergal - Simple file management component - 2025-01-27
 function FileManagementCard() {
@@ -144,10 +144,6 @@ function FileManagementCard() {
 
 	return (
 		<div class="file-management-card">
-			<div class="card-header">
-				<div class="card-title">
-				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-icon lucide-upload"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>					BVH File Manager</div>
-			</div>
 			
 			<div class="card-content">
 				<div class="upload-section">

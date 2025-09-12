@@ -1,8 +1,10 @@
 #root {
-	max-width: 1920px;
-	margin: 0 auto;
-	padding: 2rem;
+	width: 100vw;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
 	text-align: center;
+	overflow: hidden;
 	--theme_color: #145e9f;
 	--theme_color_light: #2389d4;
 	--theme_color_neutral: #156cb4;
@@ -31,16 +33,33 @@
 	/* color: rgb(75, 165, 229);
     background-color: rgb(227, 238, 251); */
 }
+
+#mainContainer {
+	width: 100vw;
+	height: 100vh;
+	overflow: hidden;
+}
+
+.mainPage {
+	width: 100vw;
+	height: 100vh;
+	overflow: hidden;
+}
 #tablePlots {
 	width: 100%;
 	height: 100%;
 }
+
+#plotTable {
+	width: 100vw !important;
+	height: 100%;
+}
 .ag-root-wrapper.ag-layout-normal {
-	width: 99%;
+	width: 100% !important;
 }
 .logo {
-	height: 6em;
-	padding: 1.5em;
+	height: 4em;
+	padding: 1em;
 	will-change: filter;
 	transition: filter 300ms;
 }
@@ -52,7 +71,7 @@
 }
 
 .card {
-	padding: 2em;
+	padding: 1em;
 }
 
 .read-the-docs {
@@ -66,6 +85,8 @@ div#myStatsContainer {
 
 #threePanel {
 	position: relative !important;
+	width: 100%;
+	height: 100%;
 	background: linear-gradient(
 		to bottom,
 		rgb(211, 211, 211),
@@ -87,11 +108,14 @@ div#myStatsContainer {
 	position: absolute;
 	top: 20px;
 	right: 80px;
-	/* z-index: 1000; */
+	z-index: 1000;
 	background-color: #fff0;
 	border-radius: 100%;
 	transition: background-color 0.15s linear;
 	cursor: pointer;
+	width: 100px;
+	height: 100px;
+	display: block;
 }
 
 .obit-controls-gizmo.dragging,
@@ -160,12 +184,12 @@ div#myStatsContainer {
 	display: inline-flex;
 	align-items: center;
 	justify-content: space-between;
-	width: 200px;
-	border-radius: 6px;
-	padding: 0 10px 0 16px;
-	font-size: 16px;
+	width: 160px;
+	border-radius: 4px;
+	padding: 0 8px 0 12px;
+	font-size: 14px;
 	line-height: 1;
-	height: 40px;
+	height: 32px;
 	outline: none;
 	background-color: white;
 	border: 1px solid hsl(240 6% 90%);
@@ -220,12 +244,14 @@ div#myStatsContainer {
 	/* top: 0;  */
 	/* left: 50%;  */
 	width: fit-content;
-	font-size: 13px;
-	left: 50%;
+	font-size: 10px;
+	left: 60%;
 	transform: translate(-90px, -50px);
 	text-align: center;
 	background: white;
+	margin-bottom: -15px;
 }
+
 
 #BVHSelectLabel {
 	position: relative;
@@ -262,15 +288,15 @@ div#myStatsContainer {
 	padding: 8px;
 }
 .select__item {
-	font-size: 16px;
+	font-size: 14px;
 	line-height: 1;
 	color: hsl(240 4% 16%);
 	border-radius: 4px;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	height: 32px;
-	padding: 0 8px;
+	height: 28px;
+	padding: 0 6px;
 	position: relative;
 	user-select: none;
 	outline: none;
@@ -321,8 +347,8 @@ div#myStatsContainer {
 }
 
 .separator {
-	margin-top: 20px;
-	margin-bottom: 20px;
+	margin-top: 12px;
+	margin-bottom: 12px;
 	border: none;
 	background-color: hsl(240 5% 84%);
 }
@@ -358,14 +384,14 @@ div#myStatsContainer {
 }
 
 .player_buttons {
-	padding: 5px 12px; /* Smaller padding */
+	padding: 4px 8px; /* Smaller padding */
 	display: inline-flex; /* Keeps the button elements aligned properly */
 	align-items: center; /* Center items inside the button vertically */
 	justify-content: center; /* Center items inside the button horizontally */
 	/* color: rgb(20, 94, 159); */
 	/* border-color: rgb(20, 94, 159); */
 	/* border-color: black; */
-
+	font-size: 12px;
 	box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.2) !important;
 }
 .player_buttons:hover {
@@ -557,21 +583,21 @@ div#myStatsContainer {
 
 .toolbarTitles {
 	font-family: "Segoe UI", sans-serif;
-	font-size: 17px;
+	font-size: 14px;
 	color: #666666;
 	font-weight: bold;
-	margin-bottom: 20px;
-	margin-top: 10px;
+	margin-bottom: 12px;
+	margin-top: 6px;
 	/* text-align: start; */
 }
 
 .toolbarDescription {
 	font-family: "Segoe UI", sans-serif;
-	font-size: 15px;
+	font-size: 12px;
 	color: #666666;
 	font-weight: normal;
-	margin-bottom: 18px;
-	margin-top: 10px;
+	margin-bottom: 12px;
+	margin-top: 6px;
 }
 
 .collapsible {
@@ -590,9 +616,10 @@ div#myStatsContainer {
 	/* justify-content: space-between; */
 	width: 100%;
 	/* padding: 14px; */
-	padding: 11px;
+	padding: 6px;
 
-	font-weight: 650;
+	font-weight: 600;
+	font-size: 11px;
 	/* font-weight: bold; */
 	/* 
   border-top: 1px solid hsl(240 5% 84%);
@@ -652,7 +679,7 @@ div#myStatsContainer {
 	animation: slideDown 300ms ease-out;
 }
 .collapsible__content-text {
-	padding: 16px;
+	padding: 8px;
 }
 @keyframes slideDown {
 	from {
@@ -741,11 +768,11 @@ input[type="file"] {
 .switch__control {
 	display: inline-flex;
 	align-items: center;
-	height: 24px;
-	width: 44px;
+	height: 16px;
+	width: 28px;
 	border: 1px solid hsl(240 5% 84%);
-	border-radius: 12px;
-	padding: 0 2px;
+	border-radius: 8px;
+	padding: 0 1px;
 	background-color: hsl(240 6% 90%);
 	transition: 250ms background-color;
 }
@@ -761,9 +788,9 @@ input[type="file"] {
 	background-color: var(--theme_color_neutral);
 }
 .switch__thumb {
-	height: 20px;
-	width: 20px;
-	border-radius: 10px;
+	height: 12px;
+	width: 12px;
+	border-radius: 6px;
 	background-color: white;
 	transition: 250ms transform;
 }
@@ -771,10 +798,10 @@ input[type="file"] {
 	transform: translateX(calc(100% - 1px));
 }
 .switch__label {
-	margin-right: 6px;
-	margin-left: 6px;
+	margin-right: 4px;
+	margin-left: 4px;
 	color: hsl(240 6% 10%);
-	font-size: 14px;
+	font-size: 10px;
 	user-select: none;
 	font-family: "Segoe UI", sans-serif;
 }
@@ -786,7 +813,7 @@ input[type="file"] {
 	gap: 0px; /* Spacing between sections */
 	width: 100%; /* Adjust width as necessary for your layout */
 	margin: 0px auto; /* Centering the grid container */
-	padding-top: 10px;
+	padding-top: 6px;
 	/* padding: 10px; */
 	/* border: 2px solid #ccc;  */
 }
@@ -794,24 +821,7 @@ input[type="file"] {
 .plot-type-section {
 	/* padding: 2px; */
 	padding-bottom: 0px;
-	padding-right: 35px;
-	width: 100%;
-	margin-right: 0px;
-	/* background-color: #f4f4f4;  */
-	/* border: 1px solid #ddd;  */
-	text-align: start;
-	font-family: "Segoe UI", sans-serif;
-	font-size: 15px;
-	color: black;
-	font-weight: normal;
-	align-items: center;
-	align-content: center;
-}
-
-.plot-options-section {
-	/* padding: 2px; */
-	padding-bottom: 10px;
-	padding-right: 35px;
+	padding-right: 20px;
 	width: 100%;
 	margin-right: 0px;
 	/* background-color: #f4f4f4;  */
@@ -825,10 +835,27 @@ input[type="file"] {
 	align-content: center;
 }
 
+.plot-options-section {
+	/* padding: 2px; */
+	padding-bottom: 6px;
+	padding-right: 20px;
+	width: 100%;
+	margin-right: 0px;
+	/* background-color: #f4f4f4;  */
+	/* border: 1px solid #ddd;  */
+	text-align: start;
+	font-family: "Segoe UI", sans-serif;
+	font-size: 10px;
+	color: black;
+	font-weight: normal;
+	align-items: center;
+	align-content: center;
+}
+
 .plot-options-section.top-center {
 	/* white-space: nowrap; */
-	padding-right: 80px;
-	padding-bottom: 10px;
+	padding-right: 50px;
+	padding-bottom: 6px;
 }
 
 .plot-mode-section {
@@ -839,7 +866,7 @@ input[type="file"] {
 	/* background-color: #f4f4f4;  */
 	/* border: 1px solid #ddd;  */
 	text-align: start;
-	font-size: 16px; /* Adjustable based on your design needs */
+	font-size: 13px; /* Adjustable based on your design needs */
 	/* font-family: 'Segoe UI', sans-serif; */
 	align-items: center;
 	align-content: center;
@@ -855,12 +882,12 @@ input[type="file"] {
 } */
 
 .plot-switch-section {
-	margin-right: 30px;
+	margin-right: 20px;
 
 	align-items: center;
 	align-content: center;
 
-	font-size: 16px; /* Adjustable based on your design needs */
+	font-size: 13px; /* Adjustable based on your design needs */
 }
 
 .tabs {
@@ -868,7 +895,7 @@ input[type="file"] {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	margin-top: -20px;
+	margin-top: 0px;
 	padding-bottom: 20px;
 }
 .tabs[data-orientation="vertical"] {
@@ -906,11 +933,11 @@ input[type="file"] {
 }
 .tabs__trigger {
 	display: inline-block;
-	padding: 8px 16px;
+	padding: 6px 12px;
 	outline: none;
 	background-color: transparent;
 	font-family: "Segoe UI", sans-serif;
-	padding: 14px;
+	font-size: 13px;
 	font-weight: 550;
 	color: #666666;
 }
@@ -951,7 +978,7 @@ input[type="file"] {
 .tabs__content[data-state="open"] {
 	display: flex;
 	flex-direction: column;
-	padding: 16px;
+	padding: 12px;
 	height: 100%;
 }
 
@@ -966,8 +993,8 @@ input[type="file"] {
 }
 
 .toggle-group__item {
-	padding: 0.5rem;
-	border-radius: 0.5rem;
+	padding: 0.3rem;
+	border-radius: 0.3rem;
 	appearance: none;
 	user-select: none;
 	outline: none;
@@ -977,7 +1004,7 @@ input[type="file"] {
 	transition-property: background-color, color;
 	transition-duration: 150ms;
 	transition-timing-function: ease-in-out;
-	font-size: 14px;
+	font-size: 12px;
 	white-space: nowrap;
 }
 .toggle-group__item:hover[disabled="false"],
@@ -1029,7 +1056,7 @@ input[type="file"] {
 	font-family: "Segoe UI", sans-serif;
 	margin-left: 6px;
 	color: hsl(240 6% 10%);
-	font-size: 16px;
+	font-size: 13px;
 	user-select: none;
 }
 
@@ -1037,7 +1064,7 @@ input[type="file"] {
 	font-family: "Segoe UI", sans-serif;
 	/* padding: 14px; */
 	font-weight: 650;
-	font-size: 18px;
+	font-size: 14px;
 	color: #666666;
 	text-align: left;
 	margin-bottom: -17px;
@@ -1045,9 +1072,9 @@ input[type="file"] {
 
 #Analysis_Title_small {
 	font-family: "Segoe UI", sans-serif;
-	padding-bottom: 5px;
+	padding-bottom: 3px;
 	font-weight: 550;
-	font-size: 16px;
+	font-size: 13px;
 	color: #666666;
 	/* text-align: left; */
 	margin-top: -10px;
@@ -1068,12 +1095,12 @@ input[type="file"] {
 }
 .custom-toggle-group__item {
 	display: inline-block;
-	padding: 8px; /* Consolidated padding */
+	padding: 2px; /* Consolidated padding */
 
 	outline: none;
 	background-color: transparent; /* Sets the background to be transparent */
 	font-family: "Segoe UI", sans-serif;
-	font-size: 14px; /* Sets font size to large */
+	font-size: 12px; /* Sets font size to large */
 	color: #666666;
 	font-weight: light;
 	appearance: none;
@@ -1163,9 +1190,9 @@ input[type="file"] {
 	margin: 5px;
 	width: 100%;
 }
-.ag-root-wrapper-body.ag-layout-normal.ag-focus-managed {
-	/* height: 50px; */
-}
+/* .ag-root-wrapper-body.ag-layout-normal.ag-focus-managed {
+	height: 50px;
+} */
 /* .ag-paging-row-summary-panel {
 	display: none !important;
 } */
@@ -1200,13 +1227,13 @@ input[type="file"] {
 	box-shadow: 0 2px 6px 0px rgb(0 0 0 / 0.5);
 	border-radius: 3px;
 	text-align: center;
-	padding-bottom: 10px;
-	padding-top: 10px;
-	margin-bottom: 5px;
+	padding-bottom: 6px;
+	padding-top: 6px;
+	margin-bottom: 3px;
 
 	font-family: "Segoe UI", sans-serif;
 	font-weight: 650;
-	font-size: 16px;
+	font-size: 13px;
 	/* color: #666666; */
 	width: 100%;
 	color: white;
@@ -1217,19 +1244,19 @@ input[type="file"] {
 }
 
 #plotPanel_3D {
-	margin-top: -60px;
+	margin-top: 0px;
 	/* z-index: 1; */
 }
 
 #plotPredict {
-	margin-bottom: 20px;
+	margin-bottom: 12px;
 }
 
 #skeletonTitle {
-	margin-bottom: 5px;
+	margin-bottom: 3px;
 }
 #CollapsibleVisControls[data-expanded] {
-	margin-bottom: 20px;
+	margin-bottom: 12px;
 }
 
 #dexterityAnalysisTitle {
@@ -1244,7 +1271,7 @@ input[type="file"] {
 .plotTableContainer {
 	height: 100%;
 	padding: 0px;
-	padding-bottom: 10px;
+	padding-bottom: 6px;
 	box-sizing: border-box;
 	width: 100%;
 	margin-bottom: 0;
@@ -1264,16 +1291,16 @@ input[type="file"] {
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
-	height: 40px;
+	height: 32px;
 	width: auto;
 	outline: none;
-	border-radius: 6px;
-	padding: 0 16px;
+	border-radius: 4px;
+	padding: 0 12px;
 	/* background-color: hsl(200 98% 39%); */
 	background-image: var(--theme_color_gradient_neutral);
 
 	color: white;
-	font-size: 16px;
+	font-size: 13px;
 	line-height: 0;
 	transition: 250ms background-color;
 	/* box-shadow: 0 2px 6px 0px rgb(0 0 0 / 0.5); */
@@ -1301,14 +1328,14 @@ input[type="file"] {
 .grid-container-buttonCoef {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 40px;
-	width: 280px;
+	gap: 24px;
+	width: 200px;
 }
 .grid-container-buttonCoef-parent {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	margin-top: -100px;
+	margin-top: -60px;
 	z-index: 10;
 }
 
@@ -1330,12 +1357,12 @@ input[type="file"] {
 	bottom: 0;
 	left: 0;
 	background-color: white; /* To see it more easily */
-	padding: 20px; /* Optionally, you can add padding */
+	padding: 12px; /* Optionally, you can add padding */
 	box-sizing: border-box; /* This ensures that padding doesn't add extra size */
 	z-index: 100;
-	margin-left: -1px;
+	margin-left: 0px;
 	padding-bottom: 0px;
-	margin-bottom: -10px;
+	margin-bottom: 0px;
 	overflow: auto;
 	text-align: justify;
 }
@@ -1364,12 +1391,12 @@ input[type="file"] {
 }
 
 #tableTitle {
-	margin-top: 15px;
+	margin-top: 8px;
 	margin-bottom: 0px;
 }
 
 #plotVectorTitle {
-	margin-top: 15px;
+	margin-top: 8px;
 	margin-bottom: 0px;
 }
 
@@ -1413,17 +1440,17 @@ input[type="file"] {
 .generateButtons {
 	display: flex;
 	/* margin-top: 20px; */
-	margin-left: 33px;
+	margin-left: 20px;
 	/* margin-bottom: 60px; */
 	padding: 0px;
 	/* padding-top: 20px; */
-	padding-bottom: 20px;
+	padding-bottom: 12px;
 }
 
 #grid-container-generateButtons {
-	width: 260px;
+	width: 200px;
 	padding: 0px;
-	gap: 20px;
+	gap: 12px;
 }
 #generateButton {
 	padding-left: 0px;
@@ -1472,7 +1499,7 @@ input[type="file"] {
 	/* height: 100%;
 	width: 100%; */
 	flex-direction: column;
-	padding: 16px;
+	padding: 12px;
 	padding-bottom: 0px;
 }
 
@@ -1485,18 +1512,18 @@ input[type="file"] {
 }
 
 h2 {
-	font-size: 20px;
+	font-size: 16px;
 	font-weight: 650;
 	text-align: center;
-	padding-top: 24px;
-	padding-bottom: 12px;
+	padding-top: 16px;
+	padding-bottom: 8px;
 	/* padding-bottom: 20px; */
 }
 h3 {
-	font-size: 16px;
+	font-size: 14px;
 	font-weight: 650;
-	padding-top: 24px;
-	padding-bottom: 12px;
+	padding-top: 16px;
+	padding-bottom: 8px;
 }
 
 b {
@@ -1507,8 +1534,8 @@ b {
 }
 
 p {
-	padding-top: 12px;
-	padding-bottom: 24px;
+	padding-top: 8px;
+	padding-bottom: 16px;
 }
 
 /* KF-GOM Manual Trigger Button */ /* added by youssef hergal */
@@ -1551,49 +1578,49 @@ p {
 .file-management-card {
 	background: #1e293b;
 	border: 1px solid #334155;
-	border-radius: 12px;
-	padding: 20px;
-	margin-bottom: 20px;
-	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	border-radius: 6px;
+	padding: 8px;
+	margin-bottom: 8px;
+	box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Added by Youssef Hergal - Spacing between cards - 2025-01-27 */
 .file-management-card + .file-management-card {
-	margin-top: 16px;
+	margin-top: 10px;
 }
 
 .card-header {
-	margin-bottom: 20px;
+	margin-bottom: 12px;
 }
 
 .card-title {
-	font-size: 18px;
+	font-size: 12px;
 	font-weight: 600;
 	color: #e2e8f0;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 4px;
 }
 
 .upload-icon {
-	font-size: 20px;
+	font-size: 16px;
 }
 
 .card-content {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
+	gap: 12px;
 }
 
 .upload-section, .default-files-section {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 6px;
 }
 
 .upload-label, .default-label {
 	color: #e2e8f0;
-	font-size: 14px;
+	font-size: 10px;
 	font-weight: 500;
 	text-align: left;
 }
@@ -1617,8 +1644,8 @@ p {
 .file-input-button {
 	background: #3b82f6;
 	color: white;
-	padding: 10px 16px;
-	font-size: 14px;
+	padding: 6px 8px;
+	font-size: 10px;
 	font-weight: 500;
 	cursor: pointer;
 	transition: all 0.2s ease;
@@ -1633,9 +1660,9 @@ p {
 
 .file-input-text {
 	flex: 1;
-	padding: 10px 12px;
+	padding: 6px 8px;
 	color: #94a3b8;
-	font-size: 14px;
+	font-size: 10px;
 	background: transparent;
 	border: none;
 }
@@ -1644,9 +1671,9 @@ p {
 	background: #475569;
 	border: 1px solid #64748b;
 	color: white;
-	padding: 10px 12px;
-	border-radius: 6px;
-	font-size: 14px;
+	padding: 6px 8px;
+	border-radius: 4px;
+	font-size: 11px;
 	transition: all 0.2s ease;
 }
 
@@ -1688,31 +1715,31 @@ p {
 .files-list-section {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 4px;
 }
 
 .files-label {
 	color: #e2e8f0;
-	font-size: 14px;
+	font-size: 9px;
 	font-weight: 500;
 	text-align: left;
 }
 
 .files-list {
-	max-height: 160px;
+	max-height: 80px;
 	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 3px;
 }
 
 .file-item {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 6px;
 	background: #475569;
-	padding: 10px 12px;
-	border-radius: 6px;
+	padding: 4px 6px;
+	border-radius: 3px;
 	border: 1px solid #64748b;
 	transition: all 0.2s ease;
 }
@@ -1723,8 +1750,8 @@ p {
 }
 
 .file-checkbox {
-	width: 16px;
-	height: 16px;
+	width: 12px;
+	height: 12px;
 	accent-color: #3b82f6;
 	cursor: pointer;
 }
@@ -1732,10 +1759,28 @@ p {
 .file-name {
 	flex: 1;
 	color: white;
-	font-size: 14px;
+	font-size: 9px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* File checkbox labels for collapsible sections */
+.file-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+	user-select: none;
+	margin-bottom: 6px;
+}
+
+.file-checkbox-label .parameter-label {
+	font-family: "Segoe UI", sans-serif;
+	font-size: 11px;
+	font-weight: 500;
+	color: #333;
+	margin: 0;
 }
 
 /* Added by Youssef Hergal - Styles for hidden/disabled files - 2025-01-27 */
@@ -1758,11 +1803,11 @@ p {
 	background: none;
 	border: none;
 	color: #f87171;
-	font-size: 18px;
+	font-size: 12px;
 	font-weight: bold;
 	cursor: pointer;
-	padding: 2px 6px;
-	border-radius: 4px;
+	padding: 1px 4px;
+	border-radius: 3px;
 	transition: all 0.2s ease;
 	display: flex;
 	align-items: center;
@@ -1784,20 +1829,20 @@ p {
 .control-section {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 3px;
 	margin-bottom: 0px;
 }
 
 .control-label {
 	color: #e2e8f0;
-	font-size: 14px;
+	font-size: 10px;
 	font-weight: 500;
 	text-align: left;
 }
 
 .animation-controls {
 	display: flex;
-	gap: 8px;
+	gap: 6px;
 	justify-content: center;
 	width: 100%;
 	flex-wrap: wrap;
@@ -1807,16 +1852,17 @@ p {
 	background: #1e293b;
 	border: 1px solid #3b82f6;
 	color: #3b82f6;
-	padding: 8px 12px;
-	border-radius: 6px;
+	padding: 4px 6px;
+	border-radius: 3px;
 	cursor: pointer;
 	transition: all 0.2s ease;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 44px;
+	min-width: 28px;
 	flex: 1;
-	max-width: 60px;
+	max-width: 36px;
+	font-size: 10px;
 }
 
 .control-button:hover {
@@ -1832,36 +1878,36 @@ p {
 .plot-parameters {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: 4px;
 }
 
 .parameter-row {
 	display: flex;
 	align-items: center;
-	gap: 12px;
-	padding: 12px;
+	gap: 4px;
+	padding: 4px;
 	background: #374151;
-	border-radius: 6px;
+	border-radius: 2px;
 	border: 1px solid #4b5563;
 }
 
 .parameter-label {
 	color: #e2e8f0;
-	font-size: 14px;
+	font-size: 10px;
 	font-weight: 500;
-	min-width: 80px;
+	min-width: 50px;
 }
 
 .parameter-controls {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 8px;
 	flex: 1;
 }
 
 .parameter-text {
 	color: #9ca3af;
-	font-size: 12px;
+	font-size: 9px;
 }
 
 /* Switch and Checkbox styles for the visualization controls */
@@ -1894,28 +1940,37 @@ p {
 }
 
 .switch__control {
-	width: 32px;
-	height: 18px;
+	width: 24px;
+	height: 14px;
 }
 
 .switch__thumb {
-	width: 14px;
-	height: 14px;
+	width: 10px;
+	height: 10px;
 }
 
 /* Added by Youssef Hergal - Dexterity Analysis simple component styles - 2025-01-27 */
 .dexterity-analysis-simple {
-	padding: 12px;
-	background: #1e293b;
-	border-radius: 6px;
-	margin: 8px 0;
+	padding: 6px;
+	background: #f8f9fa;
+	border: 1px solid #e9ecef;
+	border-radius: 4px;
+	margin: 4px 0;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 }
 
+/* Small label for axis selector */
+.select-label-small {
+	font-size: 6px;
+	color: #666;
+	margin-top: 4px;
+	margin-bottom: 0px;
+}
+
 .checkbox__label {
-	color: #e2e8f0;
+	color: #333;
 	font-size: 14px;
 	margin-left: 8px;
 	cursor: pointer;
@@ -1925,8 +1980,8 @@ p {
 	background: #475569;
 	border: 1px solid #64748b;
 	color: #e2e8f0;
-	padding: 8px 12px;
-	border-radius: 6px;
+	padding: 6px 8px;
+	border-radius: 4px;
 	cursor: pointer;
 	transition: all 0.2s ease;
 }
@@ -1939,17 +1994,17 @@ p {
 .select__content {
 	background: #374151;
 	border: 1px solid #4b5563;
-	border-radius: 6px;
-	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	border-radius: 4px;
+	box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
 }
 
 .select__listbox {
-	max-height: 200px;
+	max-height: 150px;
 	overflow-y: auto;
 }
 
 .select__item {
-	padding: 8px 12px;
+	padding: 6px 8px;
 	cursor: pointer;
 	color: #e2e8f0;
 	transition: background-color 0.2s ease;
@@ -1969,19 +2024,19 @@ p {
 
 /* Added by Youssef Hergal - Frame slider styles - 2025-01-27 */
 .frame-slider-container {
-	margin-top: -10px;
+	margin-top: 0px;
 }
 
 .slider-wrapper {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 6px;
 }
 
 .frame-slider {
 	width: 100%;
-	height: 6px;
-	border-radius: 3px;
+	height: 4px;
+	border-radius: 2px;
 	background: #374151;
 	outline: none;
 	cursor: pointer;
@@ -1992,23 +2047,23 @@ p {
 .frame-slider::-webkit-slider-thumb {
 	-webkit-appearance: none;
 	appearance: none;
-	width: 18px;
-	height: 18px;
+	width: 14px;
+	height: 14px;
 	border-radius: 50%;
 	background: #3b82f6;
 	cursor: pointer;
-	border: 2px solid #1e293b;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	border: 1px solid #1e293b;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .frame-slider::-moz-range-thumb {
-	width: 18px;
-	height: 18px;
+	width: 14px;
+	height: 14px;
 	border-radius: 50%;
 	background: #3b82f6;
 	cursor: pointer;
-	border: 2px solid #1e293b;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	border: 1px solid #1e293b;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .frame-slider::-webkit-slider-track {
@@ -2058,9 +2113,9 @@ p {
 
 .SliderLabel {
 	color: #3b82f6;
-	font-size: 14px;
+	font-size: 12px;
 	font-weight: 500;
-	line-height: 35px;
+	line-height: 28px;
 }
 
 .SliderLabel span {
@@ -2088,10 +2143,10 @@ p {
 }
 
 .loading-spinner {
-	width: 40px;
-	height: 40px;
-	border: 4px solid #f3f3f3;
-	border-top: 4px solid #3b82f6;
+	width: 30px;
+	height: 30px;
+	border: 3px solid #f3f3f3;
+	border-top: 3px solid #3b82f6;
 	border-radius: 50%;
 	animation: spin 1s linear infinite;
 }
@@ -2103,7 +2158,7 @@ p {
 
 .loading-text {
 	color: #3b82f6;
-	font-size: 16px;
+	font-size: 11px;
 	font-weight: 500;
-	margin-top: 16px;
+	margin-top: 8px;
 }

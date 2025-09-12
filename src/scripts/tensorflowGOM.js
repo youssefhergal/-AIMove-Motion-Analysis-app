@@ -1,7 +1,7 @@
 import * as tf from "@tensorflow/tfjs"
 import { DataFrame } from "dataframe-js"
 import * as aq from "arquero"
-import { samplingFactor } from "./store"
+import { samplingFactor } from "./stores/store"
 const toFourDecimals = (input) => {
 	if (Array.isArray(input)) {
 		return input.map(toFourDecimals)

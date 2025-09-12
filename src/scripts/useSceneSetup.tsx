@@ -54,7 +54,7 @@ import {
 	setWorldFramesBones,
 	setBaseScene,
 	setPlayPressed,
-} from "./store"
+} from "./stores/store"
 
 // import { initMathJax } from "./InitMathJax.js"
 
@@ -94,26 +94,26 @@ function preparePlotsData() {
 	// WHY: Saves computation time by skipping hidden skeletons
 	// PERFORMANCE: O(visible_skeletons) instead of O(total_skeletons)
 	visibleViewers.forEach((viewer, index) => {
-		console.log(`📊 Processing viewer ${index + 1}/${visibleViewers.length}`)
-		const [
-			originalPositionsX,
-			originalPositionsY,
-			originalPositionsZ,
-			originalAnglesX,
-			originalAnglesY,
-			originalAnglesZ,
+		// console.log(`📊 Processing viewer ${index + 1}/${visibleViewers.length}`)
+	const [
+		originalPositionsX,
+		originalPositionsY,
+		originalPositionsZ,
+		originalAnglesX,
+		originalAnglesY,
+		originalAnglesZ,
 			originalVelocities,
 			originalAccelerations,
-		] = viewer.getTimeSeries("Hips")
+	] = viewer.getTimeSeries("Hips")
 		
-		console.log(`📊 Viewer ${index + 1} data lengths:`, {
-			positionsX: originalPositionsX?.length || 0,
-			positionsY: originalPositionsY?.length || 0,
-			positionsZ: originalPositionsZ?.length || 0,
-			anglesX: originalAnglesX?.length || 0,
-			anglesY: originalAnglesY?.length || 0,
-			anglesZ: originalAnglesZ?.length || 0
-		})
+		// console.log(`📊 Viewer ${index + 1} data lengths:`, {
+		// 	positionsX: originalPositionsX?.length || 0,
+		// 	positionsY: originalPositionsY?.length || 0,
+		// 	positionsZ: originalPositionsZ?.length || 0,
+		// 	anglesX: originalAnglesX?.length || 0,
+		// 	anglesY: originalAnglesY?.length || 0,
+		// 	anglesZ: originalAnglesZ?.length || 0
+		// })
 		// console.log("check skeleton:")
 
 		// console.time("getGestureMetrics")
@@ -171,16 +171,6 @@ function preparePlotsData() {
 		setName3DPlot("Angle")
 	}
 
-	// Create new arrays before passing to set functions
-	console.log("📊 Setting plot data:", {
-		positionsX_2D: positionsX_2D_All.length,
-		positionsY_2D: positionsY_2D_All.length,
-		positionsZ_2D: positionsZ_2D_All.length,
-		positionsX_3D: positionsX_3D_All.length,
-		positionsY_3D: positionsY_3D_All.length,
-		positionsZ_3D: positionsZ_3D_All.length,
-		labels: labels.length
-	})
 	
 	setPositionsX_2D([...positionsX_2D_All])
 	setPositionsY_2D([...positionsY_2D_All])
@@ -219,13 +209,13 @@ async function initializeWhenLoaded(forceReload = false) {
 	}
 	
 	isInitializingPlots = true
-	console.log("🔄 Starting initializeWhenLoaded function")
+	// console.log("🔄 Starting initializeWhenLoaded function")
 	
 	try {
 		// Only prepare plot data if there are skeletons loaded
 		const viewers = skeletonViewersSig()
 		if (viewers && viewers.length > 0) {
-			console.log(`📊 Preparing plot data for ${viewers.length} skeleton(s)`)
+			// console.log(`📊 Preparing plot data for ${viewers.length} skeleton(s)`)
 			// Prepare plot data for all visible skeletons
 			preparePlotsData()
 			
@@ -236,11 +226,11 @@ async function initializeWhenLoaded(forceReload = false) {
 			await createPlot3D(currentAnimationTime())
 		}, 100)
 		} else {
-			console.log("⚠️ No skeletons loaded yet, skipping plot preparation")
+			// console.log("⚠️ No skeletons loaded yet, skipping plot preparation")
 		}
 	} finally {
 		isInitializingPlots = false
-		console.log("✅ initializeWhenLoaded completed")
+		// console.log("✅ initializeWhenLoaded completed")
 	}
 }
 

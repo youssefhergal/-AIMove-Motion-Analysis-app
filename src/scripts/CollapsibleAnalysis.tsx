@@ -1,5 +1,5 @@
 import { Collapsible } from "@kobalte/core"
-import { Checkbox } from "@kobalte/core"
+// Removed Checkbox import - using HTML checkbox instead
 import { createSignal, createEffect } from "solid-js"
 import { myScene } from "./myScene"
 import { exportBVH } from "./ExportBVH"
@@ -17,7 +17,7 @@ import {
 	setBonesList,
 	skeletonViewersSig,
 	setInputGOM
-} from "./store"
+} from "./stores/store"
 import { ResizeEverything } from "./ResizeEverything"
 import { formatBoneNames, extractJointNames } from "./useSceneSetup"
 
@@ -54,7 +54,8 @@ function CollapsibleDexterityAnalysis() {
 	}
 
 	// Dexterity analysis functionality - simplified to match original working approach
-	async function handleDexterityAnalysisChange(enabled) {
+	async function handleDexterityAnalysisChange(event) {
+		const enabled = event.target.checked
 		setDexterityAnalysisEnabled(enabled)
 		
 		if (enabled) {
@@ -116,12 +117,23 @@ function CollapsibleDexterityAnalysis() {
 						await DoGOM_init()
 						console.log("✅ DoGOM_init() completed")
 						
-						// Wait a moment for tables to be created, then display them
-						setTimeout(async () => {
-							console.log("🔄 Calling displayTableSwitcher...")
-							await displayTableSwitcher()
-							console.log("✅ displayTableSwitcher completed")
-						}, 100)
+			// Wait a moment for tables to be created, then display them
+			setTimeout(async () => {
+				console.log("🔄 Calling displayTableSwitcher...")
+				await displayTableSwitcher()
+				console.log("✅ displayTableSwitcher completed")
+				
+				// Recreate plots after dexterity analysis is complete
+				setTimeout(async () => {
+					console.log("🔄 Recreating plots after dexterity analysis...")
+					const { createPlot2D, createPlot3D } = await import("./plots")
+					const { currentAnimationTime, toggleValue } = await import("./stores/store")
+					
+					await createPlot2D(currentAnimationTime(), toggleValue())
+					await createPlot3D(currentAnimationTime())
+					console.log("✅ Plots recreated after dexterity analysis")
+				}, 500)
+			}, 100)
 						
 						// Re-initialize 3D scene to ensure skeleton displays properly
 						setTimeout(async () => {
@@ -152,9 +164,16 @@ function CollapsibleDexterityAnalysis() {
 			prepareGOMData()
 		} else {
 			// Disable dexterity analysis
+			console.log("🔄 Disabling dexterity analysis...")
 			await setSplitterSizeL(100)
 			await setSplitterSizeR(0)
 			ResizeEverything()
+			
+			// Force resize to ensure proper layout restoration
+			setTimeout(() => {
+				console.log("🔄 Resizing after dexterity analysis disable...")
+				ResizeEverything()
+			}, 100)
 			
 			// Restore original bones list
 			const viewers = skeletonViewersSig()
@@ -163,6 +182,31 @@ function CollapsibleDexterityAnalysis() {
 			} else {
 				setBonesList(formatBoneNames(myScene.boneHierarchy))
 			}
+			
+			// Re-initialize 3D scene to ensure skeleton displays properly
+			setTimeout(async () => {
+				console.log("🔄 Re-initializing 3D scene after dexterity analysis disable...")
+				await initialize()
+				
+				// Recreate plots after scene re-initialization
+				setTimeout(async () => {
+					console.log("🔄 Recreating plots after dexterity analysis disable...")
+					const { createPlot2D, createPlot3D } = await import("./plots")
+					const { currentAnimationTime, toggleValue, skeletonViewersSig } = await import("./stores/store")
+					
+					// Check if skeleton data is available before recreating plots
+					const viewers = skeletonViewersSig()
+					if (viewers && viewers.length > 0) {
+						await createPlot2D(currentAnimationTime(), toggleValue())
+						await createPlot3D(currentAnimationTime())
+						console.log("✅ Plots recreated after dexterity analysis disable")
+					} else {
+						console.log("⚠️ No skeleton data available for plot recreation")
+					}
+				}, 200)
+			}, 200)
+			
+			console.log("✅ Dexterity analysis disabled successfully")
 		}
 	}
 
@@ -187,23 +231,21 @@ function CollapsibleDexterityAnalysis() {
 			<Collapsible.Content class="collapsible__content">
 				<div class="collapsible__content-text">
 					<div class="dexterity-analysis-simple">
-						<Checkbox.Root 
-							class="checkbox" 
-							checked={dexterityAnalysisEnabled()} 
-							onChange={handleDexterityAnalysisChange}
-						>
-							<Checkbox.Input class="checkbox__input" />
-							<Checkbox.Control class="checkbox__control">
-								<Checkbox.Indicator>✔</Checkbox.Indicator>
-							</Checkbox.Control>
-							<Checkbox.Label class="checkbox__label">Dexterity Analysis</Checkbox.Label>
-						</Checkbox.Root>
+						<label class="file-checkbox-label">
+							<input
+								type="checkbox"
+								class="file-checkbox"
+								checked={dexterityAnalysisEnabled()}
+								onChange={handleDexterityAnalysisChange}
+							/>
+							<span class="parameter-label">Dexterity Analysis</span>
+						</label>
 					</div>
 					<button
 						onclick={exportBVHFunc}
 						id="exportBVHButton"
 						class="buttonCoef"
-						style="margin-top: 10px;"
+						style="margin-top: 6px; font-size: 10px; padding: 2px 4px;"
 					>
 						Export BVH
 					</button>
