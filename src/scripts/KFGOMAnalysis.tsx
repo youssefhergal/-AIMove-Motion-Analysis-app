@@ -894,9 +894,7 @@ const KFGOMAnalysis = () => {
 								</select>
 							</div>
 						
-							<div>
-								<strong>Variables:</strong> {sarimaxResults().modelSummary?.variables?.length || "N/A"} {/* added by youssef hergal */}
-							</div>
+
 							<div>
 								<strong>Filter:</strong> 
 								<select 

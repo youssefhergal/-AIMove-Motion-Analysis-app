@@ -1,21 +1,38 @@
-import { createSignal } from "solid-js"
+import { createEffect } from "solid-js"
 import KFGOMFileList from "./KFGOMFileList"
 import { kfgomBVHLoader } from "../utils/bvhLoader"
 import { 
 	trainFileBones,
 	setTrainFileBones,
 	testFileBones,
-	setTestFileBones
+	setTestFileBones,
+	trainFile,
+	setTrainFile,
+	testFile,
+	setTestFile
 } from "../../stores/store"
 
 export default function KFGOMFileSelector() {
-	const [trainFileName, setTrainFileName] = createSignal("No file selected")
-	const [testFileName, setTestFileName] = createSignal("No file selected")
+	// Use global store signals for file names instead of local signals
+	const trainFileName = () => trainFile() || "No file selected"
+	const testFileName = () => testFile() || "No file selected"
+
+	// Sync file names with bones data when switching modes
+	createEffect(() => {
+		// If we have bones data but no file name, set a default
+		if (trainFileBones().length > 0 && !trainFile()) {
+			setTrainFile("File loaded")
+		}
+		
+		if (testFileBones().length > 0 && !testFile()) {
+			setTestFile("File loaded")
+		}
+	})
 
 	// Handle train file selection from repository
 	const handleTrainFileSelect = async (fileName) => {
 		console.log(`🔄 Selecting training file: ${fileName}`)
-		setTrainFileName(fileName)
+		setTrainFile(fileName)
 		
 		try {
 			const file_path = "bvh2/" + fileName
@@ -36,7 +53,7 @@ export default function KFGOMFileSelector() {
 	// Handle test file selection from repository
 	const handleTestFileSelect = async (fileName) => {
 		console.log(`🔄 Selecting testing file: ${fileName}`)
-		setTestFileName(fileName)
+		setTestFile(fileName)
 		
 		try {
 			const file_path = "bvh2/" + fileName
@@ -58,8 +75,7 @@ export default function KFGOMFileSelector() {
 		<div style={{ 
 			padding: "12px", 
 			"background-color": "#f5f5f5",
-			"border-radius": "6px",
-			"margin-bottom": "15px"
+			"border-radius": "6px"
 		}}>
 			<div style={{ 
 				display: "flex", 
@@ -95,14 +111,14 @@ export default function KFGOMFileSelector() {
 									placeholder="Choose training file..."
 								/>
 							</div>
-						</div>
-						<div style={{ 
-							"font-size": "10px", 
-							color: "#1976d2", 
-							"font-weight": "bold",
-							"margin-top": "6px"
-						}}>
-							{trainFileName()}
+							<div style={{ 
+								"font-size": "11px", 
+								color: "#1976d2", 
+								"font-weight": "bold",
+								"white-space": "nowrap"
+							}}>
+								<strong>Train:</strong> {trainFileBones().length > 0 ? `${trainFileBones().length} bones` : "No data"}
+							</div>
 						</div>
 					</div>
 				</div>
@@ -136,45 +152,19 @@ export default function KFGOMFileSelector() {
 									placeholder="Choose testing file..."
 								/>
 							</div>
-						</div>
-						<div style={{ 
-							"font-size": "10px", 
-							color: "#c2185b", 
-							"font-weight": "bold",
-							"margin-top": "6px"
-						}}>
-							{testFileName()}
+							<div style={{ 
+								"font-size": "11px", 
+								color: "#c2185b", 
+								"font-weight": "bold",
+								"white-space": "nowrap"
+							}}>
+								<strong>Test:</strong> {testFileBones().length > 0 ? `${testFileBones().length} bones` : "No data"}
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			{/* Status Summary */}
-			<div style={{ 
-				padding: "8px", 
-				"background-color": "#fff", 
-				"border-radius": "4px",
-				"font-size": "11px",
-				"margin-top": "10px",
-				"border": "1px solid #e0e0e0"
-			}}>
-				<div style={{ display: "flex", gap: "15px", "flex-wrap": "wrap" }}>
-					<div>
-						<strong style={{ color: "#1976d2" }}>Train:</strong> {trainFileBones().length > 0 ? `${trainFileBones().length} bones` : "No data"}
-					</div>
-					<div>
-						<strong style={{ color: "#c2185b" }}>Test:</strong> {testFileBones().length > 0 ? `${testFileBones().length} bones` : "No data"}
-					</div>
-					<div style={{ color: "#666" }}>
-						{trainFileBones().length > 0 && testFileBones().length > 0 ? 
-							"✅ Ready for analysis (train + test files)" : 
-							trainFileBones().length > 0 ? 
-								"⏳ Select testing file to start analysis" : 
-								"⏳ Select training file"
-						}
-					</div>
-				</div>
-			</div>
 		</div>
 	)
 } 

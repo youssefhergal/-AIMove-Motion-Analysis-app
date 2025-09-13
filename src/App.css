@@ -51,7 +51,6 @@
 }
 
 #plotTable {
-	width: 100vw !important;
 	height: 100%;
 }
 .ag-root-wrapper.ag-layout-normal {
@@ -187,7 +186,7 @@ div#myStatsContainer {
 	width: 160px;
 	border-radius: 4px;
 	padding: 0 8px 0 12px;
-	font-size: 14px;
+	font-size: 12px;
 	line-height: 1;
 	height: 32px;
 	outline: none;
@@ -288,7 +287,7 @@ div#myStatsContainer {
 	padding: 8px;
 }
 .select__item {
-	font-size: 14px;
+	font-size: 12px;
 	line-height: 1;
 	color: hsl(240 4% 16%);
 	border-radius: 4px;
@@ -405,18 +404,18 @@ div#myStatsContainer {
 .toggle-button {
 	background-color: transparent; /* Sets the background to be transparent */
 	font-family: "Segoe UI", sans-serif;
-	font-size: 16px;
+	font-size: 10px;
 	color: #666666;
 	font-weight: light;
 	border: none; /* Removes all borders */
-	border-bottom: 2px solid #666666;
+	border-bottom: 1px solid #666666;
 
 	appearance: none;
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
-	height: 40px;
-	width: 40px;
+	height: 24px;
+	width: 24px;
 	outline: none;
 	border-radius: 0px;
 	z-index: 1000;
@@ -427,6 +426,7 @@ div#myStatsContainer {
 
 	padding: 0px;
 	font-weight: light;
+	
 	/* font-family: sans-serif; */
 }
 
@@ -445,7 +445,7 @@ div#myStatsContainer {
 	background-color: transparent; /* Sets the background to be transparent */
 	color: hsl(200 98% 39%);
 	border: none; /* Removes all borders */
-	border-bottom: 2px solid hsl(200 98% 39%);
+	border-bottom: 1px solid hsl(200 98% 39%);
 }
 
 .mainVericalSplitter {
@@ -558,16 +558,15 @@ div#myStatsContainer {
 	background-color: #f4f4f4; /* Light grey background for the footer */
 	color: #333; /* Dark grey text color for visibility */
 	text-align: center; /* Centers the text within the footer */
-	padding: 10px 0; /* Adds padding above and below the text */
 	font-family: Arial, sans-serif; /* Modern, readable font */
-	font-size: 12px;
+	font-size: 10px;
 	box-shadow: 0px 0px 2px 2px rgba(0, 0, 0, 0.2) !important;
 	z-index: 100;
 }
 
 .footer-content p {
-	margin: 3px 0; /* Small margin between lines to keep it tidy */
-	padding: 0;
+	margin: 1px 0;
+	padding: 0; /* Small margin between lines to keep it tidy */
 }
 
 #mainContainer {
@@ -978,8 +977,8 @@ input[type="file"] {
 .tabs__content[data-state="open"] {
 	display: flex;
 	flex-direction: column;
-	padding: 12px;
 	height: 100%;
+	padding-top: 12px;
 }
 
 .toggle-group {
@@ -1085,7 +1084,7 @@ input[type="file"] {
 	display: flex;
 	align-items: stretch; /* Ensure all items stretch to the same height */
 	position: relative;
-	margin-top: -14px;
+	margin-top: -10px;
 }
 .custom-toggle-group[data-orientation="horizontal"] {
 	position: relative;
@@ -1182,8 +1181,18 @@ input[type="file"] {
 
 .ag-theme-quartz {
 	height: 100%;
-
 	flex-basis: 100%;
+}
+
+/* KFGOM Table styling - smaller font and columns */
+.ag-theme-quartz .ag-cell {
+	font-size: 11px !important;
+}
+
+.ag-theme-quartz .ag-header-cell-text {
+	font-size: 11px !important;
+	font-weight: 600;
+}
 	display: flex;
 	flex-grow: 1;
 	height: 100%;
@@ -1224,16 +1233,16 @@ input[type="file"] {
 }
 .plotTitle {
 	background: var(--theme_color_gradient_neutral);
-	box-shadow: 0 2px 6px 0px rgb(0 0 0 / 0.5);
-	border-radius: 3px;
+	box-shadow: 0 1px 3px 0px rgb(0 0 0 / 0.3);
+	border-radius: 2px;
 	text-align: center;
-	padding-bottom: 6px;
-	padding-top: 6px;
-	margin-bottom: 3px;
+	padding-bottom: 3px;
+	padding-top: 3px;
+	margin-bottom: 2px;
 
 	font-family: "Segoe UI", sans-serif;
-	font-weight: 650;
-	font-size: 13px;
+	font-weight: 600;
+	font-size: 12px;
 	/* color: #666666; */
 	width: 100%;
 	color: white;
@@ -1346,6 +1355,7 @@ input[type="file"] {
 	width: 100%;
 	flex-direction: column;
 }
+
 
 .GOM_Info {
 	font-family: "Segoe UI", sans-serif;
@@ -1965,8 +1975,22 @@ p {
 .select-label-small {
 	font-size: 6px;
 	color: #666;
-	margin-top: 4px;
+	margin-top: 10px;
 	margin-bottom: 0px;
+}
+#select-cl-16 {
+	margin-top: -8px;
+}
+
+/* Minimize 2D plot panel spacing */
+#plotPanel_2D {
+	margin-top: 2px;
+}
+
+/* Minimize toggle group spacing */
+.toggle-group {
+	gap: 1px;
+	padding: 2px;
 }
 
 .checkbox__label {

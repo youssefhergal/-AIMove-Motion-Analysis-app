@@ -241,14 +241,28 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 				xAxisIndex: 0,
 				filterMode: "none",
 				bottom: "135px",
-				height: 30 * scaleX(),
+				height: 15 * scaleX(),
+				textStyle: {
+					fontSize: 8
+				},
+				handleStyle: {
+					width: 6,
+					height: 15
+				}
 			},
 			{ type: "inside", yAxisIndex: 0, filterMode: "none" }, // Inside zoom for yAxis
 			{
 				type: "slider",
 				yAxisIndex: 0,
 				filterMode: "none",
-				width: 30 * scaleX(),
+				width: 15 * scaleX(),
+				textStyle: {
+					fontSize: 8
+				},
+				handleStyle: {
+					width: 6,
+					height: 15
+				}
 			},
 		],
 		xAxis: {
@@ -724,27 +738,32 @@ const createPlot2D = (currentTime, axis = "x") => {
 				},
 			},
 		},
-		toolbox: {
-			feature: {
-				dataZoom: {},
-			},
-			right: "65px",
-		},
 		legend: {
 			data: series.map((s) => s.name),
-			orient: "vertical",
-			left: "20px",
+			orient: "horizontal",
+			left: "1px",
 			top: "0px",
+			textStyle: {
+				fontSize: 10
+			},
+
 		},
-		grid: { left: "50px", right: "65px", bottom: "170px", top: "90px" },
+		grid: { left: "30px", right: "35px", bottom: "120px", top: "50px" },
 		dataZoom: [
 			{ type: "inside", xAxisIndex: 0 },
 			{
 				type: "slider",
 				xAxisIndex: 0,
 				filterMode: "none",
-				bottom: "105px",
-				height: 20 * scaleX(),
+				bottom: "90px",
+				height: 7 * scaleX(),
+				textStyle: {
+					fontSize: 10
+				},
+				handleStyle: {
+					width: 6,
+					height: 15
+				}
 			},
 			{ type: "inside", yAxisIndex: 0, filterMode: "none" },
 			{
@@ -752,7 +771,14 @@ const createPlot2D = (currentTime, axis = "x") => {
 				yAxisIndex: 0,
 				filterMode: "none",
 				right: "15px",
-				width: 20 * scaleX(),
+				width: 7 * scaleX(),
+				textStyle: {
+					fontSize: 10
+				},
+				handleStyle: {
+					width: 6,
+					height: 15
+				}
 			},
 		],
 		xAxis: {
@@ -1000,7 +1026,7 @@ const createPlot3D = (currentTime) => {
 			left: "0%",
 			right: "0%",
 			bottom: "0%",
-			top: "0%",
+			top: "-10%",
 			viewControl: {
 				distance: 170,
 				alpha: 30,
@@ -1010,8 +1036,11 @@ const createPlot3D = (currentTime) => {
 		legend: {
 			data: flatSeries.map((s) => s.name),
 			orient: "vertical",
-			left: "20px",
-			top: "101px",
+			left: "10px",
+			top: "10px",
+			textStyle: {
+				fontSize: 10
+			},
 		},
 		series: flatSeries,
 		animation: false,
@@ -1171,7 +1200,14 @@ const createPlot2D_Predict = async () => {
 				filterMode: "none",
 				// bottom: "25%",
 				bottom: "20px",
-				height: 30 * scaleX(),
+				height: 15 * scaleX(),
+				textStyle: {
+					fontSize: 8
+				},
+				handleStyle: {
+					width: 6,
+					height: 15
+				}
 			},
 			{ type: "inside", yAxisIndex: 0, filterMode: "none" }, // Inside zoom for yAxis
 			{
@@ -1179,7 +1215,14 @@ const createPlot2D_Predict = async () => {
 				yAxisIndex: 0,
 				filterMode: "none",
 				right: "15px",
-				width: 30 * scaleX(),
+				width: 15 * scaleX(),
+				textStyle: {
+					fontSize: 8
+				},
+				handleStyle: {
+					width: 6,
+					height: 15
+				}
 			},
 		],
 		xAxis: {

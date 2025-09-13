@@ -93,7 +93,7 @@ const SplitterV_SkelL_DexR = () => {
 					<div class="dexteritySettings">
 						<div
 							class="grid-container"
-							style="width: 100%; grid-template-columns: 1fr 1fr; margin-top:10px;"
+							style="width: 100%; grid-template-columns: 2fr 1fr; margin-top:5px;"
 						>
 							<div class="grid-item" id="Analysis_Title_small">
 								<div class="Analysis_Title">Prediction</div>
@@ -179,17 +179,16 @@ const SplitterV_SkelL_DexR = () => {
 								</div>
 							</div>
 						</div>
+						
+						{/* KF-GOM File Selection - Only show when KF-GOM is selected */}
+						{valueButton() === "KF-GOM" && (
+							<div style="margin-top: -10px;">
+								<KFGOMFileSelector />
+							</div>
+						)}
 					</div>
 
-					{/* KF-GOM File Selection - Added here before tabs */}
-					{valueButton() === "KF-GOM" && (
-						<div style={{ 
-							"margin-top": "15px",
-							"border-top": "1px solid #e0e0e0"
-						}}>
-							<KFGOMFileSelector />
-						</div>
-					)}
+					{/* KF-GOM File Selection - Moved to dexterity settings above */}
 
 					<div style={{ flex: 1, overflow: "hidden" }}>
 						<TabsGOM_main valueButton={valueButton()} />

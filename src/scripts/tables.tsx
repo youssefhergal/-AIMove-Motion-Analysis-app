@@ -276,14 +276,9 @@ async function displayTable(df) {
 		domLayout: "normal",
 	}
 	
-	console.log("🔄 Looking for table container...")
-	// const gridDiv = document.querySelector("#plotTable")
+
 	const gridDiv = document.querySelector<HTMLElement>("#plotTable")!
-	console.log("📊 Table container:", {
-		exists: !!gridDiv,
-		visible: gridDiv?.offsetWidth > 0,
-		element: gridDiv
-	})
+	
 	
 	if (!gridDiv) {
 		console.error("❌ Table container #plotTable not found!")

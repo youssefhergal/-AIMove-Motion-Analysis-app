@@ -1,6 +1,6 @@
 import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
-import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex } from '../../stores/store.js'
+import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex, trainFileBones, testFileBones } from '../../stores/store.js'
 import { gomSelector } from '../utils/gomVariableSelector'
 import { eventBus, EVENTS, emitSelectionChanged } from '../../utils/eventBus.js'
 import { logUI, logUIError } from '../../utils/logger.js'
@@ -381,18 +381,18 @@ export default function KFGOMTable() {
 
         const gridOptions = {
             columnDefs: [
-                { field: 'id', headerName: 'ID', width: 80, sortable: true, filter: true },
+                { field: 'id', headerName: 'ID', width: 60, sortable: true, filter: true },
                 { 
                     field: 'jointId', 
                     headerName: 'Joint ID', 
-                    width: 220, 
+                    width: 140, 
                     sortable: true, 
                     filter: true,
                     cellRenderer: jointIdCellRenderer,
                     checkboxSelection: true,
                     headerCheckboxSelection: true
                 },
-                { field: 'jointName', headerName: 'Joint Name', width: 200, sortable: true, filter: true },
+                { field: 'jointName', headerName: 'Joint Name', width: 120, sortable: true, filter: true },
                 { field: 'coefficient', headerName: 'Coefficient', width: 150, sortable: true, filter: true },
                 { field: 'pValue', headerName: 'P-Value', width: 120, sortable: true, filter: true },
                 { 
@@ -411,7 +411,9 @@ export default function KFGOMTable() {
             defaultColDef: {
                 resizable: true,
                 sortable: true,
-                filter: true
+                filter: true,
+                cellStyle: { fontSize: '11px' },
+                headerClass: 'ag-header-cell-text'
             },
             suppressColumnVirtualisation: true,
             suppressRowVirtualisation: false,
@@ -450,16 +452,50 @@ export default function KFGOMTable() {
         }
     })
 
+    // Check if files are selected and data is available
+
+    const hasResults = sarimaxResults() !== null
+
+    // If no files selected and no data and no results, show message instead of table
+    if (  !hasResults) {
+        return (
+            <div class="plotTableContainer" style={{
+                display: "flex",
+                "flex-direction": "column",
+                "align-items": "center",
+                "justify-content": "center",
+                height: "200px",
+                padding: "20px"
+            }}>
+                <div style={{
+                    textAlign: "center",
+                    color: "#666",
+                    fontSize: "16px",
+                    fontWeight: "500"
+                }}>
+                    Choose files or select file to start analysis
+                </div>
+                <div style={{
+                    textAlign: "center",
+                    color: "#999",
+                    fontSize: "12px",
+                    marginTop: "8px"
+                }}>
+                    Select training and testing files above to begin KF-GOM analysis
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div class="plotTableContainer">
             {/* Table Info */}
                 <div style={{
                 padding: "10px",
-                margin: "10px 0",
                 background: "#f8f9fa",
                             border: "1px solid #dee2e6",
                 "border-radius": "4px",
-                "font-size": "14px"
+                "font-size": "12px"
             }}>
                 <div style={{ display: "flex", "justify-content": "space-between", "align-items": "center" }}>
                     <div>

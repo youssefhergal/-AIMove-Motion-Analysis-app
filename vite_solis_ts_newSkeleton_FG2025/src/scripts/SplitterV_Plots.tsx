@@ -44,7 +44,7 @@ const SplitterV_Plots = () => (
 			</div>
 			<ToggleGroupPlots />
 
-			<div id="plotPanel_2D" style={{ width: "100%", height: "100%" }} />
+			<div id="plotPanel_2D" style={{background: "red", width: "100%", height: "100%" }} />
 		</Splitter.Panel>
 		<Splitter.ResizeTrigger id="nested2-a:nested2-b" class="plotSplitter" />
 		<Splitter.Panel id="nested2-b">

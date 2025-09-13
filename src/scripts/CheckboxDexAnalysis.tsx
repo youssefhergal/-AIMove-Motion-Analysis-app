@@ -181,8 +181,8 @@ export async function displayTableSwitcher(forceIndex = null) {
 		setSplitterVplotVector(0)
 		// const appContainer = document.getElementById("plotTable")
 	} else {
-		setSplitterVtable(33)
-		setSplitterVplotVector(67)
+		setSplitterVtable(30)
+		setSplitterVplotVector(70)
 	}
 	
 	const tableIndex = assumptionIndex + 1
