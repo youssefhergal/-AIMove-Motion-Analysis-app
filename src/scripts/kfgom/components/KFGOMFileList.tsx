@@ -1,33 +1,6 @@
 import { Select } from "@kobalte/core"
-
-// List of available BVH files for KF-GOM analysis
-const BVH_FILES = [
-	"GBBSS01G03R01.bvh",
-	"GBBSS01G03R02.bvh", 
-	"GBBSS01G03R03.bvh",
-	"GBBSS01G03R04.bvh",
-	"GBBSS01G03R05.bvh",
-	"MCEAS02G01R01.bvh",
-	"MCEAS02G01R02.bvh",
-	"MCEAS02G01R03.bvh",
-	"pirouette.bvh",
-	"PLNS01P02R05.bvh",
-	"PLNS02P03R02.bvh",
-	"running.bvh",
-	"S4P07R1.bvh",
-	"S4P07R2.bvh",
-	"S4P07R3.bvh",
-	"SWMLS01G01R01.bvh",
-	"SWMLS01G01R02.bvh",
-	"Test_Bending.bvh",
-	"Test_Glassblowing.bvh",
-	"Train_Bending.bvh",
-	"Train_Glassblowing.bvh",
-	"TV_S01P01R13.bvh",
-	"TVBS01P01R02.bvh",
-	"TVBS01P02R07.bvh",
-	"TVBS01P03R09.bvh"
-]
+import { createSignal, createEffect, onMount } from "solid-js"
+import { selectedBVHList } from "../../stores/store"
 
 interface KFGOMFileListProps {
 	onFileSelect: (fileName: string) => void
@@ -36,10 +9,37 @@ interface KFGOMFileListProps {
 }
 
 export default function KFGOMFileList(props: KFGOMFileListProps) {
+	// Use selectedBVHList directly for reactivity
+	const availableFiles = () => {
+		const files = selectedBVHList()
+		console.log("🔍 KFGOMFileList - selectedBVHList:", files)
+		return files || []
+	}
+	
+	// If no files are selected in "Load Human Motion Data", show a message
+	if (availableFiles().length === 0) {
+		console.log("🔍 KFGOMFileList - Showing 'No files selected' message")
+		return (
+			<div style={{
+				padding: "8px 12px",
+				border: "1px solid #ccc",
+				"border-radius": "4px",
+				"background-color": "#f5f5f5",
+				color: "#666",
+				"font-size": "12px",
+				"text-align": "center"
+			}}>
+				No files selected in "Load Human Motion Data"
+			</div>
+		)
+	}
+	
+	console.log("🔍 KFGOMFileList - Rendering select with files:", availableFiles())
+	
 	return (
 		<Select.Root
 			defaultValue={props.selectedFile}
-			options={BVH_FILES}
+			options={availableFiles()}
 			allowDuplicateSelectionEvents={false}
 			disallowEmptySelection={true}
 			onChange={(file) => {

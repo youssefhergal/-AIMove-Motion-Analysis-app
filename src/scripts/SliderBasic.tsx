@@ -26,7 +26,7 @@ const SliderBasic = () => {
 	const updateFrequency = 60 // Calculate the update interval for 60 FPS
 
 	const throttledUpdate2D = throttle(() => {
-		updatePlot2D(currentAnimationTime(), toggleValue())
+		updatePlot2D(currentAnimationTime())
 	}, 1000 / updateFrequency) // 30 FPS
 
 	const throttledUpdate3D = throttle(() => {

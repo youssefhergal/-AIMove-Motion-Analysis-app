@@ -4,6 +4,7 @@ import { createPlot2D, createPlot3D } from "./plots"
 import { preparePlotsData } from "./useSceneSetup"
 import { createEffect, onMount } from "solid-js"
 import { TableAndPlotsUpdate } from "./CheckboxDexAnalysis"
+import { cleanBoneHierarchy } from "./utils/boneUtils"
 
 import {
 	bonesList,
@@ -15,16 +16,6 @@ import {
 	selectedValue,
 	setSelectedValue,
 } from "./stores/store"
-
-function cleanBoneHierarchy(boneHierarchy) {
-	if (typeof boneHierarchy !== "string") {
-		// Check if the bone is a string
-		console.error("Expected a string but received:", boneHierarchy)
-		return "" // Return an empty string or some default value if not a string
-	}
-	// This regular expression removes all special characters except for underscore and spaces
-	return [boneHierarchy].map((name) => name.replace(/[^a-zA-Z0-9_\s]/g, ""))
-}
 function JointSelector() {
 	onMount(() => {
 		setAppIsLoaded(true)

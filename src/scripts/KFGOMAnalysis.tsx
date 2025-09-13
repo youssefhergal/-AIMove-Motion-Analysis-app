@@ -34,7 +34,6 @@ import { createSignal, onMount, createEffect } from "solid-js"
 import KFGOMTable from "./kfgom/components/KFGOMTable"
 
 import { SARIMAXAnalyzer } from "./kfgom/SARIMAXAnalyzer.js"
-import { myScene } from "./myScene"
 import { eventBus, EVENTS } from "./utils/eventBus.js"
 import { logAnalysis, logAnalysisError, logDataError } from "./utils/logger.js"
 import { handleAnalysisError, handleDataError } from "./utils/errorHandler.js"
@@ -248,7 +247,7 @@ const KFGOMAnalysis = () => {
 			const lags = config.lags || 2
 			const method = config.method || 'ols'
 			
-			console.log('🎯 Analysis configuration:', { 
+			logAnalysis('Analysis configuration', {
 				targetJoint,
 				targetAxis,
 				lags,
@@ -618,7 +617,7 @@ const KFGOMAnalysis = () => {
 		const selectedJointArray = selectedJoints()
 		
 		if (selectedJointArray.length === 0) {
-			console.warn('⚠️ No variables are currently selected. Please:\n\n1. Use the significance filter to show specific variables\n2. Check the variables you want to include\n3. Then click "Retrain"')
+			logAnalysisError('No variables selected for retraining', 'Please use the significance filter to show specific variables, check the variables you want to include, then click "Retrain"')
 			return
 		}
 		
@@ -673,11 +672,11 @@ const KFGOMAnalysis = () => {
 					setRetrainHistory(newHistory)
 					setCurrentRetrainIndex(newHistory.length - 1)
 					
-					console.log('📊 Stored retraining result:', {
-						entryId: retrainEntry.id,
-						parameters: retrainEntry.parameters,
-						historyLength: newHistory.length
-					})
+				logAnalysis('Stored retraining result', {
+					entryId: retrainEntry.id,
+					parameters: retrainEntry.parameters,
+					historyLength: newHistory.length
+				})
 				}
 				
 			} finally {

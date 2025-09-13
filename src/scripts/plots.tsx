@@ -75,13 +75,13 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 		for (let i = 0; i < arr.length; i += n) {
 			sampledArray.push(arr[i])
 		}
-		console.log("dataseries length after sample: ", sampledArray.length)
+		// Data series length after sampling
 		return sampledArray
 	}
 
 	const container = document.getElementById("tablePlots")
 	if (!container) {
-		console.error("❌ Vector plot container not found: tablePlots")
+		// Vector plot container not found
 		return
 	}
 
@@ -98,14 +98,14 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 
 	// If container has no dimensions or is not visible, wait and retry
 	if (containerInfo.offsetWidth === 0 || containerInfo.offsetHeight === 0 || !containerInfo.visible || containerInfo.display === 'none' || containerInfo.visibility === 'hidden') {
-		console.log("⚠️ Vector container not ready, waiting...", containerInfo)
+		// Vector container not ready, waiting
 		setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
 		return
 	}
 
 	// Double-check container dimensions before creating chart
 	if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-		console.log("⚠️ Vector container still not ready, retrying...")
+		// Vector container still not ready, retrying
 		setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
 		return
 	}
@@ -800,14 +800,12 @@ const createPlot2D = (currentTime, axis = "x") => {
 	chart2D().clear()
 
 	chart2D().setOption(option)
-	console.log('✅ 2D chart option set successfully')
 
 	chart2D().dispatchAction({
 		type: "takeGlobalCursor",
 		key: "brush",
 		brushOption: { brushType: "lineX", brushMode: "single" },
 	})
-	console.log('✅ 2D chart brush action dispatched')
 }
 
 const updatePlot2D = (currentTime) => {
@@ -1048,7 +1046,6 @@ const createPlot3D = (currentTime) => {
 
 	chart3D().clear()
 	chart3D().setOption(option, false)
-	console.log('✅ 3D chart option set successfully')
 }
 
 const updatePlot3D = (currentTime) => {
@@ -1095,191 +1092,7 @@ const updatePlot3D = (currentTime) => {
 	})
 }
 
-const createPlot2D_Predict = async () => {
-	console.log("🔄 Starting createPlot2D_Predict function")
-	const columnName = `${selectedJoint()}_${axisSelected()}rotation`
-	console.log("📊 Plot parameters:", {
-		columnName,
-		selectedJoint: selectedJoint(),
-		axisSelected: axisSelected()
-	})
-
-	const container = document.getElementById("plotPredict_2D")
-	console.log("📊 Plot container:", {
-		exists: !!container,
-		visible: container?.offsetWidth > 0
-	})
-	
-	if (!container) {
-		console.error("❌ plotPredict_2D container not found")
-		return
-	}
-	
-	if (!chart2D_predict()) {
-		const myChart = echarts.init(container)
-		setChart2D_predict(myChart) // Store the chart instance the first time
-	}
-
-	const myChart = chart2D_predict()
-	
-	console.log("📊 Data sources:", {
-		df_pred: {
-			hasData: !!df_pred(),
-			length: df_pred()?.length
-		},
-		df_pred_sampled: {
-			hasData: !!df_pred_sampled(),
-			length: df_pred_sampled()?.length
-		}
-	})
-	
-	let positions = await df_pred().array(columnName)
-	let positions2 = await df_pred_sampled().array(columnName)
-	console.log("📊 Plot data:", {
-		positions: positions.length,
-		positions2: positions2.length,
-		columnName
-	})
-
-	const yMin = Math.min(...positions2)
-	const yMax = Math.max(...positions2)
-
-	function minPlot2D() {
-		const yMinValue = Number(yMin)
-		const yMaxValue = Number(yMax)
-		const value = (yMinValue - (yMaxValue - yMinValue) * 0.3).toFixed(0)
-		return parseFloat(value) // Convert back to number if needed elsewhere
-	}
-
-	function maxPlot2D() {
-		const yMinValue = Number(yMin)
-		const yMaxValue = Number(yMax)
-		const value = (yMaxValue + (yMaxValue - yMinValue) * 0.3).toFixed(0)
-		return parseFloat(value) // Convert back to number if needed elsewhere
-	}
-
-	const option = {
-		tooltip: {
-			trigger: "axis",
-			axisPointer: {
-				type: "cross",
-				animation: false,
-				label: {
-					backgroundColor: "#ccc",
-					borderColor: "#aaa",
-					borderWidth: 1,
-					shadowBlur: 0,
-					shadowOffsetX: 0,
-					shadowOffsetY: 0,
-					color: "#222",
-				},
-			},
-		},
-		toolbox: {
-			feature: {
-				dataZoom: {},
-			},
-			right: "65px",
-		},
-
-		legend: {
-			// data: [LineTitle2D(), ScatterTitle2D()], // Names of the series to show in the legend
-			orient: "vertical", // Orientation of the legend: 'vertical' or 'horizontal'
-			left: "10px", // Position of the legend: 'left', 'right', 'top', 'bottom'
-			top: "0px", // Vertical alignment when left/right is used
-		},
-		// grid: { left: "10%", right: "10%", bottom: "43%", top: "20%" },
-		grid: { left: "40px", right: "80px", bottom: "100px", top: "100px" },
-
-		dataZoom: [
-			{ type: "inside", xAxisIndex: 0 },
-
-			{
-				type: "slider",
-				xAxisIndex: 0,
-				filterMode: "none",
-				// bottom: "25%",
-				bottom: "20px",
-				height: 15 * scaleX(),
-				textStyle: {
-					fontSize: 8
-				},
-				handleStyle: {
-					width: 6,
-					height: 15
-				}
-			},
-			{ type: "inside", yAxisIndex: 0, filterMode: "none" }, // Inside zoom for yAxis
-			{
-				type: "slider",
-				yAxisIndex: 0,
-				filterMode: "none",
-				right: "15px",
-				width: 15 * scaleX(),
-				textStyle: {
-					fontSize: 8
-				},
-				handleStyle: {
-					width: 6,
-					height: 15
-				}
-			},
-		],
-		xAxis: {
-			type: "category",
-			data: positions.map((_, index) => index),
-			axisLine: {
-				onZero: false, // This is important, so x axis can start from non-zero number
-			},
-		},
-		yAxis: {
-			type: "value",
-			name: name2DPlot(),
-			min: minPlot2D(),
-			max: maxPlot2D(),
-		},
-		series: [
-			{
-				name: "Original Trajectory",
-				type: "line",
-				data: positions,
-				smooth: false,
-				lineStyle: {
-					color: "#145e9f",
-				},
-				itemStyle: {
-					color: "#145e9f",
-				},
-			},
-
-			{
-				name: "Generated Trajecory",
-				type: "line",
-				data: positions2,
-				smooth: false,
-				lineStyle: {
-					// color: "#DBA21C",
-					color: "red",
-					type: "dashed",
-				},
-				itemStyle: {
-					color: "red",
-					// color: "#DBA21C",
-				},
-			},
-		],
-	}
-
-	myChart.setOption(option)
-	myChart.dispatchAction(
-		{
-			type: "takeGlobalCursor",
-			key: "brush",
-			brushOption: { brushType: "lineX", brushMode: "single" },
-		},
-		true
-	)
-}
+// Movement Prediction Analysis plot functionality removed - will be reimplemented later
 
 const resizePlots = () => {
 	// Resizing plots...
@@ -1315,17 +1128,14 @@ const resizePlots = () => {
 			
 			// After resize, try to recreate plots if they're empty
 			setTimeout(() => {
-				console.log('🔄 Checking if plots need recreation after resize...')
 				const container2D = document.getElementById("plotPanel_2D")
 				const container3D = document.getElementById("plotPanel_3D")
 				
 				if (container2D && container2D.children.length === 0) {
-					console.log('🔄 2D plot container is empty, recreating...')
 					createPlot2D(currentAnimationTime(), toggleValue())
 				}
 				
 				if (container3D && container3D.children.length === 0) {
-					console.log('🔄 3D plot container is empty, recreating...')
 					createPlot3D(currentAnimationTime())
 				}
 			}, 200)
@@ -1342,5 +1152,5 @@ export {
 	updatePlot3D,
 	resizePlots,
 	createVectorPLot,
-	createPlot2D_Predict,
+	// createPlot2D_Predict moved to src/scripts/kfgom/plot/MovementPredictionPlot.tsx
 }

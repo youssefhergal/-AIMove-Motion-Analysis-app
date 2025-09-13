@@ -452,40 +452,7 @@ export default function KFGOMTable() {
         }
     })
 
-    // Check if files are selected and data is available
 
-    const hasResults = sarimaxResults() !== null
-
-    // If no files selected and no data and no results, show message instead of table
-    if (  !hasResults) {
-        return (
-            <div class="plotTableContainer" style={{
-                display: "flex",
-                "flex-direction": "column",
-                "align-items": "center",
-                "justify-content": "center",
-                height: "200px",
-                padding: "20px"
-            }}>
-                <div style={{
-                    textAlign: "center",
-                    color: "#666",
-                    fontSize: "16px",
-                    fontWeight: "500"
-                }}>
-                    Choose files or select file to start analysis
-                </div>
-                <div style={{
-                    textAlign: "center",
-                    color: "#999",
-                    fontSize: "12px",
-                    marginTop: "8px"
-                }}>
-                    Select training and testing files above to begin KF-GOM analysis
-                </div>
-            </div>
-        )
-    }
 
     return (
         <div class="plotTableContainer">

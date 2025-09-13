@@ -187,14 +187,14 @@ async function createPlotSeries() {
 	// Check if the tablePlots container is ready
 	const container = document.getElementById("tablePlots")
 	if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
-		console.log("⚠️ TablePlots container not ready, waiting...")
+		// TablePlots container not ready, waiting
 		setTimeout(() => createPlotSeries(), 1000)
 		return
 	}
 
 	// Additional check to ensure container is fully rendered
 	if (container.offsetParent === null) {
-		console.log("⚠️ TablePlots container not visible, waiting...")
+		// TablePlots container not visible, waiting
 		setTimeout(() => createPlotSeries(), 1000)
 		return
 	}
@@ -206,13 +206,8 @@ async function createPlotSeries() {
 }
 
 async function displayTable(df) {
-	console.log("🔄 Starting displayTable function")
-	console.log("📊 Table data:", {
-		hasData: !!df,
-		length: df?.length,
-		type: typeof df,
-		isArray: Array.isArray(df)
-	})
+	// Starting displayTable
+	// Table data
 	
 	if (!df) {
 		console.error("❌ No data provided to displayTable")
@@ -232,9 +227,8 @@ async function displayTable(df) {
 	// 	}
 	// }
 
-	console.log("🔄 Getting column names...")
-	const columns = df.columnNames()
-	console.log("📊 Columns:", columns)
+		// Getting column names
+		const columns = df.columnNames()
 	const transformedColumns = columns.map((column) => {
 		if (column === "Index") {
 			return {
@@ -250,13 +244,8 @@ async function displayTable(df) {
 			}
 		}
 	})
-	console.log("🔄 Converting data to objects...")
+	// Converting data to objects
 	const data = df.objects()
-	console.log("📊 Table data objects:", {
-		length: data?.length,
-		firstRow: data?.[0],
-		sample: data?.slice(0, 3)
-	})
 
 	const gridOptions: GridOptions = {
 		columnDefs: transformedColumns,
@@ -277,30 +266,28 @@ async function displayTable(df) {
 	}
 	
 
-	const gridDiv = document.querySelector<HTMLElement>("#plotTable")!
-	
+	const gridDiv = document.querySelector<HTMLElement>("#plotTable")
 	
 	if (!gridDiv) {
-		console.error("❌ Table container #plotTable not found!")
+		// Table container not found, retrying
+		setTimeout(() => displayTable(df), 500)
 		return
 	}
 
 	// Create the grid only if it doesn't already exist
 	if (!gridApi) {
-		console.log("🔄 Creating new grid...")
+		// Creating new grid
 		gridApi = createGrid(gridDiv, gridOptions)
-		console.log("✅ Grid created successfully")
 	} else {
-		console.log("🔄 Updating existing grid...")
+		// Updating existing grid
 		// Update the existing grid's data
 		gridApi.setGridOption("rowData", data)
 		gridApi.setGridOption("columnDefs", transformedColumns)
-		console.log("✅ Grid updated successfully")
+		// Grid updated
 	}
 
-	console.log("🔄 Selecting first row...")
+	// Selecting first row
 	gridApi.getRowNode(0).setSelected(true, false)
-	console.log("✅ Table display completed")
 }
 
 async function CreateTableJoint(df_coef, df_pred) {
@@ -308,9 +295,7 @@ async function CreateTableJoint(df_coef, df_pred) {
 
 	const index = variables.indexOf(columnName)
 	const j_var = varSub[index]
-	console.log("columnName: ", columnName)
-	console.log("index: ", index)
-	console.log("j_var: ", j_var)
+	// Processing column data
 
 	const filteredColumns = df_coef
 		.columnNames()

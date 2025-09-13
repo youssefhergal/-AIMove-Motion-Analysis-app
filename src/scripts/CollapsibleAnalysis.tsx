@@ -19,7 +19,7 @@ import {
 	setInputGOM
 } from "./stores/store"
 import { ResizeEverything } from "./ResizeEverything"
-import { formatBoneNames, extractJointNames } from "./useSceneSetup"
+import { formatBoneNames, extractJointNames } from "./utils/boneUtils"
 
 // Added by Youssef Hergal - Dexterity Analysis collapsible component - 2025-01-27
 // FUNCTIONALITY: Collapsible section with simple checkbox for dexterity analysis
@@ -87,60 +87,45 @@ function CollapsibleDexterityAnalysis() {
 			
 			// Wait for skeleton data to be available, then prepare GOM data
 			const prepareGOMData = async () => {
-				console.log("🔄 Starting prepareGOMData function")
+				// Starting prepareGOMData
 				const viewers = skeletonViewersSig()
-				console.log("🔍 Skeleton viewers check:", {
-					viewers: viewers,
-					length: viewers?.length,
-					isArray: Array.isArray(viewers)
-				})
+				// Skeleton viewers check
 				
 				if (viewers && viewers.length > 0) {
-					console.log("🔄 Preparing GOM data from skeleton...")
+					// Preparing GOM data from skeleton
 					try {
 						// Use the first skeleton for GOM analysis
 						const firstViewer = viewers[0]
 						const [gomData] = await firstViewer.createDataframes()
-						console.log("📊 GOM data prepared:", {
-							isArray: Array.isArray(gomData),
-							length: gomData?.length,
-							firstElement: gomData?.[0]
-						})
+						// GOM data prepared
 						
 						// Set the GOM data in the store
 						setInputGOM(gomData)
-						console.log("✅ GOM data set in store")
+						// GOM data set in store
 						
 						// Now initialize GOM analysis with the prepared data
-						console.log("🔍 checkboxFistClick status:", checkboxFistClick())
-						console.log("🔄 Calling DoGOM_init()...")
 						await DoGOM_init()
-						console.log("✅ DoGOM_init() completed")
 						
 			// Wait a moment for tables to be created, then display them
 			setTimeout(async () => {
-				console.log("🔄 Calling displayTableSwitcher...")
 				await displayTableSwitcher()
-				console.log("✅ displayTableSwitcher completed")
 				
 				// Recreate plots after dexterity analysis is complete
 				setTimeout(async () => {
-					console.log("🔄 Recreating plots after dexterity analysis...")
 					const { createPlot2D, createPlot3D } = await import("./plots")
 					const { currentAnimationTime, toggleValue } = await import("./stores/store")
 					
 					await createPlot2D(currentAnimationTime(), toggleValue())
 					await createPlot3D(currentAnimationTime())
-					console.log("✅ Plots recreated after dexterity analysis")
 				}, 500)
 			}, 100)
 						
 						// Re-initialize 3D scene to ensure skeleton displays properly
 						setTimeout(async () => {
-							console.log("🔄 Re-initializing 3D scene after GOM analysis...")
+							// Re-initializing 3D scene after GOM analysis
 							try {
 								await initialize()
-								console.log("✅ 3D scene re-initialized successfully")
+								// 3D scene re-initialized
 								// Force one more resize after scene re-initialization
 								setTimeout(() => {
 									ResizeEverything()
@@ -160,7 +145,7 @@ function CollapsibleDexterityAnalysis() {
 			}
 			
 			// Start the GOM data preparation
-			console.log("🔄 Calling prepareGOMData...")
+			// Calling prepareGOMData
 			prepareGOMData()
 		} else {
 			// Disable dexterity analysis

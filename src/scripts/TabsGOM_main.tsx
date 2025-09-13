@@ -1,6 +1,5 @@
 import { createSignal, onMount, createEffect } from "solid-js"
 // import { Tabs } from "@kobalte/core/tabs"
-import { Separator } from "@kobalte/core/separator"
 import { ToggleGroup } from "@kobalte/core/toggle-group"
 import { AxisSelector } from "./AxisSelector"
 import { ToggleGroupAssumptions } from "./ToggleGroupAssumptions"
@@ -24,23 +23,18 @@ import {
 } from "./stores/store"
 import { TabContent, Tabs } from "@ark-ui/solid"
 import { pred_ang_coef } from "./tensorflowGOM"
-import { createPlot2D_Predict } from "./plots"
+// Plot functionality removed - will be reimplemented later
 import * as aq from "arquero"
 import { get_mathjax_svg } from "./InitMathJax"
 import * as echarts from "echarts"
 import { displayTableSwitcher } from "./CheckboxDexAnalysis"
 
 async function GenerateMovement() {
-	console.log("🚀 Starting GenerateMovement function")
+		// Starting GenerateMovement
 	setAppIsLoaded(false)
 
 	try {
-		console.log("📊 Input data for prediction:", {
-			inputGOMLength: inputGOM()?.length,
-			df_coef_modLength: df_coef_mod()?.length,
-			inputGOMData: inputGOM(),
-			df_coef_modData: df_coef_mod()
-		})
+		// Input data for prediction
 
 		if (!inputGOM() || inputGOM().length === 0) {
 			console.error("❌ inputGOM is empty or undefined")
@@ -48,28 +42,21 @@ async function GenerateMovement() {
 		}
 		
 		if (!df_coef_mod() || df_coef_mod().length === 0) {
-			console.error("❌ df_coef_mod is empty or undefined")
 			return
 		}
 
-		console.log("🔄 Calling pred_ang_coef...")
+		// Calling pred_ang_coef
 		const { df_pred_mod: newDfPred_mod } = await pred_ang_coef(
 			inputGOM(),
 			df_coef_mod()
 		)
 
-		console.log("📊 Prediction results:", {
-			hasResults: !!newDfPred_mod,
-			length: newDfPred_mod?.length,
-			data: newDfPred_mod
-		})
+		// Prediction results processed
 		await set_df_pred_sampled(newDfPred_mod)
 		
-		console.log("🔄 Creating prediction plot")
-		await createPlot2D_Predict()
+		// Plot functionality removed - will be reimplemented later
 		
 		setAppIsLoaded(true)
-		console.log("✅ GenerateMovement completed successfully")
 		// setSelectedTab("Generated Movement")
 	} catch (error) {
 		console.error("❌ Error in GenerateMovement:", error)
@@ -101,14 +88,12 @@ function TabsGOM_main(props: { valueButton: string }) {
 	// Effect to handle valueButton changes
 	createEffect(() => {
 		const currentValueButton = props.valueButton
-		console.log("🔄 TabsGOM_main valueButton changed to:", currentValueButton)
+		// Value button changed
 		
 		// When switching back to ATT-RGOM, refresh the data
 		if (currentValueButton === "ATT-RGOM") {
 			setTimeout(async () => {
-				console.log("🔄 Refreshing ATT-RGOM data in TabsGOM_main...")
 				await displayTableSwitcher()
-				console.log("✅ ATT-RGOM data refreshed in TabsGOM_main")
 			}, 200)
 		}
 	})
@@ -158,45 +143,21 @@ function TabsGOM_main(props: { valueButton: string }) {
 		const gomData = inputGOM()
 		const coefData = df_coef_mod()
 		const predData = df_pred_mod()
-		console.log("🔍 ATT-RGOM data check:", { 
-			inputGOM: {
-				hasData: !!gomData, 
-				length: gomData?.length,
-				isArray: Array.isArray(gomData)
-			},
-			df_coef_mod: {
-				hasData: !!coefData,
-				length: coefData?.length,
-				isArray: Array.isArray(coefData)
-			},
-			df_pred_mod: {
-				hasData: !!predData,
-				length: predData?.length,
-				isArray: Array.isArray(predData)
-			}
-		})
+		// ATT-RGOM data check
 		if (gomData && gomData.length > 0) {
-			console.log("🔄 inputGOM data changed, auto-generating movement")
 			GenerateMovement()
-		} else {
-			console.log("⚠️ No inputGOM data available for movement generation")
 		}
 	})
 	
 	// Manual trigger to create chart when component mounts
 	onMount(() => {
-		console.log("🚀 Component mounted - checking inputGOM data")
+		// Component mounted
 		const gomData = inputGOM()
 		if (gomData && gomData.length > 0) {
-			console.log("🔄 Found existing inputGOM data on mount, generating movement")
 			GenerateMovement()
 		}
 		
-		if (selectedTab() === "Generated Movement") {
-			setTimeout(() => {
-				createPredictionChart()
-			}, 200)
-		}
+		// Plot functionality removed - will be reimplemented later
 	})
 
 	async function ResizeGenerate() {
@@ -206,367 +167,22 @@ function TabsGOM_main(props: { valueButton: string }) {
 		}
 	}
 
-	// Function to create ECharts prediction plot
-	const createPredictionChart = () => {
-		console.log("🔍 Creating prediction chart...")
-		const chartContainer = document.getElementById("prediction-chart")
-		if (!chartContainer) {
-			console.log("❌ Chart container not found")
-			return
-		}
-		console.log("✅ Chart container found")
-
-		// Dispose existing chart if any
-		if (chartInstance()) {
-			chartInstance().dispose()
-		}
-
-		const chart = echarts.init(chartContainer)
-		setChartInstance(chart)
-		console.log("✅ ECharts instance created")
-
-		const results = sarimaxResults()
-		console.log("📊 SARIMAX results:", results)
-		
-		if (!results || !results.original || !results.predicted) {
-			console.log("❌ No prediction data available")
-			// Show empty chart with message
-			chart.setOption({
-				title: {
-					text: "No prediction data available",
-					left: "center",
-					top: "center",
-					textStyle: {
-						color: "#999"
-					}
-				}
-			})
-			return
-		}
-
-		const actual = results.original
-		const predicted = results.predicted
-		const initialPrediction = (window as any).initialPredictionData || predicted
-		const retrained = (window as any).retrainedPredictionData || []
-
-		console.log("📈 Data for chart:", {
-			actualLength: actual.length,
-			predictedLength: predicted.length,
-			retrainedLength: retrained.length,
-			sampleActual: actual.slice(0, 5),
-			samplePredicted: predicted.slice(0, 5),
-			sampleRetrained: retrained.slice(0, 5)
-		})
-
-		// Calculate min/max for better y-axis scaling
-		let allData = [...actual, ...predicted, ...retrained]
-		
-		// Include forecast data in scaling if available
-		const forecastForScaling = forecastResults()
-		if (forecastForScaling && forecastForScaling.predStatic && forecastForScaling.predStatic.length > 0) {
-			allData = [...allData, ...forecastForScaling.predStatic]
-			// Include confidence bounds if available
-			if (forecastForScaling.confidence && forecastForScaling.confidence.lower && forecastForScaling.confidence.upper) {
-				allData = [...allData, ...forecastForScaling.confidence.lower, ...forecastForScaling.confidence.upper]
-			}
-		}
-		
-		const yMin = Math.min(...allData)
-		const yMax = Math.max(...allData)
-
-		function minPlot2D() {
-			const yMinValue = Number(yMin)
-			const yMaxValue = Number(yMax)
-			const value = (yMinValue - (yMaxValue - yMinValue) * 0.3).toFixed(0)
-			return parseFloat(value)
-		}
-
-		function maxPlot2D() {
-			const yMinValue = Number(yMin)
-			const yMaxValue = Number(yMax)
-			const value = (yMaxValue + (yMaxValue - yMinValue) * 0.3).toFixed(0)
-			return parseFloat(value)
-		}
-
-		// Create time series data
-		const timeData = Array.from({ length: actual.length }, (_, i) => i)
-
-		// Prepare series data - always show all available predictions
-		const series = [
-			{
-				name: "Original Movement",
-				type: "line",
-				data: actual,
-				smooth: false,
-				lineStyle: {
-					color: "#145e9f",
-					width: 2
-				},
-				itemStyle: {
-					color: "#145e9f"
-				}
-			},
-			{
-				name: "Initial Prediction",
-				type: "line",
-				data: initialPrediction,
-				smooth: false,
-				lineStyle: {
-					color: "red",
-					type: "dashed",
-					width: 2
-				},
-				itemStyle: {
-					color: "red"
-				}
-			}
-		]
-
-		// Add retrained prediction if available (keep it as a third line)
-		if (retrained && retrained.length > 0) {
-			series.push({
-				name: "Retrained Prediction",
-				type: "line",
-				data: retrained,
-				smooth: false,
-				lineStyle: {
-					color: "#DBA21C",
-					type: "dotted",
-					width: 2
-				},
-				itemStyle: {
-					color: "#DBA21C"
-				}
-			})
-		}
-
-		// Add forecast data if available
-		const forecast = forecastResults()
-		if (forecast && forecast.predStatic && forecast.predStatic.length > 0) {
-			// Create forecast time indices (starting from the end of actual data)
-			const forecastTimeIndices = Array.from(
-				{ length: forecast.predStatic.length }, 
-				(_, i) => actual.length + i
-			)
-			
-			// Add forecast line
-			series.push({
-				name: `Forecast (${forecast.config.steps} steps)`,
-				type: "line",
-				data: forecast.predStatic,
-				smooth: false,
-				lineStyle: {
-					color: "#8B5CF6",
-					type: "solid",
-					width: 3
-				},
-				itemStyle: {
-					color: "#8B5CF6"
-				}
-			})
-
-			// Add confidence intervals if available
-			if (forecast.confidence && forecast.confidence.lower && forecast.confidence.upper) {
-				// Lower confidence bound
-				series.push({
-					name: `Confidence Lower (${forecast.confidence.level}%)`,
-					type: "line",
-					data: forecast.confidence.lower,
-					smooth: false,
-					lineStyle: {
-						color: "rgba(139, 92, 246, 0.5)",
-						type: "dashed",
-						width: 1
-					},
-					itemStyle: {
-						color: "rgba(139, 92, 246, 0.5)"
-					}
-				})
-
-				// Upper confidence bound
-				series.push({
-					name: `Confidence Upper (${forecast.confidence.level}%)`,
-					type: "line",
-					data: forecast.confidence.upper,
-					smooth: false,
-					lineStyle: {
-						color: "rgba(139, 92, 246, 0.5)",
-						type: "dashed",
-						width: 1
-					},
-					itemStyle: {
-						color: "rgba(139, 92, 246, 0.5)"
-					}
-				})
-
-				// Note: Confidence band visualization removed due to TypeScript compatibility
-				// The upper and lower bounds provide sufficient visualization
-			}
-
-			console.log("🔮 Added forecast visualization:", {
-				forecastPoints: forecast.predStatic.length,
-				hasConfidence: !!forecast.confidence,
-				confidenceLevel: forecast.confidence?.level
-			})
-		}
-
-		const option = {
-			tooltip: {
-				trigger: "axis",
-				axisPointer: {
-					type: "cross",
-					animation: false,
-					label: {
-						backgroundColor: "#ccc",
-						borderColor: "#aaa",
-						borderWidth: 1,
-						shadowBlur: 0,
-						shadowOffsetX: 0,
-						shadowOffsetY: 0,
-						color: "#222",
-					},
-				},
-			},
-			toolbox: {
-				feature: {
-					dataZoom: {},
-				},
-				right: "65px",
-			},
-			legend: {
-				data: series.map(s => s.name),
-				orient: "vertical",
-				left: "10px",
-				top: "0px",
-			},
-			grid: { left: "40px", right: "80px", bottom: "100px", top: "100px" },
-			dataZoom: [
-				{ type: "inside", xAxisIndex: 0 },
-				{
-					type: "slider",
-					xAxisIndex: 0,
-					filterMode: "none",
-					bottom: "20px",
-					height: 30,
-				},
-				{ type: "inside", yAxisIndex: 0, filterMode: "none" },
-				{
-					type: "slider",
-					yAxisIndex: 0,
-					filterMode: "none",
-					right: "15px",
-					width: 30,
-				},
-			],
-			xAxis: {
-				type: "category",
-				data: timeData,
-				axisLine: {
-					onZero: false,
-				},
-			},
-			yAxis: {
-				type: "value",
-				name: `Rotation Value (${selectedJoint()}_${axisSelected()}rotation)`,
-				min: minPlot2D(),
-				max: maxPlot2D(),
-			},
-			series: series,
-		}
-
-		chart.setOption(option)
-		chart.dispatchAction(
-			{
-				type: "takeGlobalCursor",
-				key: "brush",
-				brushOption: { brushType: "lineX", brushMode: "single" },
-			},
-			true
-		)
-
-		// Handle window resize
-		window.addEventListener("resize", () => {
-			chart.resize()
-		})
-	}
-
-	// Effect to update chart when data changes
-	createEffect(() => {
-		const results = sarimaxResults()
-		console.log("🔄 Effect triggered - SARIMAX results changed:", {
-			hasResults: !!results,
-			selectedTab: selectedTab(),
-			isGeneratedMovement: selectedTab() === "Generated Movement"
-		})
-		if (results && selectedTab() === "Generated Movement") {
-			setTimeout(() => {
-				createPredictionChart()
-			}, 100)
-		}
-	})
-
-	// Effect to update chart when tab changes
-	createEffect(() => {
-		console.log("🔄 Effect triggered - Tab changed:", {
-			selectedTab: selectedTab(),
-			isGeneratedMovement: selectedTab() === "Generated Movement"
-		})
-		if (selectedTab() === "Generated Movement") {
-			setTimeout(() => {
-				createPredictionChart()
-			}, 100)
-		}
-	})
-
-	// Effect to update chart when retrained data changes
-	createEffect(() => {
-		const retrainedData = (window as any).retrainedPredictionData
-		console.log("🔄 Effect triggered - Retrained data changed:", {
-			hasRetrainedData: !!retrainedData,
-			retrainedDataLength: retrainedData?.length,
-			selectedTab: selectedTab(),
-			isGeneratedMovement: selectedTab() === "Generated Movement"
-		})
-		if (retrainedData && selectedTab() === "Generated Movement") {
-			setTimeout(() => {
-				createPredictionChart()
-			}, 100)
-		}
-	})
+	// Plot functionality removed - will be reimplemented later
 
 	// Effect to update table when assumption index changes
 	createEffect(() => {
 		const assumptionIndex = selectedAssumptionsIndex()
-		console.log("🔄 Effect triggered - Assumption index changed:", {
-			assumptionIndex,
-			selectedTab: selectedTab()
-		})
+		// Assumption index changed
 		if (selectedTab() === "Assumptions") {
 			setTimeout(async () => {
 				const currentIndex = selectedAssumptionsIndex()
-				console.log("🔄 Calling displayTableSwitcher due to assumption change...")
-				console.log("🔍 Current assumption index before displayTableSwitcher:", currentIndex)
 				await displayTableSwitcher(currentIndex)
-				console.log("✅ displayTableSwitcher completed after assumption change")
 			}, 100)
 		}
 	})
 
 	// Effect to update chart when forecast results change
-	createEffect(() => {
-		const forecast = forecastResults()
-		console.log("🔄 Effect triggered - Forecast results changed:", {
-			hasForecast: !!forecast,
-			forecastPoints: forecast?.predStatic?.length,
-			selectedTab: selectedTab(),
-			isGeneratedMovement: selectedTab() === "Generated Movement"
-		})
-		if (forecast && selectedTab() === "Generated Movement") {
-			setTimeout(() => {
-				createPredictionChart()
-			}, 100)
-		}
-	})
+	// Plot functionality removed - will be reimplemented later
 	return (
 		<>
 			<Tabs.Root
@@ -577,13 +193,7 @@ function TabsGOM_main(props: { valueButton: string }) {
 					setSelectedTab(e.value)
 					if (e.value === "Generated Movement") {
 						console.log("📊 Tab changed to Generated Movement")
-						setTimeout(() => {
-							// Create or resize ECharts chart
-							createPredictionChart()
-							if (chartInstance()) {
-								chartInstance().resize()
-							}
-						}, 100)
+						// Plot functionality removed - will be reimplemented later
 					}
 				}}
 			>
@@ -1114,10 +724,7 @@ function TabsGOM_main(props: { valueButton: string }) {
 							</div>
 						</div>
 						
-						<div
-							id="prediction-chart"
-							style={{ width: "100%", height: "400px" }}
-						/>
+						{/* Plot container removed - will be reimplemented later */}
 					</div>
 					)}
 					

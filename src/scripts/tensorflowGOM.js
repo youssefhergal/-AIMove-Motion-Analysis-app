@@ -421,7 +421,6 @@ async function pred_ang_coef(val, coef_modded) {
 
 	let dataArray = await coef_modded.objects()
 	let arrayOfArrays = dataArray.map((obj) => Object.values(obj))
-	console.log(arrayOfArrays, dataX.shape[0], val.length)
 
 	let coef_modded_resampled = await interpolate2DArray(
 		arrayOfArrays,
@@ -434,7 +433,6 @@ async function pred_ang_coef(val, coef_modded) {
 	// Convert the flatArray to a Tensor
 	const tensor = await tf.tensor(coef_modded_resampled)
 
-	console.log(coef_modded_resampled, dataX.shape[0], val.length, tensor.shape)
 
 	// let originalSize = coef_modded_resampled.shape
 
@@ -522,11 +520,10 @@ async function pred_ang_coef(val, coef_modded) {
 
 	// Define batch size
 	const batch_size = findBatchSize(dataX.shape[0] - 1)
-	console.log("batch_size: ", batch_size)
 
 	// Iterate through the rest of the time steps in batches
 	for (let t = 1; t < dataX.shape[0] - 1; t += batch_size) {
-		console.log(t)
+
 		// Extract the current coefficients and input slices
 		const coeff = coef_modT.slice(
 			[t, 0, 0, 0],
@@ -558,7 +555,6 @@ async function pred_ang_coef(val, coef_modded) {
 	}
 
 	// Print the final shape of p_mod
-	console.log("Final shape of p_mod:", p_mod.shape)
 
 	// ##########################################
 	// ##########################################
@@ -566,14 +562,12 @@ async function pred_ang_coef(val, coef_modded) {
 	// ##########################################
 	// ##########################################
 
-	console.log(p_mod.shape)
 	let p_mod_array = await p_mod.array()
 	p_mod_array = p_mod_array.slice(2)
 	const predT = await reverseMinMaxScaling(p_mod_array, minVal, maxVal)
 	let df_pred_mod = await aq.from(predT)
 
 	df_pred_mod = await df_pred_mod.rename(aq.names(variables))
-	df_pred_mod.print()
 
 	return { df_pred_mod }
 }

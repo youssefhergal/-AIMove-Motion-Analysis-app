@@ -5,6 +5,7 @@ import { Switch } from "@kobalte/core"
 // Removed Checkbox import - using HTML checkboxes instead
 import { Slider } from "@kobalte/core"
 import { initializeWhenLoaded } from "./useSceneSetup"
+import { cleanBoneHierarchy } from "./utils/boneUtils"
 import {
 	bonesList,
 	selectedJoint,
@@ -34,15 +35,6 @@ import {
 } from "./stores/store"
 import { ResizeEverything } from "./ResizeEverything"
 import { updatePlot2D, updatePlot3D } from "./plots"
-
-// Added by Youssef Hergal - Clean bone hierarchy function - 2025-01-27
-function cleanBoneHierarchy(boneHierarchy) {
-	if (typeof boneHierarchy !== "string") {
-		console.error("Expected a string but received:", boneHierarchy)
-		return ""
-	}
-	return [boneHierarchy].map((name) => name.replace(/[^a-zA-Z0-9_\s]/g, ""))
-}
 
 // Added by Youssef Hergal - Simple visualization controls card component - 2025-01-27
 function VisualizationControlsCard() {
@@ -291,7 +283,7 @@ function VisualizationControlsCard() {
 										await resizePlotWindows()
 									}}
 								/>
-								<span class="parameter-label white">3D Plot:</span>
+								<span class="parameter-label ">3D Plot:</span>
 							</label>
 							<div class="parameter-controls">
 								<Switch.Root

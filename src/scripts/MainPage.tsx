@@ -29,7 +29,7 @@ function MainPage() {
 	createEffect(async () => {
 		selectedJoint()
 		if (mainPageLoaded) {
-			console.log("PreparePLotsData!!!!!!!!!!!!!!!!!!!!!!!!MAINPAGE")
+			// Preparing plots data
 			await initializeWhenLoaded(true)
 		} else {
 			setMainPageLoaded(true)

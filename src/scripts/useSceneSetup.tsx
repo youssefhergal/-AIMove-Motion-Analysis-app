@@ -6,6 +6,7 @@ import { do_gom } from "./tensorflowGOM"
 import { DoGOM_init } from "./CheckboxDexAnalysis"
 import { ResizeEverything } from "./ResizeEverything"
 import { createEffect, createSignal } from "solid-js"
+import { formatBoneNames, extractJointNames } from "./utils/boneUtils"
 
 import {
 	setAnimationDuration,
@@ -614,44 +615,10 @@ async function initialize() {
 		isBonesListReady = true
 	})
 
-	console.log("✅ Initialize function completed")
+	// Initialize function completed
 }
 
 
-function extractJointNames(variables) {
-	const jointNames = [
-		"Spine",
-		"Spine1",
-		"Spine2",
-		"Spine3",
-		"Hips",
-		"Neck",
-		"Head",
-		"LeftArm",
-		"LeftForeArm",
-		"RightArm",
-		"RightForeArm",
-		"LeftShoulder",
-		"LeftShoulder2",
-		"RightShoulder",
-		"RightShoulder2",
-		"LeftUpLeg",
-		"LeftLeg",
-		"RightUpLeg",
-		"RightLeg",
-	]
-
-	return variables.filter((variable) =>
-		jointNames.some((joint) => variable.includes(joint))
-	)
-}
-function formatBoneNames(bones) {
-	return bones.map((bone) => {
-		const level = bone.depth // Assume each bone object has a 'depth' property
-		const prefix = "-".repeat(level * 1) // Create indentation based on depth (4 spaces per level)
-		return `•${prefix}${bone.name}` // Return only the formatted name with indentation
-	})
-}
 
 function waitForMixerTime() {
 	return new Promise<void>((resolve) => {
@@ -775,6 +742,4 @@ export {
 	initializeWhenLoaded,
 	uploadFile,
 	preparePlotsData,
-	formatBoneNames,
-	extractJointNames,
 }
