@@ -794,7 +794,7 @@ const KFGOMAnalysis = () => {
 
 	const handleLagChange = (event) => {
 		const newLags = parseInt(event.target.value) || 2
-		const validatedLags = Math.max(2, newLags)
+		const validatedLags = Math.max(2, newLags) // Min 2, no max
 		setSarimaxConfig({ ...sarimaxConfig(), lags: validatedLags })
 		console.log('🔧 Lags changed to:', validatedLags)
 	}
@@ -1000,28 +1000,22 @@ const KFGOMAnalysis = () => {
 							</div>
 							<div>
 								<strong>Lags:</strong> 
-								<select 
+								<input 
+									type="number"
 									value={sarimaxConfig().lags}
 									onChange={handleLagChange}
+									min="2"
+									step="1"
 									style={{
 										"margin-left": "5px",
 										padding: "2px 6px",
 										"border": "1px solid #ccc",
 										"border-radius": "3px",
 										"background-color": "white",
-										"font-size": "11px"
+										"font-size": "11px",
+										width: "50px"
 									}}
-								>
-									<option value="2">2</option>
-									<option value="3">3</option>
-									<option value="4">4</option>
-									<option value="5">5</option>
-									<option value="6">6</option>
-									<option value="7">7</option>
-									<option value="8">8</option>
-									<option value="9">9</option>
-									<option value="10">10</option>
-								</select>
+								/>
 							</div>
 							<div>
 								<strong>Steps:</strong> 
