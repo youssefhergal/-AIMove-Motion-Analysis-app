@@ -52,6 +52,7 @@ export default function MovementPredictionPlot() {
         const results = sarimaxResults()
         const history = predictionHistory()
 
+
         // Check if we have data to display
         const hasHistory = history && history.length > 0
         const hasResults = results && results.original && results.predicted
@@ -163,9 +164,51 @@ export default function MovementPredictionPlot() {
                 let initialEntry = null
                 if (hasHistory) {
                     initialEntry = history.find(entry => entry.type === 'initial')
+                } else if (results && results.confidence_upper && results.confidence_lower) {
+                    // Use SARIMAX results directly if no history
+                    initialEntry = { results: results }
                 }
                 
                 const seriesName = createLegendLabel('Initial Prediction', initialEntry)
+                
+                
+                // Add confidence interval for initial prediction if available
+                if (initialEntry && initialEntry.results.confidence_upper && initialEntry.results.confidence_lower) {
+                    const upperConf = initialEntry.results.confidence_upper.slice(1)
+                    const lowerConf = initialEntry.results.confidence_lower.slice(1)
+                    
+                    
+                    // Create confidence interval using area chart approach
+                    // First series: lower bound (invisible line)
+                    series.push({
+                        name: `${seriesName} - Confidence Lower`,
+                        type: 'line',
+                        data: lowerConf,
+                        lineStyle: {
+                            opacity: 0
+                        },
+                        stack: 'confidence-band',
+                        showSymbol: false,
+                        silent: true
+                    })
+                    
+                    // Second series: confidence band (area between upper and lower)
+                    const confidenceBandData = upperConf.map((upper, index) => upper - lowerConf[index])
+                    series.push({
+                        name: `${seriesName} - Confidence Band`,
+                        type: 'line',
+                        data: confidenceBandData,
+                        lineStyle: {
+                            opacity: 0
+                        },
+                        areaStyle: {
+                            color: 'rgba(255, 107, 107, 0.2)'
+                        },
+                        stack: 'confidence-band',
+                        showSymbol: false,
+                        silent: true
+                    })
+                }
                 
                 series.push({
                     name: seriesName,
@@ -189,7 +232,9 @@ export default function MovementPredictionPlot() {
                 retrainEntries.forEach((entry, index) => {
                     if (entry.results.prediction) {
                         const seriesName = createLegendLabel('Retrain', entry, index)
+                        const color = `hsl(${(index * 60) % 360}, 70%, 50%)`
                         
+                        // Add retrain prediction line (no confidence intervals)
                         series.push({
                             name: seriesName,
                             type: 'line',
@@ -197,10 +242,10 @@ export default function MovementPredictionPlot() {
                             smooth: true,
                             lineStyle: {
                                 width: 2,
-                                color: `hsl(${(index * 60) % 360}, 70%, 50%)`
+                                color: color
                             },
                             itemStyle: {
-                                color: `hsl(${(index * 60) % 360}, 70%, 50%)`
+                                color: color
                             }
                         })
                         legendData.push(seriesName)
