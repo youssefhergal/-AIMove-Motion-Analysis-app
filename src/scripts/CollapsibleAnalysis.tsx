@@ -21,7 +21,7 @@ import {
 import { ResizeEverything } from "./ResizeEverything"
 import { formatBoneNames, extractJointNames } from "./utils/boneUtils"
 
-// Added by Youssef Hergal - Dexterity Analysis collapsible component - 2025-01-27
+// Added by Youssef Hergal - Dexterity Analysis collapsible component - 
 // FUNCTIONALITY: Collapsible section with simple checkbox for dexterity analysis
 // WHY: Provides organized access to dexterity analysis features
 // PERFORMANCE: Uses Kobalte's efficient collapsible implementation

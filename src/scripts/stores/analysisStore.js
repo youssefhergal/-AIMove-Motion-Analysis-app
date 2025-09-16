@@ -49,6 +49,10 @@ const [forecastResults, setForecastResults] = createSignal(null)
 const [retrainHistory, setRetrainHistory] = createSignal([])
 const [currentRetrainIndex, setCurrentRetrainIndex] = createSignal(0)
 
+// Prediction History - New system for storing all predictions
+const [predictionHistory, setPredictionHistory] = createSignal([])
+const [currentPredictionIndex, setCurrentPredictionIndex] = createSignal(0)
+
 // Data Frames (legacy - consider refactoring)
 const [df_coef, set_df_coef] = createSignal([])
 const [df_pred, set_df_pred] = createSignal([])
@@ -88,6 +92,10 @@ export {
     // Retraining
     retrainHistory, setRetrainHistory,
     currentRetrainIndex, setCurrentRetrainIndex,
+    
+    // Prediction History
+    predictionHistory, setPredictionHistory,
+    currentPredictionIndex, setCurrentPredictionIndex,
     
     // Data Frames (legacy)
     df_coef, set_df_coef,

@@ -269,35 +269,36 @@ export class GOMVariableSelector {
 		let sameSideAxisJoints: string[] = []
 		
 		if (targetSide === 'center') {
-			// If target is center, try to find left/right variants of the same joint type
+			// For center joints (Hips, Spine, etc.), find other center joints and related left/right joints
 			const baseJoint = targetParts.slice(0, -1).join('_')
 			
-			// Find left and right variants of the same joint type
-			const leftVariants = jointNames.filter(name => {
+			// Find other center joints with the same axis
+			const centerJoints = jointNames.filter(name => {
 				const side = this.detectJointSide(name)
 				const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
-				const isSameType = name.toLowerCase().includes(baseJoint.toLowerCase()) || 
-								 baseJoint.toLowerCase().includes(name.toLowerCase())
-				return side === 'left' && hasAxis && isSameType
+				return side === 'center' && hasAxis && name !== targetJoint
 			})
 			
-			const rightVariants = jointNames.filter(name => {
+			// Find left/right joints that are anatomically related to the center joint
+			// For Hips, look for LeftHip, RightHip, LeftUpLeg, RightUpLeg, etc.
+			const relatedLeftJoints = jointNames.filter(name => {
 				const side = this.detectJointSide(name)
 				const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
-				const isSameType = name.toLowerCase().includes(baseJoint.toLowerCase()) || 
-								 baseJoint.toLowerCase().includes(name.toLowerCase())
-				return side === 'right' && hasAxis && isSameType
+				const isRelated = this.isAnatomicallyRelated(baseJoint, name)
+				return side === 'left' && hasAxis && isRelated
 			})
 			
-			// Use the side with more variants, or both if they have similar counts
-			if (leftVariants.length > rightVariants.length) {
-				sameSideAxisJoints = leftVariants
-			} else if (rightVariants.length > leftVariants.length) {
-				sameSideAxisJoints = rightVariants
-			} else if (leftVariants.length > 0) {
-				// If both sides have similar counts, use left side
-				sameSideAxisJoints = leftVariants
-			} else {
+			const relatedRightJoints = jointNames.filter(name => {
+				const side = this.detectJointSide(name)
+				const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
+				const isRelated = this.isAnatomicallyRelated(baseJoint, name)
+				return side === 'right' && hasAxis && isRelated
+			})
+			
+			// Combine all related joints
+			sameSideAxisJoints = [...centerJoints, ...relatedLeftJoints, ...relatedRightJoints]
+			
+			if (sameSideAxisJoints.length === 0) {
 				return []
 			}
 		} else {
@@ -380,6 +381,38 @@ export class GOMVariableSelector {
 	}
 
 	/**
+	 * Check if two joints are anatomically related for Non-serial Intra-limb Mediation
+	 * This helps identify joints that are connected but not in a direct sequence
+	 */
+	private isAnatomicallyRelated(centerJoint: string, otherJoint: string): boolean {
+		const centerLower = centerJoint.toLowerCase()
+		const otherLower = otherJoint.toLowerCase()
+		
+		// Remove side prefixes for comparison
+		const otherWithoutSide = otherLower.replace(/^(left|right)/, '')
+		
+		// Define anatomical relationships
+		const relationships = {
+			'hips': ['hip', 'upleg', 'leg', 'thigh', 'knee', 'ankle', 'foot'],
+			'spine': ['spine', 'chest', 'neck', 'head', 'shoulder', 'arm', 'forearm', 'hand'],
+			'chest': ['spine', 'neck', 'head', 'shoulder', 'arm', 'forearm', 'hand'],
+			'neck': ['spine', 'chest', 'head', 'shoulder'],
+			'head': ['spine', 'chest', 'neck']
+		}
+		
+		// Check if the center joint is related to the other joint
+		for (const [centerKey, relatedTerms] of Object.entries(relationships)) {
+			if (centerLower.includes(centerKey)) {
+				return relatedTerms.some(term => otherWithoutSide.includes(term))
+			}
+		}
+		
+		// Default: if the base names are similar, they might be related
+		const centerBase = centerLower.replace(/^(left|right)/, '')
+		return otherWithoutSide.includes(centerBase) || centerBase.includes(otherWithoutSide)
+	}
+
+	/**
 	 * Main function to select variables based on assumption
 	 */
 	selectVariablesByAssumption(jointNames: string[], assumptionIndex: number, targetJoint?: string): string[] {
@@ -417,8 +450,6 @@ export class GOMVariableSelector {
 				console.warn(`⚠️ Unknown assumption index: ${assumptionIndex}, returning all joints`)
 				result = jointNames
 		}
-		
-		// GOM selector applied
 		
 		return result
 	}

@@ -23,16 +23,13 @@ import {
 	chart2D_predict,
 	setChart2D_predict,
 	axisSelected,
-	df_pred,
-	df_pred_sampled,
 	scaleX,
 	skeletonViewersSig,
 	currentAnimationTime,
 	toggleValue,
 } from "./stores/store"
 import * as aq from "arquero"
-
-import { createSignal, createEffect } from "solid-js"
+import { createSignal } from "solid-js"
 
 const colors = [
 	"#145e9f", // navy blue
@@ -43,32 +40,10 @@ const colors = [
 	"#983c58", // burgundy
 ]
 
-// Function to calculate the mean of an array
-function mean(data) {
-	return data.reduce((acc, val) => acc + val, 0) / data.length
-}
-
-// Function to calculate the standard deviation of an array
-function stdDev(data) {
-	const mu = mean(data)
-	const diffArr = data.map((a) => (a - mu) ** 2)
-	return Math.sqrt(diffArr.reduce((acc, val) => acc + val, 0) / data.length)
-}
-
-function confindenceInterval(data) {
-	let alpha = 0.05
-	let ci = ((1 - alpha / 2) * stdDev(data)) / mean(data)
-	return ci
-}
 
 async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
-	// createEffect(() => {
-	// 	chartVector()
-	// 	updatePosition()
-	// })
 	const [moveY, setMoveY] = createSignal(0)
 	const [isDragging, setIsDragging] = createSignal(false)
-	// const [isSelectEmpty, setIsSelectEmpty] = createSignal(false)
 
 	function sampleEveryNthElement(arr, n) {
 		let sampledArray = []
@@ -96,25 +71,24 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 		visibility: window.getComputedStyle(container).visibility
 	}
 
-	// If container has no dimensions or is not visible, wait and retry
+	// If container has no dimensions or is not visible, use ResizeObserver
 	if (containerInfo.offsetWidth === 0 || containerInfo.offsetHeight === 0 || !containerInfo.visible || containerInfo.display === 'none' || containerInfo.visibility === 'hidden') {
-		// Vector container not ready, waiting
-		setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
-		return
-	}
-
-	// Double-check container dimensions before creating chart
-	if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-		// Vector container still not ready, retrying
-		setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
-		return
-	}
-
-	// Final check to ensure container is fully rendered and visible
-	const computedStyle = window.getComputedStyle(container)
-	if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || container.offsetParent === null) {
-		console.log("⚠️ Vector container not fully rendered, retrying...")
-		setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
+		const resizeObserver = new ResizeObserver((entries) => {
+			const target = entries[0].target as HTMLElement
+			if (target.offsetWidth > 0 && target.offsetHeight > 0) {
+				resizeObserver.disconnect()
+				createVectorPLot(dataSeriesUnmod, dataSeriesMod)
+			}
+		})
+		
+		resizeObserver.observe(container)
+		
+		// Fallback timeout (3 seconds max)
+		setTimeout(() => {
+			resizeObserver.disconnect()
+			createVectorPLot(dataSeriesUnmod, dataSeriesMod)
+		}, 3000)
+		
 		return
 	}
 
@@ -129,7 +103,15 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 				setChartVector(myChart) // Store the chart instance the first time
 			} catch (error) {
 				console.error("❌ Error creating vector chart:", error)
-				setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
+				// Retry with ResizeObserver
+				const resizeObserver = new ResizeObserver((entries) => {
+					const target = entries[0].target as HTMLElement
+					if (target.offsetWidth > 0 && target.offsetHeight > 0) {
+						resizeObserver.disconnect()
+						createVectorPLot(dataSeriesUnmod, dataSeriesMod)
+					}
+				})
+				resizeObserver.observe(container)
 				return
 			}
 		}
@@ -167,8 +149,14 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 
 	// Ensure container is still valid before setting options
 	if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-		console.log("⚠️ Container lost dimensions during chart creation, retrying...")
-		setTimeout(() => createVectorPLot(dataSeriesUnmod, dataSeriesMod), 1000)
+		const resizeObserver = new ResizeObserver((entries) => {
+			const target = entries[0].target as HTMLElement
+			if (target.offsetWidth > 0 && target.offsetHeight > 0) {
+				resizeObserver.disconnect()
+				createVectorPLot(dataSeriesUnmod, dataSeriesMod)
+			}
+		})
+		resizeObserver.observe(container)
 		return
 	}
 
@@ -385,11 +373,6 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 		myChart.resize()
 	})
 
-	// const resetAllButton = document.getElementById("resetAllButton")
-	// resetAllButton.addEventListener("click", function () {
-	// 	resetButtonFunc()
-	// })
-
 	const resetButton = document.getElementById("resetButton")
 	if (resetButton) {
 		resetButton.addEventListener("click", function () {
@@ -453,18 +436,16 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 				}
 			})
 		}
-		// console.log("Selected items:", selectedItems)
 		updatePosition()
 	})
 
 	async function getSeriesData() {
-		console.log("try to save")
 		var chartOption = myChart.getOption()
 		var series = chartOption.series
 		let secondValuesArray = series[0].data.map((subArray) => subArray[1])
 		const columnSelected = {}
 		columnSelected[selectedRow()] = secondValuesArray
-		console.log(selectedRow())
+		
 		// Modify the dataframe with Arquero
 		const modifiedDataFrame = await df_coef_mod().assign(
 			aq.table(columnSelected)
@@ -474,7 +455,6 @@ async function createVectorPLot(dataSeriesUnmod, dataSeriesMod) {
 
 	function updatePosition(dataType = data) {
 		try {
-			// console.log("updated")
 			myChart.setOption({
 				graphic: dataType.map(function (item, dataIndex) {
 					return {
@@ -627,10 +607,24 @@ const createPlot2D = (currentTime, axis = "x") => {
 		return
 	}
 
-	// If container has no dimensions, wait and retry
+	// If container has no dimensions, use ResizeObserver
 	if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-		console.log('⚠️ 2D container has no dimensions, waiting...')
-		setTimeout(() => createPlot2D(currentTime, axis), 100)
+		const resizeObserver = new ResizeObserver((entries) => {
+			const target = entries[0].target as HTMLElement
+			if (target.offsetWidth > 0 && target.offsetHeight > 0) {
+				resizeObserver.disconnect()
+				createPlot2D(currentTime, axis)
+			}
+		})
+		
+		resizeObserver.observe(container)
+		
+		// Fallback timeout (3 seconds max)
+		setTimeout(() => {
+			resizeObserver.disconnect()
+			createPlot2D(currentTime, axis)
+		}, 3000)
+		
 		return
 	}
 
@@ -654,25 +648,6 @@ const createPlot2D = (currentTime, axis = "x") => {
 	
 	// Create a simple test plot if no data
 	if (!axisData || axisData.length === 0) {
-		console.warn("⚠️ No axis data available for 2D plot, creating test plot")
-		const testOption = {
-			title: {
-				text: 'Test 2D Plot - No Data Available',
-				left: 'center'
-			},
-			xAxis: {
-				type: 'category',
-				data: ['A', 'B', 'C', 'D', 'E']
-			},
-			yAxis: {
-				type: 'value'
-			},
-			series: [{
-				data: [120, 200, 150, 80, 70],
-				type: 'line'
-			}]
-		}
-		// myChart.setOption(testOption) // Commented out - myChart not defined
 		return
 	}
 	
@@ -685,7 +660,6 @@ const createPlot2D = (currentTime, axis = "x") => {
 	
 	// Safety check for empty positions
 	if (allPositions.length === 0) {
-		console.warn("No position data available for 2D plot")
 		return
 	}
 	
@@ -855,10 +829,24 @@ const createPlot3D = (currentTime) => {
 	}
 
 
-	// If container has no dimensions, wait and retry
+	// If container has no dimensions, use ResizeObserver
 	if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-		console.log('⚠️ 3D container has no dimensions, waiting...')
-		setTimeout(() => createPlot3D(currentTime), 100)
+		const resizeObserver = new ResizeObserver((entries) => {
+			const target = entries[0].target as HTMLElement
+			if (target.offsetWidth > 0 && target.offsetHeight > 0) {
+				resizeObserver.disconnect()
+				createPlot3D(currentTime)
+			}
+		})
+		
+		resizeObserver.observe(container)
+		
+		// Fallback timeout (3 seconds max)
+		setTimeout(() => {
+			resizeObserver.disconnect()
+			createPlot3D(currentTime)
+		}, 3000)
+		
 		return
 	}
 
@@ -875,33 +863,6 @@ const createPlot3D = (currentTime) => {
 
 	// Create a simple test plot if no data
 	if (!skeletonViewersSig() || skeletonViewersSig().length === 0) {
-		console.warn("⚠️ No skeleton data available for 3D plot, creating test plot")
-		const testOption = {
-			title: {
-				text: 'Test 3D Plot - No Data Available',
-				left: 'center'
-			},
-			xAxis3D: {
-				type: 'value'
-			},
-			yAxis3D: {
-				type: 'value'
-			},
-			zAxis3D: {
-				type: 'value'
-			},
-			grid3D: {
-				boxWidth: 200,
-				boxDepth: 200,
-				boxHeight: 200
-			},
-			series: [{
-				type: 'scatter3D',
-				data: [[10, 10, 10], [20, 20, 20], [30, 30, 30]],
-				symbolSize: 20
-			}]
-		}
-		// myChart.setOption(testOption) // Commented out - myChart not defined
 		return
 	}
 
@@ -916,7 +877,6 @@ const createPlot3D = (currentTime) => {
 
 		// Skip this viewer if data is missing
 		if (!xPositions || !yPositions || !zPositions) {
-			console.warn(`⚠️ Missing data for viewer ${index}`)
 			return null
 		}
 
@@ -968,7 +928,6 @@ const createPlot3D = (currentTime) => {
 
 	// Safety check for empty arrays
 	if (allXPositions.length === 0 || allYPositions.length === 0 || allZPositions.length === 0) {
-		console.warn("No position data available for 3D plot")
 		return
 	}
 
@@ -1092,28 +1051,17 @@ const updatePlot3D = (currentTime) => {
 	})
 }
 
-// Movement Prediction Analysis plot functionality removed - will be reimplemented later
 
 const resizePlots = () => {
-	// Resizing plots...
-
 	try {
-		// Add a small delay to ensure containers are properly sized
 		setTimeout(() => {
 			if (chart2D()) {
-				// Resizing 2D chart
 				chart2D().resize()
-			} else {
-				console.warn('⚠️ 2D chart not available for resize')
 			}
 			if (chart3D()) {
-				// Resizing 3D chart
 				chart3D().resize()
-			} else {
-				console.warn('⚠️ 3D chart not available for resize')
 			}
 			if (chartVector()) {
-				// Resizing vector chart
 				try {
 					chartVector().resize()
 				} catch (error) {
@@ -1121,10 +1069,8 @@ const resizePlots = () => {
 				}
 			}
 			if (chart2D_predict()) {
-				// Resizing 2D predict chart
 				chart2D_predict().resize()
 			}
-			// Plots resize completed
 			
 			// After resize, try to recreate plots if they're empty
 			setTimeout(() => {
@@ -1151,6 +1097,5 @@ export {
 	createPlot3D,
 	updatePlot3D,
 	resizePlots,
-	createVectorPLot,
-	// createPlot2D_Predict moved to src/scripts/kfgom/plot/MovementPredictionPlot.tsx
+	createVectorPLot
 }

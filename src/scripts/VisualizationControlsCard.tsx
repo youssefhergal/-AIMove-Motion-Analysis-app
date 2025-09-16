@@ -1,4 +1,4 @@
-// Added by Youssef Hergal - Simple visualization controls component - 2025-01-27
+// Added by Youssef Hergal - Simple visualization controls component - 
 import { createSignal } from "solid-js"
 import { Select } from "@kobalte/core"
 import { Switch } from "@kobalte/core"
@@ -36,12 +36,12 @@ import {
 import { ResizeEverything } from "./ResizeEverything"
 import { updatePlot2D, updatePlot3D } from "./plots"
 
-// Added by Youssef Hergal - Simple visualization controls card component - 2025-01-27
+// Added by Youssef Hergal - Simple visualization controls card component - 
 function VisualizationControlsCard() {
 	const [plot2D_active, setPlot2D_active] = createSignal(true)
 	const [plot3D_active, setPlot3D_active] = createSignal(true)
 
-	// Added by Youssef Hergal - Time navigation functions - 2025-01-27
+	// Added by Youssef Hergal - Time navigation functions - 
 	function previousTimeValue() {
 		return (time_to_frame(currentAnimationTime()) - 1) / 90
 	}
@@ -52,7 +52,7 @@ function VisualizationControlsCard() {
 		)
 	}
 
-	// Added by Youssef Hergal - Plot window resize function - 2025-01-27
+	// Added by Youssef Hergal - Plot window resize function - 
 	async function resizePlotWindows() {
 		let plotActive = false
 		if (plot2D_active() && !plot3D_active()) {

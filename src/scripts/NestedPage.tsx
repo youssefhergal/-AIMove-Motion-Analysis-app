@@ -12,7 +12,7 @@ import {
 	setCurrentImportMode,
 	openAlert,
 	setOpenAlert,
-	// Added by Youssef Hergal - Import new signals and functions - 2025-01-27
+	// Added by Youssef Hergal - Import new signals and functions 
 	selectedBVHList,
 	setSelectedBVHList,
 	bvHVisibilityMap,
@@ -20,7 +20,7 @@ import {
 	initializeSkeletonArray,
 } from "./stores/store" // Import shared state
 
-// Added by Youssef Hergal - Simple file management component - 2025-01-27
+// Added by Youssef Hergal - Simple file management component - 
 function FileManagementCard() {
 	const bvhFiles = [
 		"GBBSS01G03R01.bvh", "GBBSS01G03R02.bvh", "GBBSS01G03R03.bvh",
@@ -53,7 +53,7 @@ function FileManagementCard() {
 		removeBVH(fileName)
 	}
 
-	// Added by Youssef Hergal - Add BVH file to selection and 3D scene - 2025-01-27
+	// Added by Youssef Hergal - Add BVH file to selection and 3D scene - 
 	// FUNCTIONALITY: Adds a BVH file to both the selection list and 3D skeleton array
 	// WHY: Ensures both UI state and 3D rendering are synchronized
 	// PERFORMANCE: Updates both arrays in one operation to maintain consistency
@@ -62,7 +62,7 @@ function FileManagementCard() {
 		if (!currentList.includes(fileName)) {
 			setSelectedBVHList([...currentList, fileName])
 			
-			// Added by Youssef Hergal - Also add to skeletonsArray for 3D display - 2025-01-27
+			// Added by Youssef Hergal - Also add to skeletonsArray for 3D display -
 			const currentSkeletons = skeletonsArray()
 			const newSkeleton = {
 				label: `Skeleton ${currentSkeletons.length + 1}`,
@@ -70,7 +70,7 @@ function FileManagementCard() {
 			}
 			setSkeletonsArray([...currentSkeletons, newSkeleton])
 			
-			// Added by Youssef Hergal - Set visibility to true by default - 2025-01-27
+			// Added by Youssef Hergal - Set visibility to true by default - 
 			const currentVisibility = bvHVisibilityMap()
 			setBVHVisibilityMap({
 				...currentVisibility,
@@ -79,7 +79,7 @@ function FileManagementCard() {
 		}
 	}
 
-	// Added by Youssef Hergal - Remove BVH file from selection and 3D scene - 2025-01-27
+	// Added by Youssef Hergal - Remove BVH file from selection and 3D scene - 
 	// FUNCTIONALITY: Removes a BVH file from both selection list and 3D skeleton array
 	// WHY: Ensures complete cleanup when a file is deleted
 	// PERFORMANCE: Removes from both arrays in one operation to maintain consistency
@@ -89,12 +89,12 @@ function FileManagementCard() {
 			const updatedList = currentList.filter(bvh => bvh !== fileName)
 			setSelectedBVHList(updatedList)
 			
-			// Added by Youssef Hergal - Also remove from skeletonsArray - 2025-01-27
+			// Added by Youssef Hergal - Also remove from skeletonsArray - 
 			const currentSkeletons = skeletonsArray()
 			const updatedSkeletons = currentSkeletons.filter(skeleton => skeleton.fileName !== `bvh2/${fileName}`)
 			setSkeletonsArray(updatedSkeletons)
 			
-			// Added by Youssef Hergal - Remove from visibility map - 2025-01-27
+			// Added by Youssef Hergal - Remove from visibility map - 
 			const currentVisibility = bvHVisibilityMap()
 			const { [fileName]: removed, ...updatedVisibility } = currentVisibility
 			setBVHVisibilityMap(updatedVisibility)
@@ -108,12 +108,12 @@ function FileManagementCard() {
 		}
 	}
 
-	// Added by Youssef Hergal - Toggle visibility for display/hide functionality - 2025-01-27
+	// Added by Youssef Hergal - Toggle visibility for display/hide functionality - 2025-08-28
 	// FUNCTIONALITY: Toggles the visibility state of a BVH file without removing it
 	// WHY: Allows users to hide/show files without losing their selection
 	// PERFORMANCE: Simple state toggle, much faster than add/remove operations
 	const toggleFileSelection = async (fileName) => {
-		// Added by Youssef Hergal - Toggle visibility for display/hide functionality - 2025-01-27
+		// Added by Youssef Hergal - Toggle visibility for display/hide functionality - 2025-08-28
 		const currentVisibility = bvHVisibilityMap()
 		const isCurrentlyVisible = currentVisibility[fileName] !== false // Default to true if not set
 		
@@ -302,7 +302,7 @@ export default function SimplifiedForm() {
 	}
 
 	onMount(() => {
-		// Added by Youssef Hergal - Initialize with default BVH and setup - 2025-01-27
+		// Added by Youssef Hergal - Initialize with default BVH and setup - 
 		createSkeletonArray("bvh2/MCEAS02G01R03.bvh")
 		setSelectedBVH("bvh2/MCEAS02G01R03.bvh")
 		setIsBVHdefault(false)
@@ -310,7 +310,7 @@ export default function SimplifiedForm() {
 		// Initialize the skeleton array with the default BVH
 		initializeSkeletonArray()
 		
-		// Added by Youssef Hergal - Initialize visibility for default BVH - 2025-01-27
+		// Added by Youssef Hergal - Initialize visibility for default BVH - 2025-08-28
 		setBVHVisibilityMap({
 			"MCEAS02G01R03.bvh": true
 		})
@@ -318,7 +318,7 @@ export default function SimplifiedForm() {
 
 	return (
 		<>
-			{/* Added by Youssef Hergal - New file management component - 2025-01-27 */}
+			{/* Added by Youssef Hergal - New file management component - 2025-08-28 */}
 			<FileManagementCard />
 		</>
 	)

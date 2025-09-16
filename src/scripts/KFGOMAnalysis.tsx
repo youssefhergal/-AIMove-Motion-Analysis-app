@@ -34,6 +34,7 @@ import { createSignal, onMount, createEffect } from "solid-js"
 import KFGOMTable from "./kfgom/components/KFGOMTable"
 
 import { SARIMAXAnalyzer } from "./kfgom/SARIMAXAnalyzer.js"
+import MovementPredictionPlot from "./kfgom/components/MovementPredictionPlot.jsx"
 import { eventBus, EVENTS } from "./utils/eventBus.js"
 import { logAnalysis, logAnalysisError, logDataError } from "./utils/logger.js"
 import { handleAnalysisError, handleDataError } from "./utils/errorHandler.js"
@@ -60,9 +61,15 @@ import {
 	setRetrainHistory,
 	currentRetrainIndex,
 	setCurrentRetrainIndex,
+	predictionHistory,
+	setPredictionHistory,
+	currentPredictionIndex,
+	setCurrentPredictionIndex,
 	rawSkeletenBones,
 	trainFileBones,
 	testFileBones,
+	trainFile,
+	testFile,
 	selectedJoints,
 	setSelectedJoints
 } from "./stores/store.js"
@@ -84,6 +91,98 @@ const KFGOMAnalysis = () => {
 	// ✅ OPTIMIZATION: Store parsed data to avoid re-parsing during retraining
 	const [parsedTrainData, setParsedTrainData] = createSignal(null)
 	const [parsedTestData, setParsedTestData] = createSignal(null)
+
+	// Prediction History Management Functions
+	// =====================================
+	
+	/**
+	 * Clear all prediction history (used when major changes occur)
+	 */
+	const clearPredictionHistory = () => {
+		setPredictionHistory([])
+		setCurrentPredictionIndex(0)
+	}
+
+	/**
+	 * Store initial prediction after training
+	 */
+	const storeInitialPrediction = (results) => {
+		if (!results) return
+
+		const initialEntry = {
+			id: `initial_${Date.now()}`,
+			type: "initial",
+			timestamp: new Date().toISOString(),
+			parameters: {
+				targetJoint: sarimaxConfig().targetJoint,
+				targetAxis: sarimaxConfig().targetAxis,
+				method: sarimaxConfig().method,
+				lags: sarimaxConfig().lags,
+				selectedVariables: "all", // Initial training uses all variables
+				significanceFilter: kfgomFilters().significance,
+				forecastSteps: forecastConfig().steps,
+				forecastConfidence: forecastConfig().confidenceLevel
+			},
+			results: {
+				...results,
+				prediction: results.predicted || [],
+				original: results.original || [],
+				metrics: results.metrics || {}
+			}
+		}
+
+		setPredictionHistory([initialEntry])
+		setCurrentPredictionIndex(0)
+		
+		logAnalysis('Initial prediction stored', {
+			entryId: initialEntry.id,
+			parameters: initialEntry.parameters
+		})
+	}
+
+	/**
+	 * Add retrain prediction to history
+	 */
+	const addRetrainPrediction = (results, selectedVariables = []) => {
+		if (!results) return
+
+		const currentHistory = predictionHistory()
+		const retrainNumber = currentHistory.filter(entry => entry.type === "retrain").length + 1
+
+		const retrainEntry = {
+			id: `retrain_${retrainNumber}_${Date.now()}`,
+			type: "retrain",
+			timestamp: new Date().toISOString(),
+			parameters: {
+				targetJoint: sarimaxConfig().targetJoint,
+				targetAxis: sarimaxConfig().targetAxis,
+				method: sarimaxConfig().method,
+				lags: sarimaxConfig().lags,
+				selectedVariables: selectedVariables,
+				selectedVariablesCount: selectedVariables.length,
+				significanceFilter: kfgomFilters().significance,
+				forecastSteps: forecastConfig().steps,
+				forecastConfidence: forecastConfig().confidenceLevel
+			},
+			results: {
+				...results,
+				prediction: results.predicted || [],
+				original: results.original || [],
+				metrics: results.metrics || {}
+			}
+		}
+
+		const newHistory = [...currentHistory, retrainEntry]
+		setPredictionHistory(newHistory)
+		setCurrentPredictionIndex(newHistory.length - 1)
+		
+		logAnalysis('Retrain prediction stored', {
+			entryId: retrainEntry.id,
+			retrainNumber,
+			parameters: retrainEntry.parameters,
+			historyLength: newHistory.length
+		})
+	}
 
 	/**
 	 * STEP 1: Initialize SARIMAX Analyzer
@@ -109,6 +208,74 @@ const KFGOMAnalysis = () => {
 		// Clean up listener on unmount
 		return () => {
 			unsubscribeSelection()
+		}
+	})
+
+	// Detect major changes that require clearing prediction history
+	// ============================================================
+	
+	// Track previous values to detect changes
+	const [prevTargetJoint, setPrevTargetJoint] = createSignal(sarimaxConfig().targetJoint)
+	const [prevTargetAxis, setPrevTargetAxis] = createSignal(sarimaxConfig().targetAxis)
+	const [prevTrainFile, setPrevTrainFile] = createSignal(trainFile() || "")
+	const [prevTestFile, setPrevTestFile] = createSignal(testFile() || "")
+
+	// Watch for joint changes (from main app joint selector)
+	createEffect(() => {
+		const currentJoint = selectedJoint()
+		const prevJoint = prevTargetJoint()
+		
+		if (currentJoint !== prevJoint) {
+			clearPredictionHistory()
+			setPrevTargetJoint(currentJoint)
+			
+			// Update SARIMAX config to match
+			setSarimaxConfig(prev => ({
+				...prev,
+				targetJoint: currentJoint
+			}))
+		}
+	})
+
+	// Watch for axis changes (from main app axis selector)
+	createEffect(() => {
+		const currentAxis = axisSelected()
+		const prevAxis = prevTargetAxis()
+		
+		if (currentAxis !== prevAxis) {
+			clearPredictionHistory()
+			setPrevTargetAxis(currentAxis)
+			
+			// Update SARIMAX config to match
+			setSarimaxConfig(prev => ({
+				...prev,
+				targetAxis: currentAxis + "rotation"
+			}))
+		}
+	})
+
+	// Watch for file changes (by file names, not just bone count)
+	createEffect(() => {
+		const currentTrainFileName = trainFile()
+		const currentTestFileName = testFile()
+		const prevTrain = prevTrainFile()
+		const prevTest = prevTestFile()
+		
+		if (currentTrainFileName !== prevTrain || currentTestFileName !== prevTest) {
+			clearPredictionHistory()
+			setPrevTrainFile(currentTrainFileName)
+			setPrevTestFile(currentTestFileName)
+			
+			// If both files are available, run analysis automatically
+			const hasTrainData = trainFileBones() && trainFileBones().length > 0
+			const hasTestData = testFileBones() && testFileBones().length > 0
+			
+			if (hasTrainData && hasTestData && analyzer() && !isAnalysisRunning()) {
+				setIsAnalysisRunning(true)
+				runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+					setIsAnalysisRunning(false)
+				})
+			}
 		}
 	})
 	
@@ -320,6 +487,18 @@ const KFGOMAnalysis = () => {
 				
 				console.log("✅ SARIMAX analysis completed successfully")
 
+				// Store prediction in history based on type
+				if (selectedVariables && selectedVariables.length > 0) {
+					// This is a retrain with selected variables
+					addRetrainPrediction(result.results, selectedVariables)
+					;(window as any).retrainedPredictionData = result.results.predicted
+				} else {
+					// This is initial training - clear history and store initial prediction
+					clearPredictionHistory()
+					storeInitialPrediction(result.results)
+					;(window as any).initialPredictionData = result.results.predicted
+				}
+
 				// Generate forecasts if requested
 				if (includeForecasting) {
 					await generateForecasts(targetJoint, targetAxis)
@@ -480,6 +659,7 @@ const KFGOMAnalysis = () => {
 		if (shouldRunAnalysis) {
 			// Case 1: No results yet - run initial analysis
 			if (!results) {
+				console.log("🔄 No existing results, running initial analysis...")
 				setIsAnalysisRunning(true)
 				runUnifiedAnalysis({ includeForecasting: true }).then(() => {
 					// Store initial analysis result
@@ -522,16 +702,32 @@ const KFGOMAnalysis = () => {
 					setIsAnalysisRunning(false)
 				})
 			}
-			// Case 2: Results exist but joint/axis changed - notify user
+			// Case 2: Results exist but joint/axis changed - run analysis automatically
 			else {
 				const currentTarget = `${results.targetJoint}_${results.targetAxis}`
 				const newTarget = `${currentJoint}_${currentAxis}rotation`
 				
 				if (currentTarget !== newTarget) {
-					console.log("🔄 Joint/Axis changed, please click Retrain to update analysis")
+					console.log("🔄 Joint/Axis changed, running analysis automatically...")
 					console.log("📊 Change:", { from: currentTarget, to: newTarget })
+					
+					// Update SARIMAX config to match current selection
+					setSarimaxConfig(prev => ({
+						...prev,
+						targetJoint: currentJoint,
+						targetAxis: currentAxis + "rotation"
+					}))
+					
+					// Run analysis with new parameters
+					setIsAnalysisRunning(true)
+					runUnifiedAnalysis({ includeForecasting: true }).finally(() => {
+						setIsAnalysisRunning(false)
+					})
 				}
 			}
+			
+			// Case 3: Files changed - run analysis automatically
+			// This is handled by the separate file change effect above
 		} else if (!hasTrainData) {
 			console.log("⚠️ No training file loaded. Please select a training file first.")
 		} else if (!hasTestData) {
@@ -638,46 +834,8 @@ const KFGOMAnalysis = () => {
 					includeForecasting: true 
 				})
 				
-				// Store retraining result and parameters
-				const newResults = sarimaxResults()
-				const currentConfig = sarimaxConfig()
-				const currentForecastConfig = forecastConfig()
-				const currentFilters = kfgomFilters()
-				
-				if (newResults) {
-					const retrainEntry = {
-						id: Date.now(), // Unique ID
-						timestamp: new Date().toISOString(),
-						parameters: {
-							targetJoint: currentConfig.targetJoint,
-							targetAxis: currentConfig.targetAxis,
-							method: currentConfig.method,
-							lags: currentConfig.lags,
-							selectedVariables: selectedJointArray,
-							significanceFilter: currentFilters.significance,
-							forecastSteps: currentForecastConfig.steps,
-							forecastConfidence: currentForecastConfig.confidenceLevel
-						},
-						results: {
-							...newResults,
-							// Store additional metadata
-							selectedVariablesCount: selectedJointArray.length,
-							totalVariables: newResults.modelSummary?.variables?.length || 0
-						}
-					}
-					
-					// Add to retrain history
-					const currentHistory = retrainHistory()
-					const newHistory = [...currentHistory, retrainEntry]
-					setRetrainHistory(newHistory)
-					setCurrentRetrainIndex(newHistory.length - 1)
-					
-				logAnalysis('Stored retraining result', {
-					entryId: retrainEntry.id,
-					parameters: retrainEntry.parameters,
-					historyLength: newHistory.length
-				})
-				}
+				// The prediction history is now handled automatically in runUnifiedAnalysis
+				// when selectedVariables are provided, it calls addRetrainPrediction()
 				
 			} finally {
 				setIsAnalysisRunning(false)
@@ -1054,46 +1212,6 @@ const KFGOMAnalysis = () => {
 
 				<KFGOMTable />
 			</div>
-			
-			{/* Retrain History Display */}
-			{retrainHistory().length > 0 && (
-				<div style={{
-					"margin-top": "10px",
-					padding: "10px",
-					"border": "1px solid #ddd",
-					"border-radius": "5px",
-					"background-color": "#f8f9fa"
-				}}>
-					<h4 style={{ "margin": "0 0 10px 0", "font-size": "14px", color: "#333" }}>
-						Retrain History ({retrainHistory().length} entries)
-					</h4>
-					<div style={{ "max-height": "200px", "overflow-y": "auto" }}>
-						{retrainHistory().map((entry, index) => (
-							<div style={{
-								padding: "8px",
-								"margin-bottom": "5px",
-								"border": "1px solid #e0e0e0",
-								"border-radius": "3px",
-								"background-color": index === currentRetrainIndex() ? "#e3f2fd" : "white",
-								"font-size": "11px"
-							}}>
-								<div style={{ "font-weight": "bold", color: "#1976d2" }}>
-									Entry #{index + 1} - {new Date(entry.timestamp).toLocaleTimeString()}
-								</div>
-								<div style={{ "margin-top": "4px" }}>
-									<strong>Method:</strong> {entry.parameters.method} | 
-									<strong> Lags:</strong> {entry.parameters.lags} | 
-									<strong> Variables:</strong> {entry.parameters.selectedVariablesCount}/{entry.parameters.totalVariables}
-								</div>
-								<div style={{ "margin-top": "2px", color: "#666" }}>
-									<strong>Filter:</strong> {entry.parameters.significanceFilter} | 
-									<strong> Forecast:</strong> {entry.parameters.forecastSteps} steps
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
 		</div>
 	)
 }

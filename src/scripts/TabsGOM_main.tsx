@@ -5,6 +5,7 @@ import { AxisSelector } from "./AxisSelector"
 import { ToggleGroupAssumptions } from "./ToggleGroupAssumptions"
 import { SplitterV_TableAssumptions } from "./SplitterV_TableAssumptions"
 import { KFGOMAnalysis } from "./KFGOMAnalysis"
+import MovementPredictionPlot from "./kfgom/components/MovementPredictionPlot"
 import {
 	scaleX,
 	inputGOM,
@@ -724,7 +725,10 @@ function TabsGOM_main(props: { valueButton: string }) {
 							</div>
 						</div>
 						
-						{/* Plot container removed - will be reimplemented later */}
+						{/* Movement Prediction Plot */}
+						{sarimaxResults() && (
+							<MovementPredictionPlot />
+						)}
 					</div>
 					)}
 					

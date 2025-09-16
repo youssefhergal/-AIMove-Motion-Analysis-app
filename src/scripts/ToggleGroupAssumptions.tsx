@@ -1,4 +1,3 @@
-import { ToggleGroup } from "@kobalte/core/toggle-group"
 import { createSignal, onMount } from "solid-js"
 import { selectedAssumptionsIndex, setSelectedAssumptionsIndex } from "./stores/store"
 
@@ -48,32 +47,25 @@ function ToggleGroupAssumptions() {
 	})
 
 	return (
-		<div>
-			<ToggleGroup
-				defaultValue={selectedAssumptionsIndex()}
-				class="custom-toggle-group"
-			>
-				{items.map((item, index) => (
-					<ToggleGroup.Item
-						class="custom-toggle-group__item"
-						value={item}
-						aria-label={item}
-						onClick={() => {
-							if (item !== "+" && item !== "=") {
-								handleSelect(index)
-							}
-						}}
-						aria-selected={selectedAssumptionsIndex() === index}
-						disabled={item === "+" || item === "="} // Disable items with "+"
-					>
-						{item}
-					</ToggleGroup.Item>
-				))}
-				<div
-					class="custom-toggle-group__indicator"
-					style={indicatorStyle()}
-				/>
-			</ToggleGroup>
+		<div class="custom-toggle-group">
+			{items.map((item, index) => (
+				<button
+					class={`custom-toggle-group__item ${selectedAssumptionsIndex() === index ? 'selected' : ''}`}
+					onClick={() => {
+						if (item !== "+" && item !== "=") {
+							handleSelect(index)
+						}
+					}}
+					disabled={item === "+" || item === "="}
+					aria-selected={selectedAssumptionsIndex() === index}
+				>
+					{item}
+				</button>
+			))}
+			<div
+				class="custom-toggle-group__indicator"
+				style={indicatorStyle()}
+			/>
 		</div>
 	)
 }

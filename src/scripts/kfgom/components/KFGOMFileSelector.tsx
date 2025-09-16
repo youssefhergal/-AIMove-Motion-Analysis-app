@@ -31,7 +31,6 @@ export default function KFGOMFileSelector() {
 
 	// Handle train file selection from repository
 	const handleTrainFileSelect = async (fileName) => {
-		console.log(`🔄 Selecting training file: ${fileName}`)
 		setTrainFile(fileName)
 		
 		try {
@@ -52,7 +51,6 @@ export default function KFGOMFileSelector() {
 
 	// Handle test file selection from repository
 	const handleTestFileSelect = async (fileName) => {
-		console.log(`🔄 Selecting testing file: ${fileName}`)
 		setTestFile(fileName)
 		
 		try {

@@ -12,13 +12,11 @@ export default function KFGOMFileList(props: KFGOMFileListProps) {
 	// Use selectedBVHList directly for reactivity
 	const availableFiles = () => {
 		const files = selectedBVHList()
-		console.log("🔍 KFGOMFileList - selectedBVHList:", files)
 		return files || []
 	}
 	
 	// If no files are selected in "Load Human Motion Data", show a message
 	if (availableFiles().length === 0) {
-		console.log("🔍 KFGOMFileList - Showing 'No files selected' message")
 		return (
 			<div style={{
 				padding: "8px 12px",
@@ -34,7 +32,6 @@ export default function KFGOMFileList(props: KFGOMFileListProps) {
 		)
 	}
 	
-	console.log("🔍 KFGOMFileList - Rendering select with files:", availableFiles())
 	
 	return (
 		<Select.Root

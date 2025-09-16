@@ -1,6 +1,6 @@
 import { createSignal, onMount, createEffect } from 'solid-js'
 import { createGrid } from 'ag-grid-community'
-import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex, trainFileBones, testFileBones } from '../../stores/store.js'
+import { sarimaxResults, sarimaxConfig, kfgomFilters, selectedAssumptionsIndex, setSelectedAssumptionsIndex, trainFileBones, testFileBones } from '../../stores/store.js'
 import { gomSelector } from '../utils/gomVariableSelector'
 import { eventBus, EVENTS, emitSelectionChanged } from '../../utils/eventBus.js'
 import { logUI, logUIError } from '../../utils/logger.js'
@@ -35,6 +35,9 @@ export default function KFGOMTable() {
     
     // Flag to prevent infinite loop in auto-checking
     const [isAutoChecking, setIsAutoChecking] = createSignal(false)
+    
+    // Track last update to prevent rapid successive updates
+    const [lastUpdateTime, setLastUpdateTime] = createSignal(0)
 
     // Save selected variables by joint name
     const saveSelectedVariables = () => {
@@ -108,6 +111,7 @@ export default function KFGOMTable() {
         
         const actualAssumptionIndex = assumptionMapping[assumptionIndex] || 0
         
+        
         // If it's GOM Overview, return all data
         if (actualAssumptionIndex === 0) {
             return data
@@ -127,8 +131,6 @@ export default function KFGOMTable() {
         
         const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
-        
-        // GOM filter applied
         
         return gomFiltered
     }
@@ -273,40 +275,49 @@ export default function KFGOMTable() {
             
             // Wait for grid to update, then apply selections
             setTimeout(() => {
-                // Reapplying selections after filter change
                 applySelectionsFromMap()
-                
-                // Re-enable selection events
-                setIsUpdatingData(false)
-            }, 200) // Increased timeout to ensure grid is fully updated
-        }
-    })
-
-    // Update grid when data changes
-    createEffect(() => {
-        const data = filteredData()
-        const api = gridApi()
-        
-        if (api && data) {
-            // Set flag to prevent selection events during update
-            setIsUpdatingData(true)
-            
-            api.setGridOption('rowData', data)
-            
-            // Wait for grid to update, then apply selections
-            setTimeout(() => {
-                // Reapplying selections after data change
-                applySelectionsFromMap()
-                
-                // Re-enable selection events
                 setIsUpdatingData(false)
             }, 200)
         }
     })
 
-    // Update data when SARIMAX results change
+    // Update grid when data changes - with debouncing to prevent loops
+    createEffect(() => {
+        const data = filteredData()
+        const api = gridApi()
+        const now = Date.now()
+        
+        // Prevent infinite loop - more aggressive check
+        if (isUpdatingData()) {
+            return
+        }
+        
+        // Debounce rapid updates (minimum 100ms between updates)
+        if (now - lastUpdateTime() < 100) {
+            return
+        }
+        
+        if (!api || !data || data.length === 0) {
+            return
+        }
+        
+        // Set flags to prevent selection events during update
+        setIsUpdatingData(true)
+        setLastUpdateTime(now)
+        
+        api.setGridOption('rowData', data)
+        
+        // Use requestAnimationFrame instead of setTimeout for better timing
+        requestAnimationFrame(() => {
+            applySelectionsFromMap()
+            setIsUpdatingData(false)
+        })
+    })
+
+    // Update data when SARIMAX results change - with proper reactivity
     createEffect(() => {
         const results = sarimaxResults()
+        const config = sarimaxConfig()
         
         if (results) {
             const tableData = convertSARIMAXToTableData(results)

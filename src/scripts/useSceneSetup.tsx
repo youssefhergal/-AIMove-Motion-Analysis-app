@@ -77,7 +77,7 @@ function preparePlotsData() {
 	const labels = [] // To store plotLabels for all viewers
 	const metrics_All = []
 
-	// Added by Youssef Hergal - Only process visible viewers for plots - 2025-01-27
+	// Added by Youssef Hergal - Only process visible viewers for plots - 
 	// FUNCTIONALITY: Filters out hidden skeletons before processing plot data
 	// WHY: Avoids calculating plot data for skeletons that aren't visible
 	// PERFORMANCE: Reduces computation time by only processing visible skeletons
@@ -90,7 +90,7 @@ function preparePlotsData() {
 		return true // Default to visible if no visibility info
 	})
 
-	// Added by Youssef Hergal - Iterate through each visible viewer - 2025-01-27
+	// Added by Youssef Hergal - Iterate through each visible viewer - 
 	// FUNCTIONALITY: Processes only visible skeletons for plot generation
 	// WHY: Saves computation time by skipping hidden skeletons
 	// PERFORMANCE: O(visible_skeletons) instead of O(total_skeletons)
@@ -246,7 +246,7 @@ async function initialize() {
 
 	let skeletonViewers = [] // Store the current skeleton viewers
 
-	// Added by Youssef Hergal - Function to add a single skeleton viewer - 2025-01-27
+	// Added by Youssef Hergal - Function to add a single skeleton viewer -
 	// FUNCTIONALITY: Instead of reloading ALL skeletons when adding one, this function adds only the new skeleton
 	// WHY: This dramatically improves performance by avoiding unnecessary reloading of existing skeletons
 	// PERFORMANCE: O(1) instead of O(n) where n is the number of existing skeletons
@@ -265,7 +265,7 @@ async function initialize() {
 		setSkeletonViewersSig([...skeletonViewers])
 	}
 	
-	// Added by Youssef Hergal - Function to remove a single skeleton viewer - 2025-01-27
+	// Added by Youssef Hergal - Function to remove a single skeleton viewer -
 	// FUNCTIONALITY: Removes only the specified skeleton from the scene and memory
 	// WHY: Avoids reloading all remaining skeletons, which was causing performance issues
 	// PERFORMANCE: O(1) removal instead of O(n) reload of all skeletons
@@ -303,7 +303,7 @@ async function initialize() {
 		}
 	}
 	
-	// Added by Youssef Hergal - Function to show/hide a single skeleton viewer - 2025-01-27
+	// Added by Youssef Hergal - Function to show/hide a single skeleton viewer - 
 	// FUNCTIONALITY: Toggles visibility of a skeleton without reloading it
 	// WHY: Much faster than reloading - just changes the 'visible' property
 	// PERFORMANCE: O(1) property change instead of O(n) reload of all skeletons
@@ -317,7 +317,7 @@ async function initialize() {
 		}
 	}
 
-	// Added by Youssef Hergal - Function to reload all skeleton viewers (kept for initial load and major changes) - 2025-01-27
+	// Added by Youssef Hergal - Function to reload all skeleton viewers (kept for initial load and major changes) - 
 	// FUNCTIONALITY: Complete reload of all skeletons - kept for initial load only
 	// WHY: Still needed for initial application startup and major structural changes
 	// PERFORMANCE: O(n) - only used when absolutely necessary (startup)
@@ -409,7 +409,7 @@ async function initialize() {
 
 		skeletonViewers = [] // Clear the viewers array
 
-		// Added by Youssef Hergal - Use only visible skeletons for 3D display - 2025-01-27
+		// Added by Youssef Hergal - Use only visible skeletons for 3D display - 
 		const currentSkeletons = getVisibleSkeletons().filter(
 			(skeleton) => skeleton.fileName && skeleton.fileName.trim() !== ""
 		)
@@ -435,7 +435,7 @@ async function initialize() {
 		// console.log("joints and values: ", selectedJoint(), selectedValue())
 	}
 
-	// Added by Youssef Hergal - Initial load of skeleton viewers - 2025-01-27
+	// Added by Youssef Hergal - Initial load of skeleton viewers - 
 	// FUNCTIONALITY: Handles the initial application startup with complete reload
 	// WHY: Only time we need complete reload is during initial startup
 	// PERFORMANCE: O(n) reload only once at startup, then O(1) operations
@@ -538,7 +538,7 @@ async function initialize() {
 	// Start the animation loop
 	scene.animate()
 
-	// Added by Youssef Hergal - Watch for changes in skeletonsArray and handle individually - 2025-01-27
+	// Added by Youssef Hergal - Watch for changes in skeletonsArray and handle individually -
 	// FUNCTIONALITY: Detects changes in skeleton list and applies only necessary modifications
 	// WHY: Replaces the old approach that reloaded ALL skeletons on ANY change
 	// PERFORMANCE: Only processes what actually changed instead of everything
@@ -546,7 +546,7 @@ async function initialize() {
 		const currentSkeletons = skeletonsArray()
 		const currentViewers = skeletonViewers
 		
-		// Added by Youssef Hergal - Find new skeletons to add - 2025-01-27
+		// Added by Youssef Hergal - Find new skeletons to add -
 		// FUNCTIONALITY: Compares current skeletons with existing viewers to find new ones
 		// WHY: Only adds skeletons that don't already exist, avoiding duplicates
 		// PERFORMANCE: O(n*m) comparison but much faster than reloading everything
@@ -556,7 +556,7 @@ async function initialize() {
 			)
 		)
 		
-		// Added by Youssef Hergal - Find skeletons to remove - 2025-01-27
+		// Added by Youssef Hergal - Find skeletons to remove -
 		// FUNCTIONALITY: Identifies viewers that no longer exist in the skeleton list
 		// WHY: Only removes skeletons that were actually deleted, not all of them
 		// PERFORMANCE: Targeted removal instead of complete reload
@@ -566,7 +566,7 @@ async function initialize() {
 			)
 		)
 		
-		// Added by Youssef Hergal - Add new skeletons individually - 2025-01-27
+		// Added by Youssef Hergal - Add new skeletons individually - 
 		// FUNCTIONALITY: Adds each new skeleton without affecting existing ones
 		// WHY: Granular addition instead of complete reload
 		// PERFORMANCE: Only loads what's new, preserves existing skeletons
@@ -574,7 +574,7 @@ async function initialize() {
 			await addSkeletonViewer(skeleton)
 		}
 		
-		// Added by Youssef Hergal - Remove old skeletons individually - 2025-01-27
+		// Added by Youssef Hergal - Remove old skeletons individually -
 		// FUNCTIONALITY: Removes each deleted skeleton without affecting others
 		// WHY: Targeted removal instead of complete reload
 		// PERFORMANCE: Only removes what's deleted, preserves existing skeletons
@@ -590,7 +590,7 @@ async function initialize() {
 		}
 	})
 	
-	// Added by Youssef Hergal - Watch for changes in BVH visibility and handle individually - 2025-01-27
+	// Added by Youssef Hergal - Watch for changes in BVH visibility and handle individually - 
 	// FUNCTIONALITY: Updates skeleton visibility without reloading them
 	// WHY: Much faster than reloading - just changes the 'visible' property
 	// PERFORMANCE: O(1) property change per skeleton instead of O(n) reload
@@ -598,7 +598,7 @@ async function initialize() {
 		const visibilityMap = bvHVisibilityMap()
 		const currentViewers = skeletonViewers
 		
-		// Added by Youssef Hergal - Update visibility for each viewer - 2025-01-27
+		// Added by Youssef Hergal - Update visibility for each viewer - 
 		// FUNCTIONALITY: Changes only the visibility property of each skeleton
 		// WHY: Avoids reloading skeletons just to show/hide them
 		// PERFORMANCE: Instant visibility toggle instead of full reload
