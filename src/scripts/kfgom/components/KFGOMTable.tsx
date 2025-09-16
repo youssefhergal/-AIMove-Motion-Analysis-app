@@ -27,14 +27,19 @@ export default function KFGOMTable() {
     const [gridApi, setGridApi] = createSignal(null)
     const [selectedJoints, setSelectedJoints] = createSignal(new Set())
 
-    // Map to store selected variables (Joint Name -> true)
+    // Map to store selected variables (Joint Name -> true) - Global across all tabs
     const [selectedVariablesMap, setSelectedVariablesMap] = createSignal(new Map())
+    
+    // Global map that persists across all assumption tabs
+    let globalSelectedVariables = new Map()
+    
+    // Reactive signal for total selected count
+    const [totalSelectedCount, setTotalSelectedCount] = createSignal(0)
     
     // Flag to prevent selection events during data updates
     const [isUpdatingData, setIsUpdatingData] = createSignal(false)
     
-    // Flag to prevent infinite loop in auto-checking
-    const [isAutoChecking, setIsAutoChecking] = createSignal(false)
+    // Auto-checking removed - users manually select variables
     
     // Track last update to prevent rapid successive updates
     const [lastUpdateTime, setLastUpdateTime] = createSignal(0)
@@ -45,13 +50,33 @@ export default function KFGOMTable() {
         if (!api) return
         
         const selectedRows = api.getSelectedRows()
-        const currentMap = new Map(selectedVariablesMap())
+        const selectedJointIds = new Set(selectedRows.map(row => row.jointId))
         
-        selectedRows.forEach(row => {
-            currentMap.set(row.jointId, true)
+        // Update global map with current tab selections
+        // Keep all previously selected joints from other tabs
+        const currentAssumption = selectedAssumptionsIndex()
+        const newGlobalMap = new Map(globalSelectedVariables)
+        
+        // Remove all joints from current assumption
+        const currentData = kfgomData()
+        if (currentData && currentData.length > 0) {
+            const currentAssumptionData = filterDataByGOMAssumption(currentData, currentAssumption)
+            currentAssumptionData.forEach(item => {
+                if (item.jointId) {
+                    newGlobalMap.delete(item.jointId)
+                }
+            })
+        }
+        
+        // Add currently selected joints from this tab
+        selectedJointIds.forEach(jointId => {
+            newGlobalMap.set(jointId, true)
         })
         
-        setSelectedVariablesMap(currentMap)
+        // Update global map
+        globalSelectedVariables = newGlobalMap
+        setSelectedVariablesMap(newGlobalMap)
+        setTotalSelectedCount(newGlobalMap.size)
     }
 
     // Apply selections from the map
@@ -59,11 +84,11 @@ export default function KFGOMTable() {
         const api = gridApi()
         if (!api) return
         
-        const currentMap = selectedVariablesMap()
+        // Use global map for total count, but only show current tab selections
+        const globalMap = globalSelectedVariables
         const totalRows = api.getDisplayedRowCount()
         
         // Apply selections silently
-        
         api.deselectAll()
         
         // Track which joints are actually selected in the current filtered view
@@ -73,7 +98,7 @@ export default function KFGOMTable() {
             const rowNode = api.getDisplayedRowAtIndex(i)
             if (rowNode && rowNode.data) {
                 const jointName = rowNode.data.jointId
-                if (currentMap.has(jointName)) {
+                if (globalMap.has(jointName)) {
                     rowNode.setSelected(true)
                     actuallySelectedJoints.add(jointName)
                 }
@@ -81,15 +106,18 @@ export default function KFGOMTable() {
         }
         
         // Selections applied
-        
         api.refreshCells({ force: true })
         // Update selectedJoints to only show joints that are actually selected in current view
         setSelectedJoints(actuallySelectedJoints)
+        
+        // Update local map to reflect global state
+        setSelectedVariablesMap(globalMap)
+        setTotalSelectedCount(globalMap.size)
     }
 
-    // Get total selected count (reactive)
+    // Get total selected count (reactive) - uses reactive signal
     const getTotalSelectedCount = () => {
-        return selectedVariablesMap().size
+        return totalSelectedCount()
     }
 
     // Filter data based on GOM assumptions
@@ -157,7 +185,9 @@ export default function KFGOMTable() {
 
     // Clear all saved selections
     const clearAllSelections = () => {
+        globalSelectedVariables = new Map()
         setSelectedVariablesMap(new Map())
+        setTotalSelectedCount(0)
         const api = gridApi()
         if (api) {
             api.deselectAll()
@@ -226,8 +256,10 @@ export default function KFGOMTable() {
         // If target joint changed, reset everything
         if (previousTarget && previousTarget !== currentTarget) {
             
-            // Reset selections
+            // Reset global selections when target changes
+            globalSelectedVariables = new Map()
             setSelectedVariablesMap(new Map())
+            setTotalSelectedCount(0)
             
             // Reset selected joints
             setSelectedJoints(new Set())
@@ -335,47 +367,8 @@ export default function KFGOMTable() {
 
         if (!data || data.length === 0) return
         
-        // Only auto-check when significance filter is applied (not "all") and not already auto-checking
-        if ((filters.significance === 'significant' || filters.significance === 'non-significant') && !isAutoChecking()) {
-            setIsAutoChecking(true)
-            
-            // Get filtered data for current assumption only
-            let filteredData = filterDataByGOMAssumption(data, assumptionIndex)
-            filteredData = filterDataBySignificance(filteredData, filters.significance)
-            
-            // Get current selections
-            const currentSelections = selectedVariablesMap()
-            const newSelections = new Map(currentSelections)
-            
-            // Add filtered variables to selections
-            filteredData.forEach(item => {
-                const jointName = item.jointId
-                if (jointName) {
-                    newSelections.set(jointName, {
-                        jointName,
-                        assumption: assumptionIndex,
-                        timestamp: Date.now()
-                    })
-                }
-            })
-            
-            // Update selections
-            setSelectedVariablesMap(newSelections)
-            
-            // Update selected joints set
-            const newSelectedJoints = new Set(selectedJoints())
-            filteredData.forEach(item => {
-                if (item.jointId) {
-                    newSelectedJoints.add(item.jointId)
-                }
-            })
-            setSelectedJoints(newSelectedJoints)
-            
-            // Reset auto-checking flag after a short delay
-            setTimeout(() => {
-                setIsAutoChecking(false)
-            }, 100)
-        }
+        // Filter now only shows variables without auto-selecting them
+        // Users can manually select the variables they want to include
     })
 
 
