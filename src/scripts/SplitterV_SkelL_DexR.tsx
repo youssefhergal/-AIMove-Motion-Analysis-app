@@ -1,7 +1,7 @@
 import { Splitter } from "@ark-ui/solid"
 import { myScene } from "./myScene"
 import { resizePlots } from "./plots"
-import { TabsGOM_main, DownloadCSV, GenerateMovement} from "./TabsGOM_main"
+import { TabsGOM_main, DownloadCSV } from "./TabsGOM_main"
 import {
 	splitterSizeL,
 	splitterSizeR,

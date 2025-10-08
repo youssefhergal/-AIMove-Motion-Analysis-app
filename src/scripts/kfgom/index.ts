@@ -7,7 +7,7 @@
  */
 
 // Components
-export { default as KFGOMAnalysis } from '../KFGOMAnalysis'
+export { KFGOMAnalysis } from '../KFGOMAnalysis'
 export { default as KFGOMTable } from './components/KFGOMTable'
 export { default as MovementPredictionPlot } from './components/MovementPredictionPlot'
 export { default as KFGOMFileSelector } from './components/KFGOMFileSelector'
