@@ -235,7 +235,33 @@ async function do_gom(val) {
 		const dX = wx.map((indices) =>
 			indices.map((index) => val_scaled[index])
 		)
-		const dataX = tf.tensor(dX)
+		
+		// Check if we need to truncate data to match model expectations
+		const expectedVariables = 57 // Model expects 57 variables
+		const inputVariables = dX[0][0].length
+		
+		console.log(`🔍 Data preparation: expected=${expectedVariables}, actual=${inputVariables}`)
+		
+		let processedDX = dX
+		if (inputVariables > expectedVariables) {
+			console.log(`⚠️ Truncating data from ${inputVariables} to ${expectedVariables} variables`)
+			processedDX = dX.map(timeStep => 
+				timeStep.map(frame => frame.slice(0, expectedVariables))
+			)
+		} else if (inputVariables < expectedVariables) {
+			console.log(`⚠️ Padding data from ${inputVariables} to ${expectedVariables} variables`)
+			processedDX = dX.map(timeStep => 
+				timeStep.map(frame => {
+					const padded = [...frame]
+					while (padded.length < expectedVariables) {
+						padded.push(0) // Pad with zeros
+					}
+					return padded
+				})
+			)
+		}
+		
+		const dataX = tf.tensor(processedDX)
 
 		// Load model and make predictions
 		const modelPath = "saved_model/model.json"
@@ -263,7 +289,10 @@ async function do_gom(val) {
 		console.log("tff! reshaped", downsampledTensor.shape)
 
 		// Process predictions
-		const reshapedOutput1 = output1.reshape([dataX.shape[0], 57])
+		// Calculate the actual number of variables based on the model output
+		const outputVariables = output1.shape[output1.shape.length - 1]
+		console.log(`🔍 Model output has ${outputVariables} variables, reshaping output1 accordingly`)
+		const reshapedOutput1 = output1.reshape([dataX.shape[0], outputVariables])
 		const pred_1_step_scaled = await reshapedOutput1.array()
 
 		const pred_1_step = reverseMinMaxScaling(
@@ -309,7 +338,11 @@ async function do_gom(val) {
 
 		let df_pred = aq.from(pred_1_step)
 
-		df_pred = df_pred.rename(aq.names(variables))
+		// Use only the first N variables that match the model expectations (57)
+		const predictionVariables = 57
+		const variablesToUse = variables.slice(0, predictionVariables)
+		console.log(`🔍 Using ${variablesToUse.length} variables for prediction labels (model expects ${predictionVariables})`)
+		df_pred = df_pred.rename(aq.names(variablesToUse))
 
 		let oversampled = interpolate2DArray(
 			downsampledArray,
@@ -318,11 +351,15 @@ async function do_gom(val) {
 
 		let df_pred_sampled = aq.from(oversampled)
 
-		df_pred_sampled = df_pred_sampled.rename(aq.names(variables))
+		df_pred_sampled = df_pred_sampled.rename(aq.names(variablesToUse))
 
 		let df_coef = aq.from(coef_scaled_mat)
 
-		df_coef = df_coef.rename(aq.names(varCoef))
+		// Adjust varCoef to match the model expectations (57 variables)
+		const coefficientVariables = 57
+		const varCoefToUse = varCoef.slice(0, coefficientVariables * coef_labels.length)
+		console.log(`🔍 Using ${varCoefToUse.length} coefficient labels (model expects ${coefficientVariables} variables)`)
+		df_coef = df_coef.rename(aq.names(varCoefToUse))
 
 		const endTime = new Date()
 

@@ -18,6 +18,16 @@ import {
 	bvHVisibilityMap,
 	setBVHVisibilityMap,
 	initializeSkeletonArray,
+	// Structure change dialog
+	showStructureChangeDialog,
+	setShowStructureChangeDialog,
+	dialogFileName,
+	setDialogFileName,
+	pendingUploadedFiles,
+	setPendingUploadedFiles,
+	skeletonViewersSig,
+	hasStructureChanged,
+	setHasStructureChanged
 } from "./stores/store" // Import shared state
 
 // Added by Youssef Hergal - Simple file management component - 
@@ -34,7 +44,7 @@ function FileManagementCard() {
 
 	const [selectedFileNames, setSelectedFileNames] = createSignal("No file chosen")
 
-	const handleFileUpload = (event) => {
+	const handleFileUpload = async (event) => {
 		const files = Array.from(event.target.files)
 		if (files.length > 0) {
 			const fileNames = files.map((f: File) => f.name).join(", ")
@@ -42,24 +52,201 @@ function FileManagementCard() {
 		} else {
 			setSelectedFileNames("No file chosen")
 		}
-		files.forEach((file: File) => addBVH(file.name))
+		
+		// Store all uploaded files for potential structure change
+		const uploadedFiles = []
+		for (const file of files) {
+			try {
+				console.log(`📁 Processing file: ${(file as File).name}`)
+				console.log(`📁 File size: ${(file as File).size} bytes`)
+				console.log(`📁 File type: ${(file as File).type}`)
+				
+				const fileContent = await (file as File).text()
+				console.log(`📁 File content length: ${fileContent.length} characters`)
+				console.log(`📁 First 100 chars: ${fileContent.substring(0, 100)}`)
+				
+				uploadedFiles.push({
+					name: (file as File).name,
+					content: fileContent
+				})
+			} catch (error) {
+				console.error(`❌ Error reading file ${(file as File).name}:`, error)
+			}
+		}
+		
+		// Store all uploaded files
+		setPendingUploadedFiles(uploadedFiles)
+		
+		// Process only the first file for structure detection
+		if (uploadedFiles.length > 0) {
+			const firstFile = uploadedFiles[0]
+			await addBVH(firstFile.name, firstFile.content)
+		}
 	}
 
-	const handleSelectFile = (fileName) => {
-		if (fileName) addBVH(fileName)
+	const handleSelectFile = async (fileName) => {
+		if (fileName) {
+			// Reset structure changed flag when selecting from repository
+			setHasStructureChanged(false)
+			await addBVH(fileName)
+		}
 	}
 
 	const removeFile = (fileName) => {
 		removeBVH(fileName)
 	}
 
+	// Added by Youssef Hergal - Structure detection function
+	// FUNCTIONALITY: Compares bone count between uploaded file and existing files
+	// WHY: Simple and reliable method to detect structure changes
+	// PERFORMANCE: Fast comparison using bone count only
+	const detectStructureChange = async (fileName, fileContent) => {
+		try {
+			// Get existing skeleton viewers to compare structure
+			const existingViewers = skeletonViewersSig()
+			if (existingViewers.length === 0) {
+				// No existing files, so no structure change
+				console.log(`🔍 No existing files - no structure change`)
+				return false
+			}
+			
+			// Get bone count from first existing skeleton
+			const firstViewer = existingViewers[0]
+			const existingBoneCount = firstViewer.boneIndex ? Object.keys(firstViewer.boneIndex).length : 0
+			
+			console.log(`🔍 EXISTING BONE COUNT: ${existingBoneCount}`)
+			
+			// Use the file content directly (already uploaded)
+			const bvhContent = fileContent
+			
+			// Debug: show first 30 lines of uploaded file to understand format
+			console.log(`🔍 DEBUG - First 30 lines of uploaded file:`)
+			const lines = bvhContent.split('\n').slice(0, 30)
+			lines.forEach((line, index) => {
+				console.log(`  Line ${index + 1}: ${line.trim()}`)
+			})
+			
+			// Count bones in uploaded file - try multiple patterns
+			let jointMatches = bvhContent.match(/JOINT\s+\w+/g)
+			if (!jointMatches) {
+				// Try alternative patterns
+				jointMatches = bvhContent.match(/JOINT\s+[A-Za-z0-9_]+/g)
+			}
+			if (!jointMatches) {
+				// Try even more flexible pattern
+				jointMatches = bvhContent.match(/JOINT\s+[^\s\n\r]+/g)
+			}
+			if (!jointMatches) {
+				// Try without spaces
+				jointMatches = bvhContent.match(/JOINT[A-Za-z0-9_]+/g)
+			}
+			
+			const uploadedBoneCount = jointMatches ? jointMatches.length : 0
+			
+			console.log(`🔍 UPLOADED BONE COUNT: ${uploadedBoneCount}`)
+			if (jointMatches) {
+				console.log(`🔍 FOUND JOINTS: ${jointMatches.slice(0, 5).join(', ')}${jointMatches.length > 5 ? '...' : ''}`)
+			}
+			
+			// Calculate difference
+			const boneCountDifference = Math.abs(existingBoneCount - uploadedBoneCount)
+			const differencePercentage = (boneCountDifference / existingBoneCount) * 100
+			
+			console.log(`🔍 BONE COUNT DIFFERENCE: ${boneCountDifference} (${differencePercentage.toFixed(1)}%)`)
+			
+			// Consider it a structure change if difference is significant
+			// Allow 5% difference threshold (only significant differences trigger structure change)
+			const isStructureChange = differencePercentage > 5
+			
+			if (isStructureChange) {
+				console.log(`⚠️ STRUCTURE CHANGE DETECTED - Difference too large: ${differencePercentage.toFixed(1)}%`)
+			} else {
+				console.log(`✅ SAME STRUCTURE - Difference acceptable: ${differencePercentage.toFixed(1)}%`)
+			}
+			
+			return isStructureChange
+		} catch (error) {
+			console.error(`❌ Error detecting structure change for ${fileName}:`, error)
+			// If we can't detect, assume it's a different structure to be safe
+			return true
+		}
+	}
+
 	// Added by Youssef Hergal - Add BVH file to selection and 3D scene - 
 	// FUNCTIONALITY: Adds a BVH file to both the selection list and 3D skeleton array
 	// WHY: Ensures both UI state and 3D rendering are synchronized
 	// PERFORMANCE: Updates both arrays in one operation to maintain consistency
-	const addBVH = (fileName) => {
+		const addBVH = async (fileName, fileContent = null) => {
 		const currentList = selectedBVHList()
 		if (!currentList.includes(fileName)) {
+			// Check if this is an uploaded file (not from repository)
+			const isUploadedFile = !fileName.startsWith('bvh2/') && !fileName.includes('/')
+			
+			if (isUploadedFile) {
+				// For uploaded files, test structure compatibility
+				console.log(`🔄 Detected uploaded file: ${fileName}`)
+				console.log(`🔄 File content received: ${fileContent ? 'YES' : 'NO'}`)
+				console.log(`🔄 File content length: ${fileContent ? fileContent.length : 'N/A'}`)
+				
+				// Check if this is a real upload (with content) or selection from list
+				if (fileContent) {
+					// Real uploaded file with content - test structure
+					const hasStructureChange = await detectStructureChange(fileName, fileContent)
+					
+					if (hasStructureChange) {
+						// Different structure - show confirmation modal
+						console.log(`⚠️ Structure change detected for: ${fileName}`)
+						setDialogFileName(fileName)
+						setShowStructureChangeDialog(true)
+						return
+					} else {
+						// Same structure - add directly without modal
+						console.log(`✅ Same structure detected for: ${fileName} - adding directly`)
+						// Add the file directly (same logic as repository files)
+						setSelectedBVHList([...currentList, fileName])
+						
+						// Add to skeletonsArray for 3D display
+						const currentSkeletons = skeletonsArray()
+						const newSkeleton = {
+							label: `Skeleton ${currentSkeletons.length + 1}`,
+							fileName: fileName, // Keep direct name for uploaded files
+							fileContent: fileContent // Store file content for uploaded files
+						}
+						setSkeletonsArray([...currentSkeletons, newSkeleton])
+						
+						// Set visibility to true by default
+						const currentVisibility = bvHVisibilityMap()
+						setBVHVisibilityMap({
+							...currentVisibility,
+							[fileName]: true
+						})
+						return
+					}
+				} else {
+					// File selected from list (not uploaded) - add directly without structure check
+					console.log(`📋 File selected from list: ${fileName} - adding directly`)
+					// Add the file directly (same logic as repository files)
+					setSelectedBVHList([...currentList, fileName])
+					
+					// Add to skeletonsArray for 3D display
+					const currentSkeletons = skeletonsArray()
+					const newSkeleton = {
+						label: `Skeleton ${currentSkeletons.length + 1}`,
+						fileName: `bvh2/${fileName}`
+					}
+					setSkeletonsArray([...currentSkeletons, newSkeleton])
+					
+					// Set visibility to true by default
+					const currentVisibility = bvHVisibilityMap()
+					setBVHVisibilityMap({
+						...currentVisibility,
+						[fileName]: true
+					})
+					return
+				}
+			}
+			
+			// For repository files, add normally
 			setSelectedBVHList([...currentList, fileName])
 			
 			// Added by Youssef Hergal - Also add to skeletonsArray for 3D display -
@@ -171,12 +358,23 @@ function FileManagementCard() {
 					<select 
 						onChange={(e) => handleSelectFile(e.target.value)}
 						class="default-select"
+						disabled={hasStructureChanged()}
 					>
 						<option value="">Choose a file...</option>
 						{bvhFiles.map((file) => (
 							<option value={file}>{file}</option>
 						))}
 					</select>
+					{hasStructureChanged() && (
+						<div style={{
+							"font-size": "11px",
+							color: "#666",
+							"margin-top": "4px",
+							"font-style": "italic"
+						}}>
+							Repository selection disabled - structure changed
+						</div>
+					)}
 				</div>
 
 				{/* Selected Files Display */}

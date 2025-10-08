@@ -32,8 +32,8 @@ import * as aq from "arquero"
 import { createSignal } from "solid-js"
 
 const colors = [
-	"#145e9f", // navy blue
-	"#dba21c", // golden yellow
+	"#dba21c", // golden yellow (first color - more visible)
+	"#145e9f", // navy blue (moved to second)
 	"#659d98", // muted teal
 	"#a6d5ff", // light sky blue
 	"#887456", // bronze

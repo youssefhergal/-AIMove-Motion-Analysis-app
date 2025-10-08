@@ -116,6 +116,7 @@ export {
     selectedBVHList, setSelectedBVHList,
     bvHVisibilityMap, setBVHVisibilityMap,
     isBVHdefault, setIsBVHdefault,
+    hasStructureChanged, setHasStructureChanged,
     getCurrentActiveBVH,
     getVisibleBVHFiles,
     getVisibleSkeletons,

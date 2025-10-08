@@ -28,6 +28,17 @@ const [selectedBVHList, setSelectedBVHList] = createSignal(["MCEAS02G01R03.bvh"]
 const [bvHVisibilityMap, setBVHVisibilityMap] = createSignal({})
 const [isBVHdefault, setIsBVHdefault] = createSignal(true)
 
+// Structure change dialog
+const [showStructureChangeDialog, setShowStructureChangeDialog] = createSignal(false)
+const [dialogFileName, setDialogFileName] = createSignal("")
+const [pendingUploadedFiles, setPendingUploadedFiles] = createSignal([])
+
+// Upload loading state
+const [isLoadingUploadedFile, setIsLoadingUploadedFile] = createSignal(false)
+
+// Structure change confirmation state
+const [hasStructureChanged, setHasStructureChanged] = createSignal(false)
+
 // Helper functions
 function getCurrentActiveBVH() {
 	const list = selectedBVHList()
@@ -80,6 +91,11 @@ export {
 	selectedBVHList, setSelectedBVHList,
 	bvHVisibilityMap, setBVHVisibilityMap,
 	isBVHdefault, setIsBVHdefault,
+	showStructureChangeDialog, setShowStructureChangeDialog,
+	dialogFileName, setDialogFileName,
+	pendingUploadedFiles, setPendingUploadedFiles,
+	isLoadingUploadedFile, setIsLoadingUploadedFile,
+	hasStructureChanged, setHasStructureChanged,
 	
 	// Helper functions
 	getCurrentActiveBVH,

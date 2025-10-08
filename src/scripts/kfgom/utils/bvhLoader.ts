@@ -1,4 +1,5 @@
 import { BVHLoader } from "../../../../build/BVHLoader.js"      
+import { skeletonsArray } from "../../stores/store"
 
 // Independent BVH loader for KF-GOM analysis
 class KFGOMBVHLoader {
@@ -8,21 +9,64 @@ class KFGOMBVHLoader {
         this.loader = new BVHLoader()
     }
 
-    // Load BVH file independently without affecting the main scene
-    async loadBVHFile(filePath: string): Promise<any> {
+    // Load BVH file from selected files (skeletonsArray)
+    async loadBVHFile(fileName: string): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.loader.load(
-                filePath,
-                (result) => {
-                    console.log(`✅ KF-GOM BVH loaded: ${filePath} with ${result.bvhBones?.length || 0} bones`)
-                    resolve(result)
-                },
-                undefined,
-                (error) => {
-                    console.error(`❌ KF-GOM BVH load failed: ${filePath}`, error)
-                    reject(error)
+            try {
+                console.log(`🔄 KF-GOM Loading selected file: ${fileName}`)
+                
+                // Find the file in skeletonsArray (selected files)
+                const skeletons = skeletonsArray()
+                console.log(`🔍 KF-GOM Searching for file: ${fileName}`)
+                console.log(`🔍 KF-GOM Available skeletons:`, skeletons.map(s => s.fileName))
+                
+                // Try to find the file with different formats
+                let skeleton = skeletons.find(s => s.fileName === fileName)
+                
+                if (!skeleton) {
+                    // Try with bvh2/ prefix
+                    skeleton = skeletons.find(s => s.fileName === `bvh2/${fileName}`)
                 }
-            )
+                
+                if (!skeleton) {
+                    // Try without bvh2/ prefix (if fileName has it)
+                    const cleanFileName = fileName.replace('bvh2/', '')
+                    skeleton = skeletons.find(s => s.fileName === cleanFileName)
+                }
+                
+                if (!skeleton) {
+                    throw new Error(`File ${fileName} not found in selected files. Available: ${skeletons.map(s => s.fileName).join(', ')}`)
+                }
+                
+                if (skeleton.fileContent) {
+                    // File is uploaded and has content - use it directly
+                    console.log(`✅ KF-GOM Found uploaded file with content: ${fileName}`)
+                    const result = this.loader.parse(skeleton.fileContent)
+                    console.log(`✅ KF-GOM BVH loaded from uploaded content: ${fileName} with ${result.bvhBones?.length || 0} bones`)
+                    resolve(result)
+                } else {
+                    // File is from repository - load from bvh2/ path
+                    console.log(`✅ KF-GOM Loading repository file: ${fileName}`)
+                    const filePath = fileName.startsWith('bvh2/') ? fileName : `bvh2/${fileName}`
+                    
+                    this.loader.load(
+                        filePath,
+                        (result) => {
+                            console.log(`✅ KF-GOM BVH loaded: ${fileName} with ${result.bvhBones?.length || 0} bones`)
+                            resolve(result)
+                        },
+                        undefined,
+                        (error) => {
+                            console.error(`❌ KF-GOM BVH load failed: ${fileName}`, error)
+                            reject(error)
+                        }
+                    )
+                }
+                
+            } catch (error) {
+                console.error(`❌ KF-GOM BVH load failed: ${fileName}`, error)
+                reject(error)
+            }
         })
     }
 

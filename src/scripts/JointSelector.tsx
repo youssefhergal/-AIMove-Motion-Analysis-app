@@ -4,7 +4,7 @@ import { createPlot2D, createPlot3D } from "./plots"
 import { preparePlotsData } from "./useSceneSetup"
 import { createEffect, onMount } from "solid-js"
 import { TableAndPlotsUpdate } from "./CheckboxDexAnalysis"
-import { cleanBoneHierarchy } from "./utils/boneUtils"
+import { extractJointName } from "./utils/boneUtils"
 
 import {
 	bonesList,
@@ -42,7 +42,7 @@ function JointSelector() {
 							myScene.jointIndex[selectedJoint()]
 						].material.color.set(0x145e9f)
 						// myScene.mixer.timeScale = 1
-						setSelectedJoint(cleanBoneHierarchy(newValues)[0])
+						setSelectedJoint(extractJointName(newValues))
 						myScene.sphereMeshes[
 							myScene.jointIndex[selectedJoint()]
 						].material.color.set("red")
@@ -66,7 +66,7 @@ function JointSelector() {
 			>
 				<Select.Trigger class="select__trigger" aria-label="Fruit">
 					<Select.Value class="select__value">
-						{(state) => cleanBoneHierarchy(state.selectedOption())}
+						{(state) => state.selectedOption()}
 					</Select.Value>
 					<Select.Icon class="select__icon"></Select.Icon>
 				</Select.Trigger>

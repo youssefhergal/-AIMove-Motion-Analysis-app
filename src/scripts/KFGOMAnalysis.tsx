@@ -38,6 +38,7 @@ import MovementPredictionPlot from "./kfgom/components/MovementPredictionPlot.js
 import { eventBus, EVENTS } from "./utils/eventBus.js"
 import { logAnalysis, logAnalysisError, logDataError } from "./utils/logger.js"
 import { handleAnalysisError, handleDataError } from "./utils/errorHandler.js"
+import KFGOMParameterTooltips from "./kfgom/components/KFGOMParameterTooltips"
 import {
 	sarimaxAnalyzer,
 	setSarimaxAnalyzer,
@@ -976,116 +977,129 @@ const KFGOMAnalysis = () => {
 						"font-size": "12px"
 					}}>
 						<div style={{ display: "flex", gap: "20px", "flex-wrap": "wrap", "align-items": "center" }}>
-							<div>
-								<strong>Target:</strong> {sarimaxResults().targetJoint} {sarimaxResults().targetAxis.replace('rotation', '')} {/* added by youssef hergal */}
-							</div>
-							<div>
-								<strong>Method:</strong> 
-								<select 
-									value={sarimaxConfig().method}
-									onChange={handleMethodChange}
-									style={{
-										"margin-left": "5px",
-										padding: "2px 6px",
-										"border": "1px solid #ccc",
-										"border-radius": "3px",
-										"background-color": "white",
-										"font-size": "11px"
-									}}
-								>
-									<option value="ols">OLS</option>
-									<option value="ridge">Ridge</option>
-									<option value="mle">MLE</option>
-								</select>
-							</div>
-							<div>
-								<strong>Lags:</strong> 
-								<input 
-									type="number"
-									value={sarimaxConfig().lags}
-									onChange={handleLagChange}
-									min="2"
-									step="1"
-									style={{
-										"margin-left": "5px",
-										padding: "2px 6px",
-										"border": "1px solid #ccc",
-										"border-radius": "3px",
-										"background-color": "white",
-										"font-size": "11px",
-										width: "50px"
-									}}
-								/>
-							</div>
-							<div>
-								<strong>Steps:</strong> 
-								<select 
-									value={forecastConfig().steps}
-									onChange={handleForecastStepsChange}
-									style={{
-										"margin-left": "5px",
-										padding: "2px 6px",
-										"border": "1px solid #ccc",
-										"border-radius": "3px",
-										"background-color": "white",
-										"font-size": "11px"
-									}}
-								>
-									<option value="none">None</option>
-									<option value="3">3</option>
-									<option value="4">4</option>
-									<option value="5">5</option>
-									<option value="6">6</option>
-									<option value="7">7</option>
-									<option value="8">8</option>
-									<option value="9">9</option>
-									<option value="10">10</option>
-									<option value="15">15</option>
-									<option value="20">20</option>
-								</select>
-							</div>
-						
+							<KFGOMParameterTooltips parameter="target">
+								<div>
+									<strong>Target:</strong> {sarimaxResults().targetJoint} {sarimaxResults().targetAxis.replace('rotation', '')} {/* added by youssef hergal */}
+								</div>
+							</KFGOMParameterTooltips>
+							
+							<KFGOMParameterTooltips parameter="method">
+								<div>
+									<strong>Method:</strong> 
+									<select 
+										value={sarimaxConfig().method}
+										onChange={handleMethodChange}
+										style={{
+											"margin-left": "5px",
+											padding: "2px 6px",
+											"border": "1px solid #ccc",
+											"border-radius": "3px",
+											"background-color": "white",
+											"font-size": "11px"
+										}}
+									>
+										<option value="ols">OLS</option>
+										<option value="ridge">Ridge</option>
+										<option value="mle">MLE</option>
+									</select>
+								</div>
+							</KFGOMParameterTooltips>
+							
+							<KFGOMParameterTooltips parameter="lags">
+								<div>
+									<strong>Lags:</strong> 
+									<input 
+										type="number"
+										value={sarimaxConfig().lags}
+										onChange={handleLagChange}
+										min="2"
+										step="1"
+										style={{
+											"margin-left": "5px",
+											padding: "2px 6px",
+											"border": "1px solid #ccc",
+											"border-radius": "3px",
+											"background-color": "white",
+											"font-size": "11px",
+											width: "50px"
+										}}
+									/>
+								</div>
+							</KFGOMParameterTooltips>
+							
+							<KFGOMParameterTooltips parameter="steps">
+								<div>
+									<strong>Steps:</strong> 
+									<select 
+										value={forecastConfig().steps}
+										onChange={handleForecastStepsChange}
+										style={{
+											"margin-left": "5px",
+											padding: "2px 6px",
+											"border": "1px solid #ccc",
+											"border-radius": "3px",
+											"background-color": "white",
+											"font-size": "11px"
+										}}
+									>
+										<option value="none">None</option>
+										<option value="3">3</option>
+										<option value="4">4</option>
+										<option value="5">5</option>
+										<option value="6">6</option>
+										<option value="7">7</option>
+										<option value="8">8</option>
+										<option value="9">9</option>
+										<option value="10">10</option>
+										<option value="15">15</option>
+										<option value="20">20</option>
+									</select>
+								</div>
+							</KFGOMParameterTooltips>
+							
 
-							<div>
-								<strong>Filter:</strong> 
-								<select 
-									value={kfgomFilters().significance}
-									onChange={handleSignificanceFilterChange}
-									style={{
-										"margin-left": "5px",
-										padding: "2px 6px",
-										"border": "1px solid #ccc",
-										"border-radius": "3px",
-										"background-color": "white",
-										"font-size": "11px"
-									}}
-								>
-									<option value="all">All</option>
-									<option value="significant">Significant</option>
-									<option value="non-significant">Non-significant</option>
-								</select>
-							</div>
+							<KFGOMParameterTooltips parameter="filter">
+								<div>
+									<strong>Filter:</strong> 
+									<select 
+										value={kfgomFilters().significance}
+										onChange={handleSignificanceFilterChange}
+										style={{
+											"margin-left": "5px",
+											padding: "2px 6px",
+											"border": "1px solid #ccc",
+											"border-radius": "3px",
+											"background-color": "white",
+											"font-size": "11px"
+										}}
+									>
+										<option value="all">All</option>
+										<option value="significant">Significant</option>
+										<option value="non-significant">Non-significant</option>
+									</select>
+								</div>
+							</KFGOMParameterTooltips>
 
-							<div>
-								<button 
-									onClick={retrainWithSelectedVariables}
-									style={{
-										padding: "4px 8px",
-										"background-color": "#28a745",
-										color: "white",
-										border: "none",
-										"border-radius": "3px",
-										cursor: "pointer",
-										"font-size": "11px",
-										"font-weight": "bold"
-									}}
-									title="Retrain model using only the checked variables"
-								>
-									Retrain 
-								</button>
-								{/* Show selected variables count */}
-
-							</div>
+							<KFGOMParameterTooltips parameter="retrain">
+								<div>
+									<button 
+										onClick={retrainWithSelectedVariables}
+										style={{
+											padding: "4px 8px",
+											"background-color": "#28a745",
+											color: "white",
+											border: "none",
+											"border-radius": "3px",
+											cursor: "pointer",
+											"font-size": "11px",
+											"font-weight": "bold"
+										}}
+									>
+										Retrain 
+									</button>
+									{/* Show selected variables count */}
+								</div>
+							</KFGOMParameterTooltips>
 						</div>
 					</div>
 				)}

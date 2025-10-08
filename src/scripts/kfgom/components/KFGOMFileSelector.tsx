@@ -29,13 +29,13 @@ export default function KFGOMFileSelector() {
 		}
 	})
 
-	// Handle train file selection from repository
+	// Handle train file selection from selected files
 	const handleTrainFileSelect = async (fileName) => {
 		setTrainFile(fileName)
 		
 		try {
-			const file_path = "bvh2/" + fileName
-			const result = await kfgomBVHLoader.loadBVHFile(file_path)
+			// Use fileName directly (no bvh2/ prefix needed)
+			const result = await kfgomBVHLoader.loadBVHFile(fileName)
 			
 			if (kfgomBVHLoader.validateBVHStructure(result)) {
 				const bonesData = kfgomBVHLoader.extractBonesData(result)
@@ -49,13 +49,13 @@ export default function KFGOMFileSelector() {
 		}
 	}
 
-	// Handle test file selection from repository
+	// Handle test file selection from selected files
 	const handleTestFileSelect = async (fileName) => {
 		setTestFile(fileName)
 		
 		try {
-			const file_path = "bvh2/" + fileName
-			const result = await kfgomBVHLoader.loadBVHFile(file_path)
+			// Use fileName directly (no bvh2/ prefix needed)
+			const result = await kfgomBVHLoader.loadBVHFile(fileName)
 			
 			if (kfgomBVHLoader.validateBVHStructure(result)) {
 				const bonesData = kfgomBVHLoader.extractBonesData(result)

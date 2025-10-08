@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ark-ui/solid": "^4.0.0",
+    "@ark-ui/solid": "^4.10.2",
     "@kobalte/core": "^0.13.1",
     "@solid-primitives/upload": "^0.0.117",
     "@suid/icons-material": "^0.7.0",
@@ -26,6 +26,7 @@
     "echarts": "^5.5.0",
     "echarts-gl": "^2.0.9",
     "gridjs": "^6.2.0",
+    "lucide-solid": "^0.544.0",
     "mathjax-full": "^3.2.2",
     "mathjs": "^14.6.0",
     "plotly.js": "^2.32.0",

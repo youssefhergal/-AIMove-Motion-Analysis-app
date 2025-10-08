@@ -82,10 +82,14 @@ class SkeletonViewer {
 		this.left = left
 		this.right = right
 
-		//console.log("YOUSSEF: ", bvhBones, this.left, this.right)
+		console.log("YOUSSEF: ", bvhBones, this.left, this.right)
+		
+		// Update GOMVariableSelector with skeleton data
+		this.updateGOMSelector(left, right)
 
 		setSelectedJoint(this.globalResult.skeleton.bones[0].name)
 		this.animationClip = this.globalResult.clip // Storing the clip in the global scope for later use
+		
 
 		const fps = 90 // Define the frames per second
 		const framesToCut = 5
@@ -100,6 +104,61 @@ class SkeletonViewer {
 
 		await this.createSphereMeshes()
 		this.createBoneMeshes()
+
+		// Generate wordFrames data for getTimeSeries
+		this.wordFrames = await this.getWorldPositionTimeSeriesByName()
+
+		await this.reCenter()
+	}
+
+	// Load skeleton from file content (for uploaded files)
+	async loadSkeletonFromContent(fileContent) {
+		const loader = new BVHLoader()
+
+		const result = await new Promise((resolve, reject) => {
+			// Parse the content directly instead of loading from URL
+			try {
+				const parsed = loader.parse(fileContent)
+				resolve(parsed)
+			} catch (error) {
+				reject(error)
+			}
+		})
+		
+		this.bvhName = "uploaded_file"
+
+		this.globalResult = result // Store the result for use within other methods
+
+		const bvhBones = result.bvhBones
+		const { left, right } = this.logLeftRightJoints(this.globalResult.skeleton)
+		this.left = left
+		this.right = right
+
+		//console.log("YOUSSEF: ", bvhBones, this.left, this.right)
+		
+		// Update GOMVariableSelector with skeleton data
+		this.updateGOMSelector(left, right)
+
+		setSelectedJoint(this.globalResult.skeleton.bones[0].name)
+		this.animationClip = this.globalResult.clip // Storing the clip in the global scope for later use
+		
+
+		const fps = 90 // Define the frames per second
+		const framesToCut = 5
+		const timeToCut = framesToCut / fps
+
+		this.cutFirstFrames(this.globalResult.clip, timeToCut)
+		this.setupMixer(this.globalResult)
+
+		const frameNumber = 1 // Initial frame
+		const timeInSeconds = frameNumber / fps
+		this.mixer.setTime(timeInSeconds) // Set the mixer time
+
+		await this.createSphereMeshes()
+		this.createBoneMeshes()
+
+		// Generate wordFrames data for getTimeSeries
+		this.wordFrames = await this.getWorldPositionTimeSeriesByName()
 
 		await this.reCenter()
 	}
@@ -213,9 +272,10 @@ class SkeletonViewer {
 
 		await new Promise((resolve) => setTimeout(resolve, 50)) // Μικρή καθυστέρηση
 
-		this.sphereMeshes.children[
-			this.jointIndex[selectedJoint()]
-		].material.color.set("red") // Set specific joint color to red
+		const selectedJointIndex = this.jointIndex[selectedJoint()]
+		if (selectedJointIndex !== undefined && this.sphereMeshes.children[selectedJointIndex]) {
+			this.sphereMeshes.children[selectedJointIndex].material.color.set("red") // Set specific joint color to red
+		}
 	}
 
 	createBoneMeshes() {
@@ -303,8 +363,10 @@ class SkeletonViewer {
 	}
 
 	async reCenter() {
-		this.mixer.timeScale = 0
-		this.mixer.setTime(0) // Set the time in the mixer to update the skeleton state
+		if (this.mixer) {
+			this.mixer.timeScale = 0
+			this.mixer.setTime(0) // Set the time in the mixer to update the skeleton state
+		}
 
 		/////////////////////////////////////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////
@@ -460,11 +522,15 @@ class SkeletonViewer {
 			this.newParent.rotation.copy(correctedRotation)
 			this.rotatedPos = correctedRotation
 
-			this.mixer.timeScale = 1
+			if (this.mixer) {
+				this.mixer.timeScale = 1
+			}
 
 			this.wordFrames = await this.getWorldPositionTimeSeriesByName()
 
-			this.mixer.timeScale = 0
+			if (this.mixer) {
+				this.mixer.timeScale = 0
+			}
 
 			// const originalRootPos = new THREE.Vector3()
 			// this.globalResult.skeleton.bones[0].getWorldPosition(
@@ -499,6 +565,11 @@ class SkeletonViewer {
 	}
 	async getWorldPositionTimeSeriesByName() {
 		const clip = this.animationClip
+		if (!clip || !clip.tracks) {
+			console.error("Animation clip or tracks not available")
+			return []
+		}
+		
 		const firstTrack = clip.tracks.find(
 			(track) => track.times && track.times.length > 0
 		)
@@ -535,18 +606,40 @@ class SkeletonViewer {
 	}
 
 	getTimeSeries(jointName = "RightArm") {
-		const baseIndex = this.boneIndex[selectedJoint()] * 2 // Since each bone has two tracks
-		const index = this.jointIndex[selectedJoint()]
+		// Use the provided jointName parameter, fallback to selectedJoint() if not provided
+		const targetJointName = jointName || selectedJoint()
+		if (!targetJointName || !this.jointIndex || !this.boneIndex || !this.globalResult || !this.globalResult.skeleton) {
+			console.warn("Skeleton not ready for time series")
+			return []
+		}
+		
+		// Debug: Check wordFrames availability
+		if (!this.wordFrames) {
+			console.warn("⚠️ wordFrames not available, using fallback method")
+		}
+		
+		const baseIndex = this.boneIndex[targetJointName] * 2 // Since each bone has two tracks
+		
+		const index = this.jointIndex[targetJointName]
+		if (index === undefined) {
+			console.warn(`Joint "${targetJointName}" not found in skeleton`)
+			return []
+		}
 
-		let skeleton = this.globalResult.skeleton // Adjust the access based on how you store the skeleton
+		let skeleton = this.globalResult.skeleton
 		let bone = skeleton.bones[index]
 
 		if (!bone) {
-			console.error("Bone not found:")
+			console.warn(`Bone at index ${index} not found`)
 			return []
 		}
 
 		let jointAnimationClip = this.animationClip
+		if (!jointAnimationClip || !jointAnimationClip.tracks) {
+			console.error("Animation clip or tracks not available")
+			return []
+		}
+		
 		let rotationTrack = jointAnimationClip.tracks[baseIndex + 1] // Quaternion rotation track index
 
 		if (!rotationTrack) {
@@ -607,15 +700,19 @@ class SkeletonViewer {
 			// positionsZ.push(worldPosition.z)
 			// positions.push(worldPosition.clone())
 
-			// positionsX.push(boneWorldPos.x)
-			// positionsY.push(boneWorldPos.y)
-			// positionsZ.push(boneWorldPos.z)
-			// positions.push(boneWorldPos.clone())
-
-			positionsX.push(this.wordFrames[i].bones[selectedJoint()].x)
-			positionsY.push(this.wordFrames[i].bones[selectedJoint()].y)
-			positionsZ.push(this.wordFrames[i].bones[selectedJoint()].z)
-			positions.push(this.wordFrames[i].bones[selectedJoint()].clone())
+			// Check if wordFrames data is available
+			if (this.wordFrames && this.wordFrames[i] && this.wordFrames[i].bones && this.wordFrames[i].bones[selectedJoint()]) {
+				positionsX.push(this.wordFrames[i].bones[selectedJoint()].x)
+				positionsY.push(this.wordFrames[i].bones[selectedJoint()].y)
+				positionsZ.push(this.wordFrames[i].bones[selectedJoint()].z)
+				positions.push(this.wordFrames[i].bones[selectedJoint()].clone())
+			} else {
+				// Fallback to bone world position if wordFrames is not available
+				positionsX.push(boneWorldPos.x)
+				positionsY.push(boneWorldPos.y)
+				positionsZ.push(boneWorldPos.z)
+				positions.push(boneWorldPos.clone())
+			}
 
 			// 			positionsX.push(worldFramesBones()[i].bones[selectedJoint()].x)
 			// positionsY.push(worldFramesBones()[i].bones[selectedJoint()].y)
@@ -879,27 +976,19 @@ class SkeletonViewer {
 	}
 
 	async createDataframes() {
-		const variablesOpt = [
-			"Spine",
-			"Spine1",
-			"Spine2",
-			"Spine3",
-			"Hips",
-			"Neck",
-			"Head",
-			"LeftArm",
-			"LeftForeArm",
-			"RightArm",
-			"RightForeArm",
-			"LeftShoulder",
-			"LeftShoulder2",
-			"RightShoulder",
-			"RightShoulder2",
-			"LeftUpLeg",
-			"LeftLeg",
-			"RightUpLeg",
-			"RightLeg",
-		]
+		// Use actual bone names from the loaded skeleton instead of hardcoded names
+		const variablesOpt = this.boneHierarchy.map(bone => bone.name).filter(name => 
+			// Filter out bones that are too specific (like individual fingers/toes)
+			!name.includes('Thumb') && 
+			!name.includes('Index') && 
+			!name.includes('Middle') && 
+			!name.includes('Ring') && 
+			!name.includes('Pinky') &&
+			!name.includes('Eye') &&
+			!name.includes('Toe')
+		)
+		
+		console.log(`🦴 Using ${variablesOpt.length} bones for GOM analysis:`, variablesOpt)
 
 		let finalAnglesArray = []
 		let finalWoldPosArray = []
@@ -1037,7 +1126,9 @@ class SkeletonViewer {
 
 		const idx = this.jointIndex[selectedJoint()]
 		// console.log("idx: ", this.bvhName)
-		this.sphereMeshes.children[idx].material.color.set("red") // Reset mesh color to green
+		if (this.sphereMeshes && this.sphereMeshes.children && this.sphereMeshes.children[idx] && this.sphereMeshes.children[idx].material) {
+			this.sphereMeshes.children[idx].material.color.set("red") // Reset mesh color to green
+		}
 
 		const tooltip = document.getElementById("tooltip")
 		let tooltipVisible = false
@@ -1202,10 +1293,69 @@ class SkeletonViewer {
 			// Values within the exclusion range are ignored
 		})
 
-		// console.log("🟦 Left Joints:", left);
-		// console.log("🟥 Right Joints:", right);
+		console.log("🟦 Left Joints:", left);
+		console.log("🟥 Right Joints:", right);
 
 		return { left, right }
+	}
+
+	updateGOMSelector(leftJoints, rightJoints) {
+		// Import and update GOMVariableSelector
+		import('./kfgom/utils/gomVariableSelector').then(({ gomSelector }) => {
+			// Create enhanced hierarchy with parent-child relationships
+			const enhancedHierarchy = this.createEnhancedHierarchy()
+			gomSelector.updateSkeletonData(leftJoints, rightJoints, enhancedHierarchy)
+		}).catch(error => {
+			console.warn('Could not update GOMVariableSelector:', error)
+		})
+	}
+
+	/**
+	 * Create enhanced hierarchy with parent-child relationships
+	 * @returns Array of joint info with depth and parent information
+	 */
+	createEnhancedHierarchy() {
+		if (!this.globalResult || !this.globalResult.skeleton) {
+			return this.boneHierarchy // Fallback to basic hierarchy
+		}
+
+		const enhancedHierarchy = []
+		const bones = this.globalResult.skeleton.bones
+
+		// Helper function to calculate depth
+		function calculateDepth(bone) {
+			let depth = 0
+			let currentBone = bone
+			while (currentBone.parent && currentBone.parent.type !== "Scene") {
+				currentBone = currentBone.parent
+				depth++
+			}
+			return depth
+		}
+
+		// Create a map of bone names to their objects
+		const boneMap = {}
+		bones.forEach(bone => {
+			boneMap[bone.name] = bone
+		})
+
+		// Build enhanced hierarchy
+		bones.forEach(bone => {
+			if (!bone.name.endsWith("end")) {
+				const depth = calculateDepth(bone)
+				const parentName = bone.parent && bone.parent.type !== "Scene" ? bone.parent.name : null
+				
+				enhancedHierarchy.push({
+					name: bone.name,
+					depth: depth,
+					parent: parentName,
+					children: bone.children ? bone.children.map(child => child.name) : []
+				})
+			}
+		})
+
+		console.log(`🔍 Enhanced hierarchy created:`, enhancedHierarchy.slice(0, 5)) // Log first 5 for debugging
+		return enhancedHierarchy
 	}
 }
 

@@ -157,7 +157,17 @@ export default function KFGOMTable() {
             targetCombined = cfg ? `${cfg.targetJoint}_${cfg.targetAxis}` : 'Hips_Xrotation'
         }
         
-        const selectedJointNames = gomSelector.selectVariablesByAssumption(jointNames, actualAssumptionIndex, targetCombined)
+        // Map assumption index to assumption type name
+        const assumptionTypeMap = {
+            2: 'transitioning',
+            3: 'intra-joint association', 
+            4: 'inter-limb synergies',
+            5: 'serial intra-limb mediation',
+            6: 'non-serial intra-limb mediation'
+        }
+        
+        const assumptionType = assumptionTypeMap[actualAssumptionIndex] || 'transitioning'
+        const selectedJointNames = gomSelector.selectVariablesByAssumption(assumptionType, jointNames, targetCombined)
         const gomFiltered = data.filter(item => selectedJointNames.includes(item.jointId))
         
         return gomFiltered

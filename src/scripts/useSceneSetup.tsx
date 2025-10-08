@@ -55,13 +55,23 @@ import {
 	setWorldFramesBones,
 	setBaseScene,
 	setPlayPressed,
+	setIsLoadingUploadedFile,
+	isLoadingUploadedFile,
 } from "./stores/store"
 
 // import { initMathJax } from "./InitMathJax.js"
 
 const [mixersCount, setMixersCount] = createSignal(0)
 
+let lastPlotsDataUpdate = 0
 function preparePlotsData() {
+	const now = Date.now()
+	if (now - lastPlotsDataUpdate < 1000) {
+		console.log(`📊 Skipping preparePlotsData - too soon (${now - lastPlotsDataUpdate}ms ago)`)
+		return
+	}
+	lastPlotsDataUpdate = now
+	
 	// console.log("PreparePlotsData")
 
 	// Arrays to store data for all viewers
@@ -95,7 +105,17 @@ function preparePlotsData() {
 	// WHY: Saves computation time by skipping hidden skeletons
 	// PERFORMANCE: O(visible_skeletons) instead of O(total_skeletons)
 	visibleViewers.forEach((viewer, index) => {
-		// console.log(`📊 Processing viewer ${index + 1}/${visibleViewers.length}`)
+		console.log(`📊 Processing viewer ${index + 1}/${visibleViewers.length} - ${viewer.label}`)
+		// Use the currently selected joint, fallback to first available bone
+		const currentJoint = selectedJoint() || (bonesList().length > 0 ? bonesList()[0].replace('•', '') : "hip")
+		console.log(`📊 Getting time series for joint: ${currentJoint}`)
+		const timeSeriesData = viewer.getTimeSeries(currentJoint)
+		console.log(`📊 Time series data length: ${timeSeriesData ? timeSeriesData.length : 'null'}`)
+	if (!timeSeriesData || timeSeriesData.length < 8) {
+		console.warn(`⚠️ Skipping viewer ${index + 1} - incomplete time series data`)
+		return
+	}
+	
 	const [
 		originalPositionsX,
 		originalPositionsY,
@@ -103,9 +123,9 @@ function preparePlotsData() {
 		originalAnglesX,
 		originalAnglesY,
 		originalAnglesZ,
-			originalVelocities,
-			originalAccelerations,
-	] = viewer.getTimeSeries("Hips")
+		originalVelocities,
+		originalAccelerations,
+	] = timeSeriesData
 		
 		// console.log(`📊 Viewer ${index + 1} data lengths:`, {
 		// 	positionsX: originalPositionsX?.length || 0,
@@ -209,6 +229,13 @@ async function initializeWhenLoaded(forceReload = false) {
 		return
 	}
 	
+	// Additional timing check
+	const now = Date.now()
+	if (now - lastPlotsDataUpdate < 2000 && !forceReload) {
+		console.log(`⚠️ Plot initialization too soon (${now - lastPlotsDataUpdate}ms ago), skipping`)
+		return
+	}
+	
 	isInitializingPlots = true
 	// console.log("🔄 Starting initializeWhenLoaded function")
 	
@@ -218,7 +245,10 @@ async function initializeWhenLoaded(forceReload = false) {
 		if (viewers && viewers.length > 0) {
 			// console.log(`📊 Preparing plot data for ${viewers.length} skeleton(s)`)
 			// Prepare plot data for all visible skeletons
-			preparePlotsData()
+			// Skip if we're loading an uploaded file (will be called later)
+			if (!isLoadingUploadedFile()) {
+				preparePlotsData()
+			}
 			
 		// Create plots with the prepared data
 		// Add a small delay to ensure DOM elements are ready
@@ -257,12 +287,48 @@ async function initialize() {
 		const viewer = new SkeletonViewer(scene.scene, colors[color_idx])
 		viewer.skeletonPath = skeleton.fileName
 		
-		await viewer.loadSkeleton(skeleton.fileName)
+		// Check if this is an uploaded file with content
+		if (skeleton.fileContent) {
+			// For uploaded files, use the content directly
+			console.log(`📁 Loading uploaded file: ${skeleton.fileName}`)
+			await viewer.loadSkeletonFromContent(skeleton.fileContent)
+		} else {
+			// For repository files, use the file path
+			console.log(`📁 Loading repository file: ${skeleton.fileName}`)
+			await viewer.loadSkeleton(skeleton.fileName)
+		}
+		
 		viewer.label = skeleton.label[skeleton.label.length - 1]
 		viewer.plotLabel = skeleton.label
 		
 		skeletonViewers.push(viewer)
 		setSkeletonViewersSig([...skeletonViewers])
+		
+		// Update bones list after skeleton is loaded
+		setTimeout(() => {
+			getBonesList()
+			
+			// Manually set visibility for the newly loaded skeleton
+			const fileName = skeleton.fileName
+			const shortFileName = fileName.replace('bvh2/', '')
+			const visibilityMap = bvHVisibilityMap()
+			const isVisible = visibilityMap[shortFileName] !== false
+			console.log(`🔍 Manual visibility check for ${shortFileName}: ${isVisible}`)
+			toggleSkeletonViewer(fileName, isVisible)
+			
+			// DEBUG: Force visibility to true if skeleton is not visible
+			if (!isVisible) {
+				console.warn(`⚠️ Skeleton ${shortFileName} is marked as hidden, but forcing visibility for dexterity analysis`)
+				toggleSkeletonViewer(fileName, true)
+			}
+			
+			// Wait a bit more for the bones list to be updated before initializing plots
+			setTimeout(() => {
+				initializeWhenLoaded()
+				// Reset loading state after everything is done
+				setIsLoadingUploadedFile(false)
+			}, 50)
+		}, 100)
 	}
 	
 	// Added by Youssef Hergal - Function to remove a single skeleton viewer -
@@ -314,6 +380,9 @@ async function initialize() {
 		
 		if (viewer && viewer.newParent) {
 			viewer.newParent.visible = isVisible
+			console.log(`✅ Set ${fileName} visibility to: ${isVisible}`)
+		} else {
+			console.warn(`⚠️ Cannot toggle visibility for ${fileName}: viewer or newParent not found`)
 		}
 	}
 
@@ -422,8 +491,17 @@ async function initialize() {
 			color_idx += 1
 			viewer.skeletonPath = skeleton.fileName
 
-			// console.log(`Loading skeleton: ${skeleton.fileName}`)
-			await viewer.loadSkeleton(skeleton.fileName) // Wait for the skeleton to load
+			// Check if this is an uploaded file with content
+			if (skeleton.fileContent) {
+				// For uploaded files, use the content directly
+				console.log(`📁 Reloading uploaded file: ${skeleton.fileName}`)
+				await viewer.loadSkeletonFromContent(skeleton.fileContent)
+			} else {
+				// For repository files, use the file path
+				console.log(`📁 Reloading repository file: ${skeleton.fileName}`)
+				await viewer.loadSkeleton(skeleton.fileName)
+			}
+			
 			viewer.label = skeleton.label[skeleton.label.length - 1]
 			viewer.plotLabel = skeleton.label
 
@@ -442,7 +520,15 @@ async function initialize() {
 	createEffect(async () => {
 		const skeletons = skeletonsArray()
 		if (skeletons.length > 0 && skeletonViewers.length === 0) {
-			await reloadSkeletonViewers() // Only reload completely on initial load
+			// Check if any skeleton has fileContent (uploaded files)
+			const hasUploadedFiles = skeletons.some(skeleton => skeleton.fileContent)
+			
+			if (hasUploadedFiles) {
+				console.log(`📁 Detected uploaded files - skipping automatic reload`)
+				return // Don't reload automatically for uploaded files
+			}
+			
+			await reloadSkeletonViewers() // Only reload completely on initial load for repository files
 		}
 	})
 
@@ -461,17 +547,25 @@ async function initialize() {
 		setAnimationDuration(maxDuration) // Update the state with the maximum duration
 	}
 
-	function getBonesList() {
-		setBonesList(formatBoneNames(skeletonViewers[0].boneHierarchy))
-		setSelectedValue(bonesList()[0])
-		setSelectedJoint(skeletonViewers[0].boneHierarchy[0].name)
+	// Function moved to module level for export
 
-		// console.log(
-		// 	"setSelectedJointsetSelectedJoint: ",
-		// 	selectedJoint(),
-		// 	bonesList()[0],
-		// 	skeletonViewers[0].boneHierarchy[0]
-		// )
+	// Added by Youssef Hergal - Function to get common bones across all skeletons -
+	// FUNCTIONALITY: Finds bones that exist in all loaded skeletons
+	// WHY: Prevents "Bone not found" errors by only showing compatible joints
+	// PERFORMANCE: O(n*m) where n is number of skeletons, m is average bones per skeleton
+	function getCommonBones() {
+		if (skeletonViewers.length === 0) return []
+		
+		// Get bones from the first skeleton as base
+		const firstSkeletonBones = Object.keys(skeletonViewers[0].boneIndex || {})
+		if (firstSkeletonBones.length === 0) return []
+		
+		// Find bones that exist in ALL skeletons
+		return firstSkeletonBones.filter(boneName => 
+			skeletonViewers.every(viewer => 
+				viewer.boneIndex && viewer.boneIndex[boneName] !== undefined
+			)
+		)
 	}
 	// Animation loop
 	scene.animate = function () {
@@ -519,8 +613,10 @@ async function initialize() {
 				// console.log("run Initialiaze PLOTs")
 				initializeWhenLoaded(true)
 				skeletonViewers.forEach((viewer) => {
-					viewer.mixer.setTime(0)
-					viewer.mixer.timeScale = 0
+					if (viewer.mixer) {
+						viewer.mixer.setTime(0)
+						viewer.mixer.timeScale = 0
+					}
 					viewer.addListeners()
 				})
 
@@ -595,24 +691,51 @@ async function initialize() {
 	// WHY: Much faster than reloading - just changes the 'visible' property
 	// PERFORMANCE: O(1) property change per skeleton instead of O(n) reload
 	createEffect(() => {
+		console.log("🔍 Visibility effect triggered")
 		const visibilityMap = bvHVisibilityMap()
 		const currentViewers = skeletonViewers
 		
-		// Added by Youssef Hergal - Update visibility for each viewer - 
-		// FUNCTIONALITY: Changes only the visibility property of each skeleton
-		// WHY: Avoids reloading skeletons just to show/hide them
-		// PERFORMANCE: Instant visibility toggle instead of full reload
-		currentViewers.forEach(viewer => {
-			const fileName = viewer.skeletonPath || viewer.bvhName
-			if (fileName) {
-				const shortFileName = fileName.replace('bvh2/', '')
-				const isVisible = visibilityMap[shortFileName] !== false
-				toggleSkeletonViewer(fileName, isVisible)
-			}
-		})
+		console.log("🔍 Visibility effect - viewers count:", currentViewers.length)
+		console.log("🔍 Visibility effect - visibility map:", visibilityMap)
 		
-		isChanged = true
-		isBonesListReady = true
+		// DEBUG: Check if viewers are empty when effect triggers
+		if (currentViewers.length === 0) {
+			console.warn("⚠️ Visibility effect triggered but no viewers loaded yet - this is likely the cause of invisible skeletons")
+			console.warn("⚠️ This happens when bvHVisibilityMap changes before skeletons are loaded")
+			
+			// Instead of returning early, wait for viewers to be loaded
+			const checkForViewers = () => {
+				if (skeletonViewers.length > 0) {
+					console.log("🔍 Viewers now available, applying visibility settings")
+					applyVisibilitySettings()
+				} else {
+					setTimeout(checkForViewers, 100) // Check again in 100ms
+				}
+			}
+			setTimeout(checkForViewers, 100)
+			return
+		}
+		
+		applyVisibilitySettings()
+		
+		function applyVisibilitySettings() {
+			// Added by Youssef Hergal - Update visibility for each viewer - 
+			// FUNCTIONALITY: Changes only the visibility property of each skeleton
+			// WHY: Avoids reloading skeletons just to show/hide them
+			// PERFORMANCE: Instant visibility toggle instead of full reload
+			currentViewers.forEach(viewer => {
+				const fileName = viewer.skeletonPath || viewer.bvhName
+				if (fileName) {
+					const shortFileName = fileName.replace('bvh2/', '')
+					const isVisible = visibilityMap[shortFileName] !== false
+					console.log(`🔍 Setting visibility for ${shortFileName}: ${isVisible}`)
+					toggleSkeletonViewer(fileName, isVisible)
+				}
+			})
+			
+			isChanged = true
+			isBonesListReady = true
+		}
 	})
 
 	// Initialize function completed
@@ -734,6 +857,50 @@ const play = () => {
 }
 const stop = () => myScene.stop()
 
+// Function to update bones list for joint selector
+let lastBonesListUpdate = 0
+const getBonesList = () => {
+	const now = Date.now()
+	if (now - lastBonesListUpdate < 500) {
+		console.log(`🦴 Skipping getBonesList - too soon (${now - lastBonesListUpdate}ms ago)`)
+		return
+	}
+	lastBonesListUpdate = now
+	
+	const viewers = skeletonViewersSig()
+	console.log(`🦴 getBonesList called - viewers count: ${viewers.length}`)
+	
+	if (viewers.length > 0) {
+		console.log(`🦴 First viewer boneHierarchy:`, viewers[0].boneHierarchy)
+		const formattedBones = formatBoneNames(viewers[0].boneHierarchy)
+		
+		// Only update if bones list has changed
+		const currentBones = bonesList()
+		if (JSON.stringify(currentBones) === JSON.stringify(formattedBones)) {
+			console.log(`🦴 Bones list unchanged - skipping update`)
+			return
+		}
+		
+		// Clear old selections first
+		setSelectedValue("")
+		setSelectedJoint("")
+		
+		// Update with new bones
+		setBonesList(formattedBones)
+		
+		// Set new default selections
+		if (formattedBones.length > 0) {
+			setSelectedValue(formattedBones[0])
+			setSelectedJoint(viewers[0].boneHierarchy[0].name)
+		}
+		
+		console.log(`🦴 Updated selectedValue:`, selectedValue())
+		console.log(`🦴 Updated selectedJoint:`, selectedJoint())
+	} else {
+		console.log(`🦴 No viewers available for bones list update`)
+	}
+}
+
 export {
 	loadFile,
 	play,
@@ -742,4 +909,5 @@ export {
 	initializeWhenLoaded,
 	uploadFile,
 	preparePlotsData,
+	getBonesList,
 }

@@ -13,6 +13,7 @@ import {
 	setScaleX,
 	scaleY,
 	setScaleY,
+	isLoadingUploadedFile,
 	translateFixerGlobal,
 	setTranslateFixerGlobal,
 } from "./stores/store"
@@ -28,7 +29,7 @@ function MainPage() {
 	setMainPageLoaded(false)
 	createEffect(async () => {
 		selectedJoint()
-		if (mainPageLoaded) {
+		if (mainPageLoaded && !isLoadingUploadedFile()) {
 			// Preparing plots data
 			await initializeWhenLoaded(true)
 		} else {

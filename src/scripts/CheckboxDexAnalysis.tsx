@@ -6,6 +6,7 @@ import { createEffect } from "solid-js"
 import { createVectorPLot } from "./plots"
 import { ResizeEverything } from "./ResizeEverything"
 import { formatBoneNames, extractJointNames } from "./utils/boneUtils"
+import { getBonesList } from "./useSceneSetup"
 
 import {
 	displayTable,
@@ -82,6 +83,10 @@ import { op } from "arquero"
 async function TableAndPlotsUpdate() {
 		// Starting TableAndPlotsUpdate
 	
+	// Ensure bones list is available
+	console.log("🦴 Ensuring bones list is available for table creation...")
+	getBonesList()
+	
 	// Data for table creation
 	
 	// const eGridDiv = document.querySelector(
@@ -116,21 +121,74 @@ async function DoGOM_init() {
 		// Starting DoGOM_init
 	setAppIsLoaded(false)
 	
+	// Update bones list before processing
+	console.log("🦴 Updating bones list for Dexterity Analysis...")
+	getBonesList()
+	
+	// Ensure skeletons are visible when dexterity analysis starts
+	console.log("🔍 Ensuring skeletons are visible for Dexterity Analysis...")
+	const { skeletonViewersSig, bvHVisibilityMap, setBVHVisibilityMap } = await import("./stores/sceneStore")
+	const viewers = skeletonViewersSig()
+	const visibilityMap = bvHVisibilityMap()
+	
+	console.log(`🔍 Found ${viewers.length} skeleton viewers`)
+	
+	if (viewers.length === 0) {
+		console.warn("⚠️ No skeleton viewers found during Dexterity Analysis - this is the root cause of invisible skeletons!")
+		console.warn("⚠️ Skeletons may not be loaded yet or there's an issue with skeleton loading")
+		return // Exit early if no viewers
+	}
+	
+	viewers.forEach(viewer => {
+		const fileName = viewer.skeletonPath || viewer.bvhName
+		if (fileName) {
+			const shortFileName = fileName.replace('bvh2/', '')
+			const isVisible = visibilityMap[shortFileName] !== false
+			console.log(`🔍 Dexterity Analysis - Setting visibility for ${shortFileName}: ${isVisible}`)
+			
+			// Force visibility to true for dexterity analysis
+			if (viewer.newParent) {
+				viewer.newParent.visible = true
+				console.log(`✅ Forced visibility to true for ${shortFileName}`)
+			}
+			
+			// Update visibility map to ensure consistency
+			const newVisibilityMap = { ...visibilityMap }
+			newVisibilityMap[shortFileName] = true
+			setBVHVisibilityMap(newVisibilityMap)
+		}
+	})
+	
 	// Input data for do_gom
-	
-	const {
-		df_coef: newDfCoef,
-		df_pred: newDfPred,
-		df_pred_sampled: newDfPredSampled,
-	} = await do_gom(inputGOM())
-	
-	// do_gom results
-	
-	set_df_coef(newDfCoef.reify())
-	set_df_pred(newDfPred)
-	set_df_coef_mod(newDfCoef.reify())
-	set_df_pred_mod(newDfPred)
-	set_df_pred_sampled(newDfPredSampled)
+	try {
+		const gomResult = await do_gom(inputGOM())
+		
+		if (!gomResult || !gomResult.df_coef) {
+			console.error("❌ GOM analysis failed - no valid result returned")
+			setAppIsLoaded(true) // Set loaded to true even if GOM fails
+			return
+		}
+		
+		const {
+			df_coef: newDfCoef,
+			df_pred: newDfPred,
+			df_pred_sampled: newDfPredSampled,
+		} = gomResult
+		
+		// do_gom results
+		set_df_coef(newDfCoef.reify())
+		set_df_pred(newDfPred)
+		set_df_coef_mod(newDfCoef.reify())
+		set_df_pred_mod(newDfPred)
+		set_df_pred_sampled(newDfPredSampled)
+		
+		console.log("✅ GOM analysis completed successfully")
+	} catch (error) {
+		console.error("❌ GOM analysis failed:", error)
+		console.log("🔄 Continuing with skeleton visibility even though GOM failed")
+		setAppIsLoaded(true) // Set loaded to true even if GOM fails
+		return
+	}
 	
 		// Data set in store successfully
 	TableAndPlotsUpdate()
@@ -159,32 +217,66 @@ export async function displayTableSwitcher(forceIndex = null) {
 		case 3:
 			// Displaying table A1
 			const tableA1Data = await df_A1()
-			displayTable(tableA1Data)
+			if (tableA1Data && tableA1Data.columnNames) {
+				displayTable(tableA1Data)
+			} else {
+				console.warn("⚠️ Table A1 data not available or invalid")
+			}
 			break
 		case 5:
 			// Displaying table A2
-			displayTable(await df_A2())
+			const tableA2Data = await df_A2()
+			if (tableA2Data && tableA2Data.columnNames) {
+				displayTable(tableA2Data)
+			} else {
+				console.warn("⚠️ Table A2 data not available or invalid")
+			}
 			break
 		case 7:
 			// Displaying table A3
-			displayTable(await df_A3())
+			const tableA3Data = await df_A3()
+			if (tableA3Data && tableA3Data.columnNames) {
+				displayTable(tableA3Data)
+			} else {
+				console.warn("⚠️ Table A3 data not available or invalid")
+			}
 			break
 		case 9:
 			// Displaying table A4
-			displayTable(await df_A4())
+			const tableA4Data = await df_A4()
+			if (tableA4Data && tableA4Data.columnNames) {
+				displayTable(tableA4Data)
+			} else {
+				console.warn("⚠️ Table A4 data not available or invalid")
+			}
 			break
 		case 11:
 			// Displaying table A5
-			displayTable(await df_A5())
+			const tableA5Data = await df_A5()
+			if (tableA5Data && tableA5Data.columnNames) {
+				displayTable(tableA5Data)
+			} else {
+				console.warn("⚠️ Table A5 data not available or invalid")
+			}
 			break
 		case 12:
 			// Displaying table A6
-			displayTable(await df_A6())
+			const tableA6Data = await df_A6()
+			if (tableA6Data && tableA6Data.columnNames) {
+				displayTable(tableA6Data)
+			} else {
+				console.warn("⚠️ Table A6 data not available or invalid")
+			}
 			break
 
 		default:
 			// Displaying default table A1
-			displayTable(await df_A1())
+			const defaultTableData = await df_A1()
+			if (defaultTableData && defaultTableData.columnNames) {
+				displayTable(defaultTableData)
+			} else {
+				console.warn("⚠️ Default table A1 data not available or invalid")
+			}
 			break
 	}
 }
@@ -222,13 +314,28 @@ const CheckboxDexAnalysis = () => {
 					await thisOnChange()
 
 					setBonesList(extractJointNames(bonesList()))
-					// const appContainer =
-					// 	document.getElementById("mainContainer")
-
-					// const element =
-					// 	document.querySelector<HTMLElement>(".tabs__content")
-					// const appContainerHeight = appContainer.clientHeight
-					// element.style.height = `${appContainerHeight * 0.45}px`
+					
+					// Force skeleton visibility when dexterity analysis is enabled
+					console.log("🔍 Forcing skeleton visibility for Dexterity Analysis...")
+					const { skeletonViewersSig, bvHVisibilityMap, setBVHVisibilityMap } = await import("./stores/sceneStore")
+					const viewers = skeletonViewersSig()
+					const visibilityMap = bvHVisibilityMap()
+					
+					// Ensure all skeletons are visible for dexterity analysis
+					viewers.forEach(viewer => {
+						const fileName = viewer.skeletonPath || viewer.bvhName
+						if (fileName && viewer.newParent) {
+							const shortFileName = fileName.replace('bvh2/', '')
+							viewer.newParent.visible = true
+							console.log(`✅ Forced visibility for ${shortFileName}`)
+							
+							// Update visibility map
+							const newVisibilityMap = { ...visibilityMap }
+							newVisibilityMap[shortFileName] = true
+							setBVHVisibilityMap(newVisibilityMap)
+						}
+					})
+					
 					if (!checkboxFistClick()) {
 						await DoGOM_init()
 					}

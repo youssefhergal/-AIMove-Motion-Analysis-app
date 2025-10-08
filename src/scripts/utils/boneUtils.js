@@ -20,6 +20,20 @@ export function cleanBoneHierarchy(boneHierarchy) {
 }
 
 /**
+ * Extract joint name from formatted hierarchy string
+ * @param {string} formattedBone - The formatted bone string with hierarchy
+ * @returns {string} The clean joint name without hierarchy characters
+ */
+export function extractJointName(formattedBone) {
+    if (typeof formattedBone !== "string") {
+        console.error("Expected a string but received:", formattedBone)
+        return ""
+    }
+    // Remove hierarchy characters (•, -, spaces) and get the actual joint name
+    return formattedBone.replace(/[•\-]+/g, "").trim()
+}
+
+/**
  * Extract joint names from variables array
  * @param {Array} variables - Array of variable names
  * @returns {Array} Array of joint names that match predefined joint patterns
@@ -63,7 +77,16 @@ export function formatBoneNames(bones) {
     }
     return bones.map((bone) => {
         const level = bone.depth // Assume each bone object has a 'depth' property
-        const prefix = "-".repeat(level * 1) // Create indentation based on depth
-        return `•${prefix}${bone.name}` // Return only the formatted name with indentation
+        
+        // Create simple dash-based indentation
+        let prefix = ""
+        if (level === 0) {
+            prefix = "•" // Root level - bullet point
+        } else {
+            // Use simple dashes for indentation
+            prefix = "•" + "-".repeat(level * 1) // 1 dashes per level
+        }
+        
+        return `${prefix}${bone.name}` // Return formatted name with hierarchy
     })
 }

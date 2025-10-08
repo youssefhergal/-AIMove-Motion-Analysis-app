@@ -37,7 +37,7 @@ const SplitterV_SkelL_DexR = () => {
 		overflow: "hidden",
 	}
 
-	const [valueButton, setValueButton] = createSignal("ATT-RGOM")
+	const [valueButton, setValueButton] = createSignal("KF-GOM")
 
 	// Effect to handle tab changes and refresh data
 	createEffect(() => {
@@ -122,15 +122,17 @@ const SplitterV_SkelL_DexR = () => {
 										id="Analysis_Title_small"
 									>
 										Data-intensive
+										
 										<ToggleGroup
 											class="toggle-group"
-											defaultValue="ATT-RGOM"
+											defaultValue="KF-GOM"
 											value={valueButton()}
 										>
 											<ToggleGroup.Item
 												class="toggle-group__item"
 												value="ATT-RGOM"
 												aria-label="Bold"
+												disabled={true}
 												onClick={() => {
 													setValueButton("ATT-RGOM")
 												}}
@@ -154,6 +156,7 @@ const SplitterV_SkelL_DexR = () => {
 												T-RGOM
 											</ToggleGroup.Item>
 										</ToggleGroup>
+										
 									</div>
 									<div
 										class="grid-item"

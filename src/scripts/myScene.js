@@ -949,27 +949,19 @@ let myScene = {
 	},
 
 	createDataframes: async function () {
-		const variablesOpt = [
-			"Spine",
-			"Spine1",
-			"Spine2",
-			"Spine3",
-			"Hips",
-			"Neck",
-			"Head",
-			"LeftArm",
-			"LeftForeArm",
-			"RightArm",
-			"RightForeArm",
-			"LeftShoulder",
-			"LeftShoulder2",
-			"RightShoulder",
-			"RightShoulder2",
-			"LeftUpLeg",
-			"LeftLeg",
-			"RightUpLeg",
-			"RightLeg",
-		]
+		// Use actual bone names from the loaded skeleton instead of hardcoded names
+		const variablesOpt = this.boneHierarchy.map(bone => bone.name).filter(name => 
+			// Filter out bones that are too specific (like individual fingers/toes)
+			!name.includes('Thumb') && 
+			!name.includes('Index') && 
+			!name.includes('Middle') && 
+			!name.includes('Ring') && 
+			!name.includes('Pinky') &&
+			!name.includes('Eye') &&
+			!name.includes('Toe')
+		)
+		
+		console.log(`🦴 Using ${variablesOpt.length} bones for GOM analysis:`, variablesOpt)
 
 		let finalAnglesArray = []
 		let finalWoldPosArray = []

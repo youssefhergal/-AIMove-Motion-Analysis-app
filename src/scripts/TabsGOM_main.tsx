@@ -23,47 +23,49 @@ import {
 	forecastResults,
 } from "./stores/store"
 import { TabContent, Tabs } from "@ark-ui/solid"
-import { pred_ang_coef } from "./tensorflowGOM"
+// ATT-RGOM functionality disabled
+// import { pred_ang_coef } from "./tensorflowGOM"
 // Plot functionality removed - will be reimplemented later
 import * as aq from "arquero"
 import { get_mathjax_svg } from "./InitMathJax"
 import * as echarts from "echarts"
 import { displayTableSwitcher } from "./CheckboxDexAnalysis"
 
-async function GenerateMovement() {
-		// Starting GenerateMovement
-	setAppIsLoaded(false)
+// ATT-RGOM functionality disabled
+// async function GenerateMovement() {
+// 		// Starting GenerateMovement
+// 	setAppIsLoaded(false)
 
-	try {
-		// Input data for prediction
+// 	try {
+// 		// Input data for prediction
 
-		if (!inputGOM() || inputGOM().length === 0) {
-			console.error("❌ inputGOM is empty or undefined")
-			return
-		}
+// 		if (!inputGOM() || inputGOM().length === 0) {
+// 			console.error("❌ inputGOM is empty or undefined")
+// 			return
+// 		}
 		
-		if (!df_coef_mod() || df_coef_mod().length === 0) {
-			return
-		}
+// 		if (!df_coef_mod() || df_coef_mod().length === 0) {
+// 			return
+// 		}
 
-		// Calling pred_ang_coef
-		const { df_pred_mod: newDfPred_mod } = await pred_ang_coef(
-			inputGOM(),
-			df_coef_mod()
-		)
+// 		// Calling pred_ang_coef
+// 		const { df_pred_mod: newDfPred_mod } = await pred_ang_coef(
+// 			inputGOM(),
+// 			df_coef_mod()
+// 		)
 
-		// Prediction results processed
-		await set_df_pred_sampled(newDfPred_mod)
+// 		// Prediction results processed
+// 		await set_df_pred_sampled(newDfPred_mod)
 		
-		// Plot functionality removed - will be reimplemented later
+// 		// Plot functionality removed - will be reimplemented later
 		
-		setAppIsLoaded(true)
-		// setSelectedTab("Generated Movement")
-	} catch (error) {
-		console.error("❌ Error in GenerateMovement:", error)
-		setAppIsLoaded(true)
-	}
-}
+// 		setAppIsLoaded(true)
+// 		// setSelectedTab("Generated Movement")
+// 	} catch (error) {
+// 		console.error("❌ Error in GenerateMovement:", error)
+// 		setAppIsLoaded(true)
+// 	}
+// }
 
 async function DownloadCSV() {
 	const csvFile = await df_pred_mod().toCSV()
@@ -80,7 +82,7 @@ async function DownloadCSV() {
 	URL.revokeObjectURL(url)
 }
 
-export { DownloadCSV, GenerateMovement }
+export { DownloadCSV /* GenerateMovement disabled */ }
 
 function TabsGOM_main(props: { valueButton: string }) {
 	// Signals for storing prediction data
@@ -146,7 +148,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 		const predData = df_pred_mod()
 		// ATT-RGOM data check
 		if (gomData && gomData.length > 0) {
-			GenerateMovement()
+		// ATT-RGOM functionality disabled
+		// GenerateMovement()
 		}
 	})
 	
@@ -155,7 +158,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 		// Component mounted
 		const gomData = inputGOM()
 		if (gomData && gomData.length > 0) {
-			GenerateMovement()
+		// ATT-RGOM functionality disabled
+		// GenerateMovement()
 		}
 		
 		// Plot functionality removed - will be reimplemented later
@@ -372,7 +376,7 @@ function TabsGOM_main(props: { valueButton: string }) {
 						)}
 
 								<SplitterV_TableAssumptions />
-						{/* <div class="generateButtons">
+						<div class="generateButtons">
 							<div
 								id="grid-container-generateButtons"
 								class="grid-container-buttonCoef"
@@ -380,7 +384,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 								<button
 									id="generateButton"
 									class="buttonCoef"
-									onclick={GenerateMovement}
+									// ATT-RGOM functionality disabled
+									// onclick={GenerateMovement}
 								>
 									Generate
 								</button>
@@ -392,7 +397,7 @@ function TabsGOM_main(props: { valueButton: string }) {
 									Download CSV
 								</button>
 							</div>
-						</div> */}
+						</div>
 					</div>
 						</>
 					)}
@@ -565,7 +570,8 @@ function TabsGOM_main(props: { valueButton: string }) {
 								<button
 									id="generateButton"
 									class="buttonCoef"
-									onclick={GenerateMovement}
+									// ATT-RGOM functionality disabled
+									// onclick={GenerateMovement}
 								>
 									Generate
 								</button>

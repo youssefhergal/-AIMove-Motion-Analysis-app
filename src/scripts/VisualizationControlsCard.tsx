@@ -5,7 +5,7 @@ import { Switch } from "@kobalte/core"
 // Removed Checkbox import - using HTML checkboxes instead
 import { Slider } from "@kobalte/core"
 import { initializeWhenLoaded } from "./useSceneSetup"
-import { cleanBoneHierarchy } from "./utils/boneUtils"
+import { extractJointName } from "./utils/boneUtils"
 import {
 	bonesList,
 	selectedJoint,
@@ -114,7 +114,7 @@ function VisualizationControlsCard() {
 										].material.color.set(0x145e9f)
 									})
 
-									setSelectedJoint(cleanBoneHierarchy(newValue)[0])
+									setSelectedJoint(extractJointName(newValue))
 
 									skeletonViewersSig().forEach((viewer) => {
 										viewer.sphereMeshes.children[
@@ -128,7 +128,7 @@ function VisualizationControlsCard() {
 							class="default-select"
 						>
 							{bonesList().map((bone) => (
-								<option value={bone}>{cleanBoneHierarchy(bone)[0]}</option>
+								<option value={bone}>{bone}</option>
 							))}
 						</select>
 					)}

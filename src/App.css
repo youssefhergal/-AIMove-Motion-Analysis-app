@@ -1716,6 +1716,20 @@ p {
 	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.default-select:disabled {
+	background: #f3f4f6;
+	border-color: #e5e7eb;
+	color: #9ca3af;
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.default-select:disabled:hover {
+	background: #f3f4f6;
+	border-color: #e5e7eb;
+	box-shadow: none;
+}
+
 .divider {
 	color: #94a3b8;
 	text-align: center;
@@ -2227,4 +2241,252 @@ p {
 	font-size: 11px;
 	font-weight: 500;
 	margin-top: 8px;
+}
+
+/* Ark UI Dialog Styles - Fully Responsive */
+.dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 1000;
+	backdrop-filter: blur(2px);
+}
+
+.dialog-positioner {
+	position: fixed;
+	inset: 0;
+	z-index: 1001;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	overflow-y: auto;
+}
+
+.dialog-content {
+	background: white;
+	border-radius: 12px;
+	padding: 0;
+	min-width: 280px;
+	max-width: 80vw;
+	max-height: 80vh;
+	box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+	overflow: hidden;
+	transform: scale(1);
+	transition: transform 0.2s ease-out;
+}
+
+.dialog-header {
+	padding: 18px 20px 12px 20px;
+}
+
+.dialog-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #111827;
+	margin: 0 0 8px 0;
+	line-height: 1.3;
+}
+
+.dialog-description {
+	font-size: 13px;
+	color: #6b7280;
+	line-height: 1.4;
+	margin: 0;
+}
+
+.dialog-footer {
+	padding: 12px 20px 18px 20px;
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+}
+
+.dialog-button {
+	padding: 8px 16px;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	border: none;
+	transition: all 0.2s ease;
+	min-width: 70px;
+	position: relative;
+	overflow: hidden;
+}
+
+.dialog-button-cancel {
+	background-color: #f9fafb;
+	color: #374151;
+	border: 2px solid #e5e7eb;
+}
+
+.dialog-button-cancel:hover {
+	background-color: #f3f4f6;
+	border-color: #d1d5db;
+	transform: translateY(-1px);
+}
+
+.dialog-button-confirm {
+	background-color: #3b82f6;
+	color: white;
+	border: 2px solid #3b82f6;
+}
+
+.dialog-button-confirm:hover {
+	background-color: #2563eb;
+	border-color: #2563eb;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Tablet adjustments */
+@media (max-width: 1024px) {
+	.dialog-positioner {
+		padding: 16px;
+	}
+	
+	.dialog-content {
+		min-width: 260px;
+		max-width: 75vw;
+	}
+	
+	.dialog-header {
+		padding: 16px 18px 10px 18px;
+	}
+	
+	.dialog-title {
+		font-size: 15px;
+	}
+	
+	.dialog-description {
+		font-size: 12px;
+	}
+	
+	.dialog-footer {
+		padding: 10px 18px 16px 18px;
+	}
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+	.dialog-positioner {
+		padding: 8px;
+		align-items: flex-start;
+		padding-top: 3vh;
+	}
+	
+	.dialog-content {
+		min-width: 240px;
+		max-width: 90vw;
+		max-height: 80vh;
+		border-radius: 10px;
+	}
+	
+	.dialog-header {
+		padding: 16px 16px 8px 16px;
+	}
+	
+	.dialog-title {
+		font-size: 14px;
+		margin-bottom: 6px;
+	}
+	
+	.dialog-description {
+		font-size: 12px;
+		line-height: 1.4;
+	}
+	
+	.dialog-footer {
+		padding: 8px 16px 16px 16px;
+		flex-direction: column;
+		gap: 8px;
+	}
+	
+	.dialog-button {
+		width: 100%;
+		padding: 10px 16px;
+		font-size: 13px;
+		border-radius: 6px;
+	}
+}
+
+/* Small mobile adjustments */
+@media (max-width: 480px) {
+	.dialog-positioner {
+		padding: 6px;
+		padding-top: 2vh;
+	}
+	
+	.dialog-content {
+		min-width: 220px;
+		max-width: 95vw;
+		max-height: 85vh;
+		border-radius: 8px;
+	}
+	
+	.dialog-header {
+		padding: 14px 14px 6px 14px;
+	}
+	
+	.dialog-title {
+		font-size: 13px;
+		margin-bottom: 6px;
+	}
+	
+	.dialog-description {
+		font-size: 11px;
+		line-height: 1.3;
+	}
+	
+	.dialog-footer {
+		padding: 6px 14px 14px 14px;
+		gap: 6px;
+	}
+	
+	.dialog-button {
+		padding: 8px 14px;
+		font-size: 12px;
+		border-radius: 5px;
+	}
+}
+
+/* Landscape mobile adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+	.dialog-positioner {
+		padding: 6px;
+		align-items: center;
+		padding-top: 0;
+	}
+	
+	.dialog-content {
+		max-height: 90vh;
+		min-width: 200px;
+	}
+	
+	.dialog-header {
+		padding: 12px 16px 6px 16px;
+	}
+	
+	.dialog-title {
+		font-size: 13px;
+		margin-bottom: 4px;
+	}
+	
+	.dialog-description {
+		font-size: 11px;
+		line-height: 1.3;
+	}
+	
+	.dialog-footer {
+		padding: 6px 16px 12px 16px;
+		flex-direction: row;
+		gap: 6px;
+	}
+	
+	.dialog-button {
+		padding: 6px 12px;
+		font-size: 11px;
+		min-width: 60px;
+	}
 }
