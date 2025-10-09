@@ -55,3 +55,4 @@ echo "2. Under 'Source', select 'Deploy from a branch'"
 echo "3. Under 'Branch', select 'gh-pages' and '/ (root)'"
 echo "4. Click 'Save'"
 echo "5. Wait a few minutes for GitHub Pages to update"
+

@@ -42,3 +42,4 @@ git checkout master
 
 echo "✅ Deployment complete!"
 echo "🌐 Your app will be available at: https://youssefhergal.github.io/-AIMove-Motion-Analysis-app/"
+

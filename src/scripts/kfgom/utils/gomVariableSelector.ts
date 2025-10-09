@@ -64,7 +64,6 @@ export class GOMVariableSelector {
 		this.skeletonLeftJoints = leftJoints
 		this.skeletonRightJoints = rightJoints
 		this.skeletonHierarchy = hierarchy || []
-		console.log(`🔍 Updated skeleton data: ${leftJoints.length} left, ${rightJoints.length} right, ${this.skeletonHierarchy.length} hierarchy`)
 	}
 
 	/**
@@ -75,18 +74,15 @@ export class GOMVariableSelector {
 	 */
 	private getHierarchicallyConnectedJoints(targetJoint: string): string[] {
 		if (this.skeletonHierarchy.length === 0) {
-			console.warn("⚠️ No hierarchy data available")
 			return []
 		}
 		
-		// Extract base joint name (remove axis suffix)
-		const baseJointName = targetJoint.split('_')[0]
+		// Extract base joint name (remove axis suffix like _Xrotation, _Yrotation, etc.)
+		const baseJointName = targetJoint.replace(/_[XYZ]rotation$/i, '')
 		
 		// Find the target joint in hierarchy
 		const targetJointInfo = this.skeletonHierarchy.find(joint => joint.name === baseJointName)
 		if (!targetJointInfo) {
-			console.warn(`⚠️ Target joint ${baseJointName} not found in hierarchy`)
-			console.log(`🔍 Available joints in hierarchy:`, this.skeletonHierarchy.map(j => j.name))
 			return []
 		}
 		
@@ -144,16 +140,12 @@ export class GOMVariableSelector {
 			targetJoint // Exclude target joint itself
 		])
 		
-		// Get target joint side for filtering
-		const targetSide = this.detectJointSide(targetJoint)
-		
-		// Return joints that are NOT in any other assumption AND on the same side
+		// Return joints that are NOT in any other assumption
+		// Non-serial Intra-limb Mediation includes ALL joints not covered by other assumptions
 		const nonSerialJoints = jointNames.filter(name => {
-			const jointSide = this.detectJointSide(name)
 			const isExcluded = excludedJoints.has(name)
-			const isSameSide = targetSide === 'center' || jointSide === targetSide
 			
-			return !isExcluded && isSameSide
+			return !isExcluded
 		})
 		
 		
@@ -166,8 +158,8 @@ export class GOMVariableSelector {
 	private detectJointSide(jointName: string): string {
 		// First, try to use skeleton data if available
 		if (this.skeletonLeftJoints.length > 0 || this.skeletonRightJoints.length > 0) {
-			// Extract base joint name (remove axis suffix like _Xrotation)
-			const baseJointName = jointName.split('_')[0]
+			// Extract base joint name (remove axis suffix like _Xrotation, _Yrotation, etc.)
+			const baseJointName = jointName.replace(/_[XYZ]rotation$/i, '')
 			
 			if (this.skeletonLeftJoints.includes(baseJointName)) {
 				return 'left'
@@ -291,10 +283,8 @@ export class GOMVariableSelector {
 		
 		// Detect the side of the target joint
 		const targetSide = this.detectJointSide(targetJoint)
-		
 		// Inter-limb synergies ONLY work for left/right joints, NEVER for center joints
 		if (targetSide === 'center') {
-			console.log(`⚠️ Inter-limb synergies not applicable for center joint: ${targetJoint}`)
 			return []
 		}
 		
@@ -309,14 +299,13 @@ export class GOMVariableSelector {
 		// Determine the opposite side
 		const oppositeSide = targetSide === 'left' ? 'right' : 'left'
 		
-		
 		// Find joints on the opposite side with the same axis and same joint type
 		const oppositeSideJoints = jointNames.filter(name => {
 			const side = this.detectJointSide(name)
 			const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
 			const isOppositeSide = side === oppositeSide
 			
-			const nameBase = name.split('_')[0]
+			const nameBase = name.replace(/_[XYZ]rotation$/i, '')
 			
 			// Check joint type (primary requirement)
 			const isSameJointType = this.isSameJointType(baseJointName, nameBase)
@@ -357,18 +346,29 @@ export class GOMVariableSelector {
 	 * Find a joint in the hierarchy with flexible name matching
 	 */
 	private findJointInHierarchy(jointName: string): any {
-		// First try exact match
-		let jointInfo = this.skeletonHierarchy.find(joint => joint.name === jointName)
+		// Extract base joint name (remove axis suffix like _Xrotation, _Yrotation, etc.)
+		const baseJointName = jointName.replace(/_[XYZ]rotation$/i, '')
+		
+		// First try exact match with base name
+		let jointInfo = this.skeletonHierarchy.find(joint => joint.name === baseJointName)
 		if (jointInfo) return jointInfo
 		
-		// Try case-insensitive match
+		// Try exact match with full name
+		jointInfo = this.skeletonHierarchy.find(joint => joint.name === jointName)
+		if (jointInfo) return jointInfo
+		
+		// Try case-insensitive match with base name
+		jointInfo = this.skeletonHierarchy.find(joint => joint.name.toLowerCase() === baseJointName.toLowerCase())
+		if (jointInfo) return jointInfo
+		
+		// Try case-insensitive match with full name
 		jointInfo = this.skeletonHierarchy.find(joint => joint.name.toLowerCase() === jointName.toLowerCase())
 		if (jointInfo) return jointInfo
 		
-		// Try removing common prefixes/suffixes
-		const cleanName = jointName.replace(/^(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT)/i, '')
+		// Try removing common prefixes/suffixes from base name
+		const cleanName = baseJointName.replace(/^([A-Za-z0-9_]+_)?(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT|l|r)/i, '')
 		jointInfo = this.skeletonHierarchy.find(joint => {
-			const cleanJointName = joint.name.replace(/^(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT)/i, '')
+			const cleanJointName = joint.name.replace(/^([A-Za-z0-9_]+_)?(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT|l|r)/i, '')
 			return cleanJointName.toLowerCase() === cleanName.toLowerCase()
 		})
 		
@@ -379,10 +379,14 @@ export class GOMVariableSelector {
 	 * Check if two joint names represent the same joint type
 	 */
 	private isSameJointType(joint1: string, joint2: string): boolean {
+		// Remove axis suffixes first (like _Xrotation, _Yrotation, etc.)
+		const base1 = joint1.replace(/_[XYZ]rotation$/i, '')
+		const base2 = joint2.replace(/_[XYZ]rotation$/i, '')
+		
 		// Remove left/right prefixes to compare base joint types
-		// Updated regex to include single letter prefixes (l, r) at the beginning
-		const clean1 = joint1.replace(/^(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT|l|r)/i, '')
-		const clean2 = joint2.replace(/^(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT|l|r)/i, '')
+		// Generic regex to handle any prefix (Character1_, A1_, B1_, Car1_, etc.) + left/right prefixes
+		const clean1 = base1.replace(/^([A-Za-z0-9_]+_)?(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT|l|r)/i, '')
+		const clean2 = base2.replace(/^([A-Za-z0-9_]+_)?(left|right|l_|r_|l\.|r\.|l-|r-|l |r |l:|r:|l=|r=|l#|r#|Left|Right|LEFT|RIGHT|Lt|Rt|LT|RT|l|r)/i, '')
 		
 		const isMatch = clean1.toLowerCase() === clean2.toLowerCase()
 		
@@ -402,7 +406,6 @@ export class GOMVariableSelector {
 		// Extract the base joint name and axis from the target
 		const targetParts = targetJoint.split('_')
 		if (targetParts.length < 2) {
-			console.log(`⚠️ Target joint ${targetJoint} doesn't have axis suffix`)
 			return []
 		}
 		
@@ -414,13 +417,12 @@ export class GOMVariableSelector {
 		const hierarchicallyConnected = this.getHierarchicallyConnectedJoints(targetJoint)
 		
 		if (hierarchicallyConnected.length === 0) {
-			console.log(`⚠️ No hierarchically connected joints found for ${targetJoint}`)
 			return []
 		}
 		
 		// Filter based on side and axis
 		const serialJoints = jointNames.filter(name => {
-			const baseName = name.split('_')[0]
+			const baseName = name.replace(/_[XYZ]rotation$/i, '')
 			const hasAxis = name.toLowerCase().includes(targetAxis.toLowerCase())
 			
 			// Must be hierarchically connected
@@ -500,7 +502,6 @@ export class GOMVariableSelector {
 				return this.applyNonSerialMediation(joints, jointNames, targetJoint)
 				
 			default:
-				console.warn(`⚠️ Unknown assumption type: ${assumptionType}`)
 				return jointNames
 		}
 	}

@@ -66,7 +66,7 @@ function JointSelector() {
 			>
 				<Select.Trigger class="select__trigger" aria-label="Fruit">
 					<Select.Value class="select__value">
-						{(state) => state.selectedOption() as any}
+						{(state) => state.selectedOption()}
 					</Select.Value>
 					<Select.Icon class="select__icon"></Select.Icon>
 				</Select.Trigger>

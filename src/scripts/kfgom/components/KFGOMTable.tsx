@@ -224,17 +224,33 @@ export default function KFGOMTable() {
         return tableData
     }
 
-    // Cell renderer for significance with color coding
+    // Cell renderer for significance with color coding and tooltip
     const significanceCellRenderer = (params) => {
         const isSignificant = params.value === '***' || params.value === '**' || params.value === '*'
         const color = isSignificant ? '#4CAF50' : '#F44336'
         const backgroundColor = isSignificant ? '#E8F5E8' : '#FFEBEE'
-        return `<span style="color: ${color}; font-weight: bold; background-color: ${backgroundColor}; padding: 2px 6px; border-radius: 3px;">${params.value}</span>`
+        const tooltipText = isSignificant ? 'Significant' : 'Not Significant'
+        return `<span title="${tooltipText}: ${params.value}" style="color: ${color}; font-weight: bold; background-color: ${backgroundColor}; padding: 2px 6px; border-radius: 3px;">${params.value}</span>`
     }
 
     // Cell renderer for joint ID with built-in checkbox selection
     const jointIdCellRenderer = (params) => {
-        return `<span>${params.value}</span>`
+        return `<span title="${params.value}">${params.value}</span>`
+    }
+
+    // Cell renderer for coefficient with tooltip
+    const coefficientCellRenderer = (params) => {
+        return `<span title="${params.value}">${params.value}</span>`
+    }
+
+    // Cell renderer for p-value with tooltip
+    const pValueCellRenderer = (params) => {
+        return `<span title="${params.value}">${params.value}</span>`
+    }
+
+    // Cell renderer for joint name with tooltip
+    const jointNameCellRenderer = (params) => {
+        return `<span title="${params.value}">${params.value}</span>`
     }
 
     // Handle selection changes
@@ -406,9 +422,30 @@ export default function KFGOMTable() {
                     checkboxSelection: true,
                     headerCheckboxSelection: true
                 },
-                { field: 'jointName', headerName: 'Joint Name', width: 120, sortable: true, filter: true },
-                { field: 'coefficient', headerName: 'Coefficient', width: 150, sortable: true, filter: true },
-                { field: 'pValue', headerName: 'P-Value', width: 120, sortable: true, filter: true },
+                { 
+                    field: 'jointName', 
+                    headerName: 'Joint Name', 
+                    width: 120, 
+                    sortable: true, 
+                    filter: true,
+                    cellRenderer: jointNameCellRenderer
+                },
+                { 
+                    field: 'coefficient', 
+                    headerName: 'Coefficient', 
+                    width: 150, 
+                    sortable: true, 
+                    filter: true,
+                    cellRenderer: coefficientCellRenderer
+                },
+                { 
+                    field: 'pValue', 
+                    headerName: 'P-Value', 
+                    width: 120, 
+                    sortable: true, 
+                    filter: true,
+                    cellRenderer: pValueCellRenderer
+                },
                 { 
                     field: 'significance', 
                     headerName: 'Significance', 
