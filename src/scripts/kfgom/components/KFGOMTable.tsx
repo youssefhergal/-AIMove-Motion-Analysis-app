@@ -380,6 +380,27 @@ export default function KFGOMTable() {
         if (results) {
             const tableData = convertSARIMAXToTableData(results)
             setKfgomData(tableData)
+            
+    // Auto-select all variables on each new training to show user that all variables are used
+    // Check if this is a new analysis (different target joint/axis or first time)
+    const currentTarget = `${results.targetJoint}_${results.targetAxis}`
+    const lastTarget = globalSelectedVariables.get('_lastTarget') || ''
+    
+    if (currentTarget !== lastTarget && tableData.length > 0) {
+        // Clear previous selections and select ALL variables for new training
+        globalSelectedVariables.clear()
+        
+        // Select ALL variables including Transitioning variables
+        tableData.forEach(item => {
+            const jointId = item.jointId
+            globalSelectedVariables.set(jointId, true)
+        })
+        
+        // Store current target for next comparison
+        globalSelectedVariables.set('_lastTarget', currentTarget)
+        
+        console.log(`🎯 Auto-selected ALL ${globalSelectedVariables.size - 1} variables for new training: ${currentTarget}`)
+    }
         } else {
             setKfgomData([])
         }
@@ -458,6 +479,65 @@ export default function KFGOMTable() {
             rowSelection: 'multiple' as const,
             rowMultiSelectWithClick: true,
             suppressRowClickSelection: true,
+            isRowSelectable: (params) => {
+                // Disable Transitioning variables (same joint-axis as target)
+                const results = sarimaxResults()
+                let targetCombined = 'Hips_Xrotation'
+                
+                if (results && results.targetJoint && results.targetAxis) {
+                    targetCombined = `${results.targetJoint}_${results.targetAxis}`
+                } else {
+                    const cfg = sarimaxConfig()
+                    targetCombined = cfg ? `${cfg.targetJoint}_${cfg.targetAxis}` : 'Hips_Xrotation'
+                }
+                
+                // Check if this is a Transitioning variable (same joint and same axis)
+                const targetParts = targetCombined.split('_')
+                if (targetParts.length >= 2) {
+                    const baseJoint = targetParts.slice(0, -1).join('_')
+                    const targetAxis = targetParts[targetParts.length - 1]
+                    const jointId = params.data?.jointId
+                    
+                    // If same joint AND same axis, disable row selection
+                    if (jointId && jointId.includes(baseJoint) && jointId.includes(targetAxis)) {
+                        return false
+                    }
+                }
+                
+                return true
+            },
+            getRowStyle: (params) => {
+                // Visually disable Transitioning variables
+                const results = sarimaxResults()
+                let targetCombined = 'Hips_Xrotation'
+                
+                if (results && results.targetJoint && results.targetAxis) {
+                    targetCombined = `${results.targetJoint}_${results.targetAxis}`
+                } else {
+                    const cfg = sarimaxConfig()
+                    targetCombined = cfg ? `${cfg.targetJoint}_${cfg.targetAxis}` : 'Hips_Xrotation'
+                }
+                
+                // Check if this is a Transitioning variable
+                const targetParts = targetCombined.split('_')
+                if (targetParts.length >= 2) {
+                    const baseJoint = targetParts.slice(0, -1).join('_')
+                    const targetAxis = targetParts[targetParts.length - 1]
+                    const jointId = params.data?.jointId
+                    
+                    // If same joint AND same axis, visually disable
+                    if (jointId && jointId.includes(baseJoint) && jointId.includes(targetAxis)) {
+                        return { 
+                            opacity: 0.5, 
+                            backgroundColor: '#f3f3f3',
+                            color: '#888',
+                            pointerEvents: 'none' 
+                        }
+                    }
+                }
+                
+                return null
+            },
             rowData: filteredData(),
             defaultColDef: {
                 resizable: true,

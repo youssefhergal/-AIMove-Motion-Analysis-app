@@ -112,12 +112,12 @@ export class SARIMAX {
     const maxIterations = 5
     let lastBeta = null
     let convergenceHistory = []
-    
+    let regularizedXTX = null    
     for (let iter = 0; iter < maxIterations; iter++) {
       console.log(`🔄 Ridge iteration ${iter + 1}: λ = ${currentLambda.toFixed(4)}`)
       
       const identity = math.identity(XTX.size())
-      const regularizedXTX = math.add(XTX, math.multiply(currentLambda, identity))
+      regularizedXTX = math.add(XTX, math.multiply(currentLambda, identity))
       const XTY = math.multiply(XT, yVector)
       
       try {
